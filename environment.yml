@@ -1,0 +1,21 @@
+name: p27
+channels:
+dependencies:
+  - pip:
+    - git+https://github.com/HazyResearch/snorkel/tree/dev
+    - bs4
+    - futures
+    - ipywidgets
+    - jupyter
+    - lxml
+    - matplotlib
+    - nltk
+    - numba
+    - numbskull
+    - numpy>=1.11
+    - pandas
+    - requests
+    - scipy>=0.18
+    - sklearn
+    - sqlalchemy>=1.0.14
+    - theano>=0.8.2
