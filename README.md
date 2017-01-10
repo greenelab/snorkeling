@@ -4,6 +4,7 @@ A pilot project to extract medical indications (when a compound treats a disease
 
 ##Installing/Setting Up The Conda Environment
 Snorkeling uses [conda](http://conda.pydata.org/docs/intro.html) as a python package manager. Before moving on to the instructions below, please make sure to have it installed. [Download conda here!!](https://www.continuum.io/downloads) Also, make sure to clone the snorkel repository found [here](https://github.com/HazyResearch/snorkel).  
+  
 Once everything has been installed and cloned, type following command in the terminal: 
 
 ```bash
