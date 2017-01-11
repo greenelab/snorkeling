@@ -1,43 +1,26 @@
 name: snorkeling
 dependencies:
 - _license=1.1
+- beautifulsoup4=4.5.1
 - enum34=1.1.6
-- llvmlite=0.13.0
-- numba=0.28.1
 - futures=3.0.3
 - ipywidgets=4.1.1
 - jupyter=1.0.0
 - jupyter_client=4.4.0 
 - jupyter_console=5.0.0 
-- jupyter_core=4.2.0 
+- jupyter_core=4.2.0
+- llvmlite=0.13.0
 - lxml=3.6.4 
-- matplotlib=1.5.3 
-- nltk=3.2.1 
+- matplotlib=1.5.3
+- nltk=3.2.1
+- numba=0.28.1
 - numpy=1.11.1 
 - pandas=0.18.1 
 - requests=2.11.1 
-- scipy=0.18.1 
-- scikit-image=0.12.3 
-- scikit-learn=0.17.1 
+- scikit-image=0.12.3
+- scikit-learn=0.17.1
+- scipy=0.18.1  
 - sqlalchemy=1.0.13 
-- enum34=1.1.6 
-- numba=0.28.1 
-- beautifulsoup4=4.5.1
 - pip:
-    - bs4
-    - futures
-    - ipywidgets
-    - jupyter
-    - lxml
-    - matplotlib
-    - nltk
     - git+https://github.com/HazyResearch/numbskull@40ac1af20538c17b4726c963c69adcb81314efa5
-    - numpy>=1.7
-    - pandas
-    - requests
-    - scipy>=0.18
-    - sklearn
-    - sqlalchemy>=1.0.14
     - theano>=0.8.2
-    - enum34==1.1.6
-    - numba
