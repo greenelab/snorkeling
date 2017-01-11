@@ -1,5 +1,9 @@
 # Set & move to home directory
 source set_env.sh
+#Make sure the snorkel submodule is installed
+git submodule update --init --recursive
+
+#Change directory into snorkel
 cd "$SNORKELHOME"
 
 # Make sure the submodules are installed
