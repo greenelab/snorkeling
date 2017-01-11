@@ -2,7 +2,8 @@
 
 A pilot project to extract medical indications (when a compound treats a disease) from the literature using [Snorkel](https://github.com/HazyResearch/snorkel).
 
-##Installing/Setting Up The Conda Environment
+## Installing/Setting Up The Conda Environment
+
 Snorkeling uses [conda](http://conda.pydata.org/docs/intro.html) as a python package manager. Before moving on to the instructions below, please make sure to have it installed. [Download conda here!!](https://www.continuum.io/downloads) Also, make sure to clone the snorkel repository found [here](https://github.com/HazyResearch/snorkel).  
   
 Once everything has been installed and cloned, type following command in the terminal: 
@@ -23,7 +24,8 @@ _Note_: If you want to leave the environment enter the following command:
 source deactivate 
 ```
 
-##Running The Project
+## Running The Project
+
 After modifying the environment script please type in the following command: 
 
 ```bash 
