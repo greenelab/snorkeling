@@ -1,0 +1,98 @@
+doid_id	disease	DM	SYM	NOT	total
+DOID:10652	Alzheimer's disease	4	5	7	16
+DOID:9206	Barrett's esophagus	2	0	0	2
+DOID:8778	Crohn's disease	6	2	2	10
+DOID:11119	Gilles de la Tourette syndrome	0	9	0	9
+DOID:12361	Graves' disease	2	0	4	6
+DOID:13378	Kawasaki disease	1	0	0	1
+DOID:5408	Paget's disease of bone	6	0	0	6
+DOID:14330	Parkinson's disease	0	28	7	35
+DOID:635	acquired immunodeficiency syndrome	14	0	6	20
+DOID:0050741	alcohol dependence	4	2	1	7
+DOID:4481	allergic rhinitis	15	5	4	24
+DOID:986	alopecia areata	1	0	0	1
+DOID:332	amyotrophic lateral sclerosis	1	1	0	2
+DOID:2355	anemia	0	0	14	14
+DOID:7147	ankylosing spondylitis	8	7	4	19
+DOID:2841	asthma	37	3	5	45
+DOID:1936	atherosclerosis	6	0	3	9
+DOID:3310	atopic dermatitis	16	2	2	20
+DOID:1094	attention deficit hyperactivity disorder	0	14	0	14
+DOID:12849	autistic disorder	0	8	1	9
+DOID:14227	azoospermia	1	0	0	1
+DOID:3312	bipolar disorder	0	20	0	20
+DOID:184	bone cancer	5	0	2	7
+DOID:1319	brain cancer	7	4	1	12
+DOID:1612	breast cancer	29	14	7	50
+DOID:4362	cervical cancer	1	0	0	1
+DOID:784	chronic kidney failure	0	10	1	11
+DOID:3083	chronic obstructive pulmonary disease	9	6	4	19
+DOID:219	colon cancer	5	4	4	13
+DOID:12995	conduct disorder	0	3	0	3
+DOID:3393	coronary artery disease	28	10	7	45
+DOID:216	dental caries	0	0	1	1
+DOID:12930	dilated cardiomyopathy	3	2	0	5
+DOID:1595	endogenous depression	0	15	0	15
+DOID:1826	epilepsy syndrome	25	0	10	35
+DOID:5041	esophageal cancer	4	3	0	7
+DOID:1312	focal segmental glomerulosclerosis	1	0	0	1
+DOID:2994	germ cell cancer	7	0	1	8
+DOID:11714	gestational diabetes	1	0	0	1
+DOID:1686	glaucoma	21	2	2	25
+DOID:13189	gout	9	1	0	10
+DOID:11934	head and neck cancer	4	1	0	5
+DOID:2531	hematologic cancer	51	2	7	60
+DOID:2043	hepatitis B	4	0	0	4
+DOID:10763	hypertension	68	2	41	111
+DOID:1459	hypothyroidism	4	0	0	4
+DOID:0050156	idiopathic pulmonary fibrosis	0	1	0	1
+DOID:263	kidney cancer	13	6	9	28
+DOID:1024	leprosy	3	0	0	3
+DOID:3571	liver cancer	3	0	1	4
+DOID:1324	lung cancer	16	1	3	20
+DOID:0060073	lymphatic system cancer	9	0	0	9
+DOID:12365	malaria	11	0	0	11
+DOID:3070	malignant glioma	2	0	0	2
+DOID:1909	melanoma	7	0	4	11
+DOID:3565	meningioma	0	0	2	2
+DOID:14221	metabolic syndrome X	1	0	1	2
+DOID:6364	migraine	7	24	0	31
+DOID:2377	multiple sclerosis	11	22	3	36
+DOID:4045	muscle cancer	6	0	1	7
+DOID:8986	narcolepsy	0	5	0	5
+DOID:585	nephrolithiasis	1	0	0	1
+DOID:0050742	nicotine dependence	1	1	0	2
+DOID:9970	obesity	11	0	0	11
+DOID:2174	ocular cancer	2	0	0	2
+DOID:8398	osteoarthritis	0	25	3	28
+DOID:11476	osteoporosis	15	1	4	20
+DOID:2394	ovarian cancer	10	0	2	12
+DOID:1793	pancreatic cancer	10	1	0	11
+DOID:4989	pancreatitis	2	1	3	6
+DOID:594	panic disorder	0	18	0	18
+DOID:824	periodontitis	0	0	1	1
+DOID:1192	peripheral nervous system neoplasm	12	0	0	12
+DOID:11612	polycystic ovary syndrome	1	5	0	6
+DOID:12236	primary biliary cirrhosis	3	0	1	4
+DOID:10283	prostate cancer	21	9	10	40
+DOID:8893	psoriasis	21	4	2	27
+DOID:9008	psoriatic arthritis	8	0	0	8
+DOID:9835	refractive error	0	0	1	1
+DOID:0050425	restless legs syndrome	0	10	0	10
+DOID:7148	rheumatoid arthritis	15	16	13	44
+DOID:1115	sarcoma	8	0	1	9
+DOID:5419	schizophrenia	0	30	0	30
+DOID:14268	sclerosing cholangitis	0	0	1	1
+DOID:4159	skin cancer	9	0	5	14
+DOID:10534	stomach cancer	9	0	0	9
+DOID:9074	systemic lupus erythematosus	13	7	5	25
+DOID:418	systemic scleroderma	10	15	7	32
+DOID:2998	testicular cancer	11	0	0	11
+DOID:3277	thymus cancer	1	0	0	1
+DOID:1781	thyroid cancer	4	0	4	8
+DOID:9744	type 1 diabetes mellitus	1	2	0	3
+DOID:9352	type 2 diabetes mellitus	22	0	3	25
+DOID:8577	ulcerative colitis	16	0	2	18
+DOID:11054	urinary bladder cancer	11	0	0	11
+DOID:363	uterine cancer	7	0	3	10
+DOID:12306	vitiligo	1	1	0	2
