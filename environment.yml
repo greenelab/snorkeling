@@ -1,6 +1,5 @@
 name: snorkeling
 dependencies:
-- _license=1.1
 - beautifulsoup4=4.5.1
 - enum34=1.1.6
 - futures=3.0.3
@@ -23,4 +22,4 @@ dependencies:
 - sqlalchemy=1.0.13 
 - pip:
     - git+https://github.com/HazyResearch/numbskull@40ac1af20538c17b4726c963c69adcb81314efa5
-    - theano>=0.8.2
+    - theano==0.8.2
