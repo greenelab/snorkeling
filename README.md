@@ -4,21 +4,21 @@ A pilot project to extract medical indications (when a compound treats a disease
 
 ## Installing/Setting Up The Conda Environment
 
-Snorkeling uses [conda](http://conda.pydata.org/docs/intro.html) as a python package manager. Before moving on to the instructions below, please make sure to have it installed. [Download conda here!!](https://www.continuum.io/downloads) Also, make sure to clone the snorkel repository found [here](https://github.com/HazyResearch/snorkel).  
+Snorkeling uses [conda](http://conda.pydata.org/docs/intro.html) as a python package manager. Before moving on to the instructions below, please make sure to have it installed. [Download conda here!!](https://www.continuum.io/downloads)
   
-Once everything has been installed and cloned, type following command in the terminal: 
+Once everything has been installed, type following command in the terminal: 
 
 ```bash
 conda env create --file environment.yml
 ``` 
 
-After everything has been isntalled, activate  the environment by using the following command: 
+You can activate the environment by using the following command: 
 
 ```bash
 source activate snorkeling
 ```  
 
-_Note_: If you want to leave the environment enter the following command:
+_Note_: If you want to leave the environment, just enter the following command:
 
 ```bash
 source deactivate 
@@ -26,14 +26,11 @@ source deactivate
 
 ## Running The Project
 
-After modifying the environment script please type in the following command: 
+Once the configuration has finished, use the following command below to run the project:
 
 ```bash 
 bash run.sh
 ```  
-
-_Note_: Before running the script above please edit the following script [set_env.sh](set_env.sh). Change the `SNORKELHOME` variable to point to the snorkel directory you cloned above. Depending on where this repository is located you may have to change the `WORKINGPATH` variable. If you have to change it, make sure it points to this repository.
-  
 If everything is successful, an internet browser should pop-up with a jupyter homepage.
 
 ## License
