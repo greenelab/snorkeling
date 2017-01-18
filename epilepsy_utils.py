@@ -4,8 +4,6 @@ from collections import defaultdict
 from itertools import product
 from pandas import DataFrame
 from string import punctuation
-from snorkel.parser import SentenceParser
-from snorkel.parser import CoreNLPHandler
 
 def offsets_to_token(left, right, offset_array, lemmas, punc=set(punctuation)):
     token_start, token_end = None, None
@@ -27,6 +25,9 @@ class Tagger(object):
         pubmed_id, _, _, sent_start, sent_end = parts['stable_id'].split(':')
         sent_start, sent_end = int(sent_start), int(sent_end)
         tags = self.tag_dict.get(pubmed_id, {})
+        #from IPython.core.debugger import Tracer
+        #Tracer()() #this one triggers the debugger
+        #print tags
         for tag in tags:
             if not (sent_start <= tag[1] <= sent_end):
                 continue
@@ -35,18 +36,5 @@ class Tagger(object):
             for tok in toks:
                 ts = tag[0].split('|')
                 parts['entity_types'][tok] = ts[0]
-                parts['entity_gids'][tok] = ts[1]
+                parts['entity_cids'][tok] = ts[1]
         return parts
-
-class CustomSentenceParser(SentenceParser):
-    def __init__(self,tok_whitespace=False,fn=None):
-        self.corenlp_handler = CoreNLPHandler(tok_whitespace=tok_whitespace)
-        self.fn = fn
-
-    def parse(self, doc, text):
-        """Parse a raw document as a string into a list of sentences"""
-        for parts in self.corenlp_handler.parse(doc, text):
-            parts['entity_gids']  = ['O' for _ in parts['words']]
-            parts['entity_types'] = ['O' for _ in parts['words']]
-            parts = self.fn(parts) if self.fn is not None else parts
-            yield Sentence(**parts)
