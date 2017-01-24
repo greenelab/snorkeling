@@ -9,7 +9,7 @@ dependencies:
 - jupyter_console=5.0.0 
 - jupyter_core=4.2.0
 - llvmlite=0.13.0
-- lxml=3.6.4 
+- lxml=3.7.2
 - matplotlib=1.5.3
 - nltk=3.2.1
 - numba=0.28.1
@@ -19,7 +19,7 @@ dependencies:
 - scikit-image=0.12.3
 - scikit-learn=0.17.1
 - scipy=0.18.1  
-- sqlalchemy=1.0.13 
+- sqlalchemy=1.1.4
 - pip:
     - git+https://github.com/HazyResearch/numbskull@40ac1af20538c17b4726c963c69adcb81314efa5
-    - theano==0.8.2
+    - tensorflow==0.12.1
