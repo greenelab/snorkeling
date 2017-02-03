@@ -1,58 +1,70 @@
 import gzip
+import cgi
+import time
+import sys
+from lxml.builder import E
+from lxml.etree import tostring
 
+from bioc import BioCWriter, BioCCollection, BioCDocument, BioCPassage
+from bioc import BioCAnnotation, BioCLocation
 import tqdm
 
 
-def generate_annotation(file_object, tagged_term, index):
-    """Generates the annotation tag
+def get_annotations(tag, index):
+    """Get Annotations
 
     Keyword Arguments:
-    file_object -- the file object used for writing
-    tagged_term -- look up
-    index -- keep track of the annotation id
+    tag -- the annotation line that was parsed into an array
+    index -- the id of each document specific annotation
     """
-    file_object.write("<annotation id=\"%d\">\n" % (index))
-    file_object.write("<infon key=\"title\">%s</infon>\n" % (tagged_term[4]))
-    file_object.write("<location length=\"%d\" offset=\"%d\"></location>\n" % (len(tagged_term[3]), tagged_term[1]))
-    file_object.write("<text>%s</text>\n" % (tagged_term[3]))
+
+    annt = BioCAnnotation()
+    annt.id = str(index)
+    annt.infons["type"] = tag[4]
 
     # If the annotation type is a Gene,Species, Mutation, SNP
     # Write out relevant tag
-    if tagged_term[4] == "Gene":
-        file_object.write("<infon key=\"NCBI Gene\">%s</infon>\n" % (tagged_term[5][0:tagged_term[5].find("(")]))
+    if tag[4] == "Gene":
+        annt.infons["NCBI Gene"] = tag[5]
 
-    elif tagged_term[4] == "Species":
-        file_object.write("<infon key=\"NCBI Species\">%s</infon>\n" % (tagged_term[5]))
+    elif tag[4] == "Species":
+        annt.infons["NCBI Species"] = tag[5]
 
-    elif "Mutation" in tagged_term[4]:
-        file_object.write("<infon key=\"tmVar\">%s</infon>\n" % (tagged_term[5]))
+    elif "Mutation" in tag[4]:
+        annt.infons["tmVar"] = tag[5]
 
-    elif "SNP" in tagged_term[4]:
-        file_object.write("<infon key=\"tmVar\">%s</infon>\n" % (tagged_term[5]))
+    elif "SNP" in tag[4]:
+        annt.infons["tmVar"] = tag[5]
 
     else:
         # If there is no MESH ID for an annotation
-        if len(tagged_term) > 5:
+        if len(tag) > 5:
             # check to see if there are multiple mesh tags
-            if "|" in tagged_term[5]:
+            if "|" in tag[5]:
                 # Write out each MESH id as own tag
-                for ids in tagged_term[5].split("|"):
+                for tag_num, ids in enumerate(tag[5].split("|")):
                     # Some ids dont have the MESH:#### form so added case to that
                     if ":" not in ids:
-                        file_object.write("<infon key=\"MESH\">%s</infon>\n" % (tagged_term[5]))
+                        annt.infons["MESH {}".format(tag_num)] = tag[5]
                     else:
                         term_type, term_id = ids.split(":")
-                        file_object.write("<infon key=\"%s\">%s</infon>\n" % (term_type, term_id))
+                        annt.infons["{} {}".format(term_type, tag_num)] = term_id
             else:
                 # Some ids dont have the MESH:#### form so added case to that
-                if ":" in tagged_term[5]:
-                    term_type, term_id = tagged_term[5].split(":")
-                    file_object.write("<infon key=\"%s\">%s</infon>\n" % (term_type, term_id))
+                if ":" in tag[5]:
+                    term_type, term_id = tag[5].split(":")
+                    annt.infons[term_type] = term_id
                 else:
-                    file_object.write("<infon key=\"MESH\">%s</infon>\n" % (tagged_term[5]))
+                    annt.infons["MESH"] = tag[5]
         else:
-            file_object.write("<infon key=\"MESH\">Unknown</infon>\n")
-    file_object.write("</annotation>\n")
+            annt.infons["MESH"] = "Unknown"
+
+    location = BioCLocation()
+    location.offset = str(tag[1])
+    location.length = str(len(tag[3]))
+    annt.locations.append(location)
+    annt.text = tag[3]
+    return annt
 
 
 def convert_pubtator(input_file, output_file):
@@ -62,91 +74,88 @@ def convert_pubtator(input_file, output_file):
     input_file -- the path of pubtators annotation file
     output_file -- the path to output the converted text
     """
-    term_tags = set()
-    with open(output_file, 'w') as g:
-        # Header for pubtator's xml format
-        g.write("<collection>\n<source>Pubtator</source>\n")
+    # Set up BioCWriter to write specifically Pubtator
+    # Can change to incorporate other sources besides pubtator
+    writer = BioCWriter()
+    writer.collection = BioCCollection()
+    collection = writer.collection
+    collection.date = time.strftime("%Y/%m/%d")
+    collection.source = "Pubtator"
+    collection.key = "Pubtator.key"
+
+    with open(output_file, 'wb') as g:
+        term_tags = set()
+
+        # Have to manually do this because hangs otherwise
+        shell = writer.tostring('UTF-8')
+        tail = u'</collection>\n'
+        head = shell[:-len(tail)]
+        g.write(head)
+
         # read from gunzip file
         with gzip.open(input_file, "rb") as f:
-
             for line in tqdm.tqdm(f):
                 # Convert "illegal chracters" (i.e. < > &) in the main text
                 # into html entities
-                line = line.strip().replace('&', '&amp;')
-                line = line.replace('<', '&lt;').replace('>', '&gt;')
-                line = line.replace('"', '&quot;').replace("'", '&#39;')
+                line = cgi.escape(line.strip()).encode("ascii", "xmlcharreplace")
 
                 # Title parsing
                 if "|t|" in line:
                     title_heading = line.split("|")
-                    has_written_title = False
+                    document = BioCDocument()
+                    document.id = title_heading[0]
+
+                    title_passage = BioCPassage()
+                    title_passage.put_infon('type', 'title')
+                    title_passage.offset = '0'
+                    title_passage.text = title_heading[2]
 
                 # Abstract parsing
                 elif "|a|" in line:
                     abstract_heading = line.split("|")
                     title_offset = len(title_heading[2])
-                    has_written_abstract = False
+                    abstract_passage = BioCPassage()
+                    abstract_passage.put_infon('type', 'abstract')
+                    abstract_passage.offset = str(title_offset)
+                    abstract_passage.text = abstract_heading[2]
 
                 # New line means end of current document
                 elif line == "":
                     sorted_tags = sorted(list(term_tags), key=lambda x: x[2])
+                    title_tags = filter(lambda x: x[2] <= title_offset, sorted_tags)
+                    annt_tags = filter(lambda x: x[2] > title_offset, sorted_tags)
+                    id_index = 0
+                    # title has no annotation
+                    if len(title_tags) != 0:
+                        for tag in title_tags:
+                            title_passage.annotations.append(get_annotations(tag, id_index))
+                            id_index = id_index + 1
 
-                    # Fixing the issue where titles don't have an annotation
-                    if len(term_tags) == 0 or sorted_tags[0][2] > title_offset:
-                        if not(has_written_title):
-                            g.write("<document>\n")
-                            g.write("<id>" + title_heading[0] + "</id>\n")
-                            g.write("<passage>\n")
-                            g.write("<infon key=\"type\">title</infon>\n")
-                            g.write("<offset>0</offset>\n")
-                            g.write("<text>" + title_heading[2] + "</text>\n")
-                            has_written_title = True
-
-                    # For every annotation
-                    for i, tagged_term in enumerate(sorted_tags):
-
-                        # Determine if annotation is for the title else abstract
-                        if tagged_term[2] <= title_offset:
-                            if not(has_written_title):
-                                g.write("<document>\n")
-                                g.write("<id>" + title_heading[0] + "</id>\n")
-                                g.write("<passage>\n")
-                                g.write("<infon key=\"type\">title</infon>\n")
-                                g.write("<offset>0</offset>\n")
-                                g.write("<text>" + title_heading[2] + "</text>\n")
-                                has_written_title = True
-                            generate_annotation(g, tagged_term, i)
-                        # Abstract
-                        else:
-                            if not(has_written_abstract):
-                                g.write("</passage>\n<passage>\n")
-                                g.write("<infon key=\"type\">abstract</infon>\n")
-                                g.write("<offset>%d</offset>\n" % (title_offset))
-                                g.write("<text>" + abstract_heading[2] + "</text>\n")
-                                has_written_abstract = True
-                            generate_annotation(g, tagged_term, i)
-
-                    # Fixes the issue where articles don't have an abstract
-                    if not(has_written_abstract):
-                        g.write("</passage>\n<passage>\n")
-                        g.write("<infon key=\"type\">abstract</infon>\n")
-                        g.write("<offset>%d</offset>\n" % (title_offset))
-                        g.write("<text>" + abstract_heading[2] + "</text>\n")
-                        has_written_abstract = True
-
-                    # Close the passage block
-                    g.write("</passage>\n</document>\n")
+                    # annotation has a passage tag
+                    if len(annt_tags) != 0:
+                        for tag in annt_tags:
+                            abstract_passage.annotations.append(get_annotations(tag, id_index))
+                            id_index = id_index + 1
 
                     # Reset the term_Tags
                     term_tags = set([])
+
+                    document.add_passage(title_passage)
+                    document.add_passage(abstract_passage)
+                    # collection.add_document(document)
+                    step_parent = E('collection')
+                    writer._build_documents([document], step_parent)
+                    g.write(tostring(step_parent[0], pretty_print=True))
+                    step_parent.clear()
 
                 # Compile each term into a set of terms
                 else:
                     terms = line.split("\t")
                     terms[1] = int(terms[1])
                     terms[2] = int(terms[2])
-                    term_tags.add(terms)
-        # Close the whole collection
-        g.write("</collection>\n")
+                    term_tags.add(tuple(terms))
 
-convert_pubtator("bioconcepts2pubtator_offsets.gz", "pubmed_docs.xml")
+        g.write(tail)
+
+# Main
+convert_pubtator("/home/davidnicholson/Documents/Data/bioconcepts2pubtator_offsets.gz", "/home/davidnicholson/Documents/Data/pubmed_docs.xml")
