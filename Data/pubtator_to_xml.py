@@ -1,17 +1,22 @@
+import argparse
 import gzip
 import cgi
+import csv
 import time
 import sys
-from lxml.builder import E
-from lxml.etree import tostring
 
+from __future__ import unicode_literals
 from bioc import BioCWriter, BioCCollection, BioCDocument, BioCPassage
 from bioc import BioCAnnotation, BioCLocation
+from lxml.builder import E
+from lxml.etree import tostring
 import tqdm
 
 
-def get_annotations(tag, index):
-    """Get Annotations
+def bioconcepts2pubtator_annotations(tag, index):
+    """Bioconcepts to Annotations
+    Specifically for bioconcepts2pubtator and converts each annotation
+    into an annotation object that BioC can parse.
 
     Keyword Arguments:
     tag -- the annotation line that was parsed into an array
@@ -67,13 +72,48 @@ def get_annotations(tag, index):
     return annt
 
 
-def convert_pubtator(input_file, output_file):
-    """Convert pubtators annotation list to XML
+def bioconcepts2pubtator_offsets(input_file):
+    file_lines = list()
+    with gzip.open(input_file, "rb") as f:
+        for line in f:
+            # Convert "illegal chracters" (i.e. < > &) in the main text
+            # into html entities
+            line = cgi.escape(line.rstrip()).encode("ascii", "xmlcharrefreplace")
+            if line:
+                file_lines.append(line)
+            else:
+                article = {}
+
+                # title
+                title_heading = file_lines[0].split('|')
+                title_len = len(title_heading[1])
+                artilce["Title"] = [title_heading[0], title_heading[1]]
+
+                # abstract
+                abstract_heading = file_lines[1]
+                article["Abstract"] = [abstract_heading[0], title_len, abstract_heading[1]]
+
+                # set up the csv reader
+                annotation_lines = "\n".join(file_lines[2:])
+                annts = csv.DictReader(annotation_lines, fieldnames=['Document', 'Start', 'End', 'Term', 'Type', 'ID'])
+                sorted_annts = sorted(annts, key=lambda x: x[2])
+                article["Title_Annot"] = filter(lambda x: x[2] < title_len, sorted_annts)
+                article["Abstract_Annot"] = filter(lambda x: x[2] > title_len, sorted_annts)
+
+                yield article
+                file_lines = list()
+
+
+def convert_pubtator(input_file, output_file=None):
+    """Convert pubtators annotation list to BioC XML
 
     Keyword Arguments:
     input_file -- the path of pubtators annotation file
     output_file -- the path to output the converted text
     """
+    if output_file is None:
+        output_file = "bioc-converted-docs.xml"
+
     # Set up BioCWriter to write specifically Pubtator
     # Can change to incorporate other sources besides pubtator
     writer = BioCWriter()
@@ -87,75 +127,53 @@ def convert_pubtator(input_file, output_file):
         term_tags = set()
 
         # Have to manually do this because hangs otherwise
-        shell = writer.tostring('UTF-8')
-        tail = u'</collection>\n'
-        head = shell[:-len(tail)]
-        g.write(head)
+        # Write the head of the xml file
+        xml_header = writer.tostring('UTF-8')
+        xml_end = u'</collection>\n'
+        xml_head = xml_header[:-len(xml_end)]
+        g.write(xml_head)
 
-        # read from gunzip file
-        with gzip.open(input_file, "rb") as f:
-            for line in tqdm.tqdm(f):
-                # Convert "illegal chracters" (i.e. < > &) in the main text
-                # into html entities
-                line = cgi.escape(line.strip()).encode("ascii", "xmlcharreplace")
+        # Write each article in BioC format
+        for article in bioconcepts2pubtator_offsets:
+            document = BioCDocument()
+            document.id = article["Title"][0]
 
-                # Title parsing
-                if "|t|" in line:
-                    title_heading = line.split("|")
-                    document = BioCDocument()
-                    document.id = title_heading[0]
+            title_passage = BioCPassage()
+            title_passage.put_infon('type', 'title')
+            title_passage.offset = '0'
+            title_passage.text = article["Title"][1]
 
-                    title_passage = BioCPassage()
-                    title_passage.put_infon('type', 'title')
-                    title_passage.offset = '0'
-                    title_passage.text = title_heading[2]
+            abstract_passage = BioCPassage()
+            abstract_passage.put_infon('type', 'abstract')
+            abstract_passage.offset = str(article["Abstract"][1])
+            abstract_passage.text = article["Abstract"][2]
 
-                # Abstract parsing
-                elif "|a|" in line:
-                    abstract_heading = line.split("|")
-                    title_offset = len(title_heading[2])
-                    abstract_passage = BioCPassage()
-                    abstract_passage.put_infon('type', 'abstract')
-                    abstract_passage.offset = str(title_offset)
-                    abstract_passage.text = abstract_heading[2]
+            for tag in article["Title_Annot"]:
+                title_passage.annotations.append(get_annotations(tag, id_index))
+                id_index = id_index + 1
 
-                # New line means end of current document
-                elif line == "":
-                    sorted_tags = sorted(list(term_tags), key=lambda x: x[2])
-                    title_tags = filter(lambda x: x[2] <= title_offset, sorted_tags)
-                    annt_tags = filter(lambda x: x[2] > title_offset, sorted_tags)
-                    id_index = 0
-                    # title has no annotation
-                    if len(title_tags) != 0:
-                        for tag in title_tags:
-                            title_passage.annotations.append(get_annotations(tag, id_index))
-                            id_index = id_index + 1
+            for tag in article["Abstract_Annot"]:
+                abstract_passage.annotations.append(get_annotations(tag, id_index))
+                id_index = id_index + 1
 
-                    # annotation has a passage tag
-                    if len(annt_tags) != 0:
-                        for tag in annt_tags:
-                            abstract_passage.annotations.append(get_annotations(tag, id_index))
-                            id_index = id_index + 1
+            document.add_passage(title_passage)
+            document.add_passage(abstract_passage)
 
-                    # Reset the term_Tags
-                    term_tags = set([])
+            step_parent = E('collection')
+            writer._build_documents([document], step_parent)
+            g.write(tostring(step_parent[0], pretty_print=True))
+            step_parent.clear()
 
-                    document.add_passage(title_passage)
-                    document.add_passage(abstract_passage)
-                    # collection.add_document(document)
-                    step_parent = E('collection')
-                    writer._build_documents([document], step_parent)
-                    g.write(tostring(step_parent[0], pretty_print=True))
-                    step_parent.clear()
-
-                # Compile each term into a set of terms
-                else:
-                    terms = line.split("\t")
-                    terms[1] = int(terms[1])
-                    terms[2] = int(terms[2])
-                    term_tags.add(tuple(terms))
-
-        g.write(tail)
+        # Write the closing tag of the xml document
+        g.write(xml_tail)
 
 # Main
-convert_pubtator("/home/davidnicholson/Documents/Data/bioconcepts2pubtator_offsets.gz", "/home/davidnicholson/Documents/Data/pubmed_docs.xml")
+parser = argparse.ArgumentParser(description='Extracts the annotations from the BioC xml format')
+parser.add_argument("--documents", nargs=1, help="File path pointing to input file.")
+parser.add_argument("--output", nargs="?", help="File path for destination of output.")
+args = parser.parse_args()
+
+if not(args.documents):
+    raise Exception("PLEASE GIVE FILE INPUT PATH")
+
+convert_pubtator(args.documents, args.output)
