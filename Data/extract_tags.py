@@ -59,4 +59,4 @@ if not(args.input):
 if not(args.output):
     raise Exception("PLEASE GIVE FILE OUTPUT PATH")
 
-extract_annotations(args.input[0], args.output)
+extract_annotations(args.input, args.output)
