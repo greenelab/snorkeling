@@ -1,0 +1,695 @@
+<?xml version='1.0' encoding='UTF-8'?><!DOCTYPE collection SYSTEM 'BioC.dtd'>
+<collection>
+  <source>Pubtator</source>
+  <date>2017/02/07</date>
+  <key>Pubtator.key</key>
+<document>
+  <id>1</id>
+  <passage>
+    <infon key="type">title</infon>
+    <offset>0</offset>
+    <text>Formate assay in body fluids: application in methanol poisoning.</text>
+  </passage>
+  <passage>
+    <infon key="type">abstract</infon>
+    <offset></offset>
+    <text></text>
+    <annotation id="0">
+      <infon key="MESH">C030544</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="0" length="7"/>
+      <text>Formate</text>
+    </annotation>
+    <annotation id="1">
+      <infon key="MESH">D000432</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="45" length="8"/>
+      <text>methanol</text>
+    </annotation>
+  </passage>
+</document>
+<document>
+  <id>100</id>
+  <passage>
+    <infon key="type">title</infon>
+    <offset>0</offset>
+    <text>Bovine mannosidosis--a model lysosomal storage disease.</text>
+  </passage>
+  <passage>
+    <infon key="type">abstract</infon>
+    <offset></offset>
+    <text></text>
+    <annotation id="0">
+      <infon key="NCBI Species">9913</infon>
+      <infon key="type">Species</infon>
+      <location offset="0" length="6"/>
+      <text>Bovine</text>
+    </annotation>
+    <annotation id="1">
+      <infon key="MESH">D016464</infon>
+      <infon key="type">Disease</infon>
+      <location offset="29" length="25"/>
+      <text>lysosomal storage disease</text>
+    </annotation>
+  </passage>
+</document>
+<document>
+  <id>100000</id>
+  <passage>
+    <infon key="type">title</infon>
+    <offset>0</offset>
+    <text>Drugs and the high cost of health care.</text>
+  </passage>
+  <passage>
+    <infon key="type">abstract</infon>
+    <offset></offset>
+    <text></text>
+  </passage>
+</document>
+<document>
+  <id>100001</id>
+  <passage>
+    <infon key="type">title</infon>
+    <offset>0</offset>
+    <text>Surgical approach for patients with unstable angina pectoris: role of the response to initial medical therapy and intraaortic balloon pumping in perioperative complications after aortocoronary bypass grafting.</text>
+  </passage>
+  <passage>
+    <infon key="type">abstract</infon>
+    <offset></offset>
+    <text></text>
+    <annotation id="0">
+      <infon key="NCBI Species">9606</infon>
+      <infon key="type">Species</infon>
+      <location offset="22" length="8"/>
+      <text>patients</text>
+    </annotation>
+    <annotation id="1">
+      <infon key="MESH">D000789</infon>
+      <infon key="type">Disease</infon>
+      <location offset="36" length="24"/>
+      <text>unstable angina pectoris</text>
+    </annotation>
+  </passage>
+</document>
+<document>
+  <id>100002</id>
+  <passage>
+    <infon key="type">title</infon>
+    <offset>0</offset>
+    <text>Value and limitations of the electrocardiographic response to exercise in the assessment of patients with coronary artery disease. Controversies in cardiology--II.</text>
+  </passage>
+  <passage>
+    <infon key="type">abstract</infon>
+    <offset>The results of exercise testing provide a probabibity statement rather than a definitive answer regarding the existence of coronary disease. Moreover, in asymptomatic subjects (1) the S-T segment response to exercise testing has a relatively poor predictive accuracy, (2) exercise testing does not appear to be a practical screening method for detecting subjects at high risk of sudden death, and (3) risk factors should be vigorously treated regardless of the results of screening studies for coronary artery disease. Hence, the probability statements derived from the electrocardiographic response to exercise testing do not appear to provide important enough diagnostic or prognostic information to justify routine use in asymptomatic subjects. Although exercise screening studies provide only marginal aid in detection coronary artery disease in symptomatic patients, important prognostic information may be derived that could influence decisions regarding pharmacologic or surgical therapy. Thus, although electrocardiographic stress testing should not be used as a routine screening procedure, its judicious use in symptomatic patients may provide the physician with important information for patient management.</offset>
+    <text>The results of exercise testing provide a probabibity statement rather than a definitive answer regarding the existence of coronary disease. Moreover, in asymptomatic subjects (1) the S-T segment response to exercise testing has a relatively poor predictive accuracy, (2) exercise testing does not appear to be a practical screening method for detecting subjects at high risk of sudden death, and (3) risk factors should be vigorously treated regardless of the results of screening studies for coronary artery disease. Hence, the probability statements derived from the electrocardiographic response to exercise testing do not appear to provide important enough diagnostic or prognostic information to justify routine use in asymptomatic subjects. Although exercise screening studies provide only marginal aid in detection coronary artery disease in symptomatic patients, important prognostic information may be derived that could influence decisions regarding pharmacologic or surgical therapy. Thus, although electrocardiographic stress testing should not be used as a routine screening procedure, its judicious use in symptomatic patients may provide the physician with important information for patient management.</text>
+    <annotation id="0">
+      <infon key="NCBI Species">9606</infon>
+      <infon key="type">Species</infon>
+      <location offset="1026" length="8"/>
+      <text>patients</text>
+    </annotation>
+    <annotation id="1">
+      <infon key="MESH">D003324</infon>
+      <infon key="type">Disease</infon>
+      <location offset="106" length="23"/>
+      <text>coronary artery disease</text>
+    </annotation>
+    <annotation id="2">
+      <infon key="NCBI Species">9606</infon>
+      <infon key="type">Species</infon>
+      <location offset="1297" length="8"/>
+      <text>patients</text>
+    </annotation>
+    <annotation id="3">
+      <infon key="NCBI Species">9606</infon>
+      <infon key="type">Species</infon>
+      <location offset="1363" length="7"/>
+      <text>patient</text>
+    </annotation>
+    <annotation id="4">
+      <infon key="MESH">D003327</infon>
+      <infon key="type">Disease</infon>
+      <location offset="287" length="16"/>
+      <text>coronary disease</text>
+    </annotation>
+    <annotation id="5">
+      <infon key="MESH">D003645</infon>
+      <infon key="type">Disease</infon>
+      <location offset="543" length="12"/>
+      <text>sudden death</text>
+    </annotation>
+    <annotation id="6">
+      <infon key="MESH">D003324</infon>
+      <infon key="type">Disease</infon>
+      <location offset="658" length="23"/>
+      <text>coronary artery disease</text>
+    </annotation>
+    <annotation id="7">
+      <infon key="NCBI Species">9606</infon>
+      <infon key="type">Species</infon>
+      <location offset="92" length="8"/>
+      <text>patients</text>
+    </annotation>
+    <annotation id="8">
+      <infon key="MESH">D003324</infon>
+      <infon key="type">Disease</infon>
+      <location offset="987" length="23"/>
+      <text>coronary artery disease</text>
+    </annotation>
+  </passage>
+</document>
+<document>
+  <id>100003</id>
+  <passage>
+    <infon key="type">title</infon>
+    <offset>0</offset>
+    <text>Group G streptococcal endocarditis.</text>
+  </passage>
+  <passage>
+    <infon key="type">abstract</infon>
+    <offset>The group G streptococcus may be a more common human pathogen than previously recognized. A case of group G streptococcal endocarditis is reported and the 11 cases reported previously are reviewed. Group G endocarditis may have significant clinical and prognostic differences from endocarditis caused by the more commonly identified viridans or group D streptococci. Routine serologic grouping of beta-hemolytic streptococcal isolates from serious infections is warranted.</offset>
+    <text>The group G streptococcus may be a more common human pathogen than previously recognized. A case of group G streptococcal endocarditis is reported and the 11 cases reported previously are reviewed. Group G endocarditis may have significant clinical and prognostic differences from endocarditis caused by the more commonly identified viridans or group D streptococci. Routine serologic grouping of beta-hemolytic streptococcal isolates from serious infections is warranted.</text>
+    <annotation id="0">
+      <infon key="MESH">D004696</infon>
+      <infon key="type">Disease</infon>
+      <location offset="158" length="12"/>
+      <text>endocarditis</text>
+    </annotation>
+    <annotation id="1">
+      <infon key="MESH">D004696</infon>
+      <infon key="type">Disease</infon>
+      <location offset="22" length="12"/>
+      <text>endocarditis</text>
+    </annotation>
+    <annotation id="2">
+      <infon key="MESH">D004696</infon>
+      <infon key="type">Disease</infon>
+      <location offset="242" length="12"/>
+      <text>endocarditis</text>
+    </annotation>
+    <annotation id="3">
+      <infon key="MESH">D004696</infon>
+      <infon key="type">Disease</infon>
+      <location offset="317" length="12"/>
+      <text>endocarditis</text>
+    </annotation>
+    <annotation id="4">
+      <infon key="MESH">D007239</infon>
+      <infon key="type">Disease</infon>
+      <location offset="484" length="10"/>
+      <text>infections</text>
+    </annotation>
+    <annotation id="5">
+      <infon key="NCBI Species">9606</infon>
+      <infon key="type">Species</infon>
+      <location offset="83" length="5"/>
+      <text>human</text>
+    </annotation>
+  </passage>
+</document>
+<document>
+  <id>100012</id>
+  <passage>
+    <infon key="type">title</infon>
+    <offset>0</offset>
+    <text>Cellular Cl content and concentration of amphibian skeletal and heart muscle.</text>
+  </passage>
+  <passage>
+    <infon key="type">abstract</infon>
+    <offset>Toads (Bufo marinus) and frogs (Rana pipiens pipiens) were given intraperitoneal injections of Na36Cl and Na235SO4. After in vivo equilibration for 20--180 min, the animals were pithed, and their ventricular and semitendinosus muscles were excised. Measurements of total Cl (by titrimetry) and 36Cl (by radioassay) showed that specific radioactivities of plasma and mus les approached equality within 1 h after injection for toad skeletal and heart muscle and frog ventricles, indicating complete exchange of cellular Cl with 36Cl. From the simultaneously measured muscle water contents and 35SO4 spaces, intracellular Cl concentrations in vivo (in mumol/g cell water) for semitendinosus and ventricular muscles were calculated to be, respectively, 1.4 +/- 0.3 and 2.3 +/- 0.8 for Bufo and 1.7 +/- 0.7 and 4.8 +/- 2.4 for Rana. In view of these low values, active cellular Cl accumulation seems improbable, but cannot be rigorously excluded without simultaneous membrane potential and intracellular ion activity measurements. A high concentration of Cl in the sarcoplasmic reticulum of skeletal muscle is also inconsistent with these measurements.</offset>
+    <text>Toads (Bufo marinus) and frogs (Rana pipiens pipiens) were given intraperitoneal injections of Na36Cl and Na235SO4. After in vivo equilibration for 20--180 min, the animals were pithed, and their ventricular and semitendinosus muscles were excised. Measurements of total Cl (by titrimetry) and 36Cl (by radioassay) showed that specific radioactivities of plasma and mus les approached equality within 1 h after injection for toad skeletal and heart muscle and frog ventricles, indicating complete exchange of cellular Cl with 36Cl. From the simultaneously measured muscle water contents and 35SO4 spaces, intracellular Cl concentrations in vivo (in mumol/g cell water) for semitendinosus and ventricular muscles were calculated to be, respectively, 1.4 +/- 0.3 and 2.3 +/- 0.8 for Bufo and 1.7 +/- 0.7 and 4.8 +/- 2.4 for Rana. In view of these low values, active cellular Cl accumulation seems improbable, but cannot be rigorously excluded without simultaneous membrane potential and intracellular ion activity measurements. A high concentration of Cl in the sarcoplasmic reticulum of skeletal muscle is also inconsistent with these measurements.</text>
+    <annotation id="0">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="1128" length="2"/>
+      <text>Cl</text>
+    </annotation>
+    <annotation id="1">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="173" length="6"/>
+      <text>Na36Cl</text>
+    </annotation>
+    <annotation id="2">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="184" length="8"/>
+      <text>Na235SO4</text>
+    </annotation>
+    <annotation id="3">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="349" length="2"/>
+      <text>Cl</text>
+    </annotation>
+    <annotation id="4">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="596" length="2"/>
+      <text>Cl</text>
+    </annotation>
+    <annotation id="5">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="697" length="2"/>
+      <text>Cl</text>
+    </annotation>
+    <annotation id="6">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="9" length="2"/>
+      <text>Cl</text>
+    </annotation>
+    <annotation id="7">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="951" length="2"/>
+      <text>Cl</text>
+    </annotation>
+  </passage>
+</document>
+<document>
+  <id>100013</id>
+  <passage>
+    <infon key="type">title</infon>
+    <offset>0</offset>
+    <text>Transplantation of pancreatic beta-cells prevents development of hypothalamic obesity in rats.</text>
+  </passage>
+  <passage>
+    <infon key="type">abstract</infon>
+    <offset>The present experiments have tested the hypothesis that ventromedial hypothalamic (VMH) lesions enhance insulin secretion by neural mechanisms. Rats were made diabetic by injecting streptozotocin to destroy their own pancreatic beta-cells. Subsequently, transplants of fetal pancreatic tissue were placed under the renal capsule. VMH lesions were placed in rats whose diabetes was cured with transplants as well as sham-transplanted animals. The animals were followed for 4 wk. The lesioned rats with pancreatic transplants gained no more weight than the sham-operated controls. There was no significant rise in insulin in the transplanted rats after VMH lesioning, but the VMH lesioned rats with intact pancreatic tissue showed the expected rise in insulin. Food intake rose 71% in the VMH lesioned rats with intact beta-cells, but only 23% in the VMH lesioned rats with transplants. Hypertrophy of the pancreatic islets was also observed in the VMH lesioned rats with an intact pancreas, but was not found in the VMH lesioned rats with a transplanted pancreas. Thus, transplantation of pancreatic tissue beneath the renal capsule of diabetic rats prevented the characteristic hyperphagia, hyperinsulinemia, and obesity in VMH lesioned rats whose pancreas was free from intact innervation. The results support the hypothesis that neural mediation of the rise in insulin is the primary factor in the development of hypothalamic obesity.</offset>
+    <text>The present experiments have tested the hypothesis that ventromedial hypothalamic (VMH) lesions enhance insulin secretion by neural mechanisms. Rats were made diabetic by injecting streptozotocin to destroy their own pancreatic beta-cells. Subsequently, transplants of fetal pancreatic tissue were placed under the renal capsule. VMH lesions were placed in rats whose diabetes was cured with transplants as well as sham-transplanted animals. The animals were followed for 4 wk. The lesioned rats with pancreatic transplants gained no more weight than the sham-operated controls. There was no significant rise in insulin in the transplanted rats after VMH lesioning, but the VMH lesioned rats with intact pancreatic tissue showed the expected rise in insulin. Food intake rose 71% in the VMH lesioned rats with intact beta-cells, but only 23% in the VMH lesioned rats with transplants. Hypertrophy of the pancreatic islets was also observed in the VMH lesioned rats with an intact pancreas, but was not found in the VMH lesioned rats with a transplanted pancreas. Thus, transplantation of pancreatic tissue beneath the renal capsule of diabetic rats prevented the characteristic hyperphagia, hyperinsulinemia, and obesity in VMH lesioned rats whose pancreas was free from intact innervation. The results support the hypothesis that neural mediation of the rise in insulin is the primary factor in the development of hypothalamic obesity.</text>
+    <annotation id="0">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="1055" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="1">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="1123" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="2">
+      <infon key="MESH">D003920</infon>
+      <infon key="type">Disease</infon>
+      <location offset="1230" length="8"/>
+      <text>diabetic</text>
+    </annotation>
+    <annotation id="3">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="1239" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="4">
+      <infon key="MESH">D006963</infon>
+      <infon key="type">Disease</infon>
+      <location offset="1273" length="11"/>
+      <text>hyperphagia</text>
+    </annotation>
+    <annotation id="5">
+      <infon key="MESH">D006946</infon>
+      <infon key="type">Disease</infon>
+      <location offset="1286" length="16"/>
+      <text>hyperinsulinemia</text>
+    </annotation>
+    <annotation id="6">
+      <infon key="MESH">D009765</infon>
+      <infon key="type">Disease</infon>
+      <location offset="1308" length="7"/>
+      <text>obesity</text>
+    </annotation>
+    <annotation id="7">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="1332" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="8">
+      <infon key="MESH">D007027</infon>
+      <infon key="type">Disease</infon>
+      <location offset="151" length="39"/>
+      <text>ventromedial hypothalamic (VMH) lesions</text>
+    </annotation>
+    <annotation id="9">
+      <infon key="MESH">D009765</infon>
+      <infon key="type">Disease</infon>
+      <location offset="1510" length="20"/>
+      <text>hypothalamic obesity</text>
+    </annotation>
+    <annotation id="10">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="239" length="4"/>
+      <text>Rats</text>
+    </annotation>
+    <annotation id="11">
+      <infon key="MESH">D003920</infon>
+      <infon key="type">Disease</infon>
+      <location offset="254" length="8"/>
+      <text>diabetic</text>
+    </annotation>
+    <annotation id="12">
+      <infon key="MESH">D013311</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="276" length="14"/>
+      <text>streptozotocin</text>
+    </annotation>
+    <annotation id="13">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="452" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="14">
+      <infon key="MESH">D003920</infon>
+      <infon key="type">Disease</infon>
+      <location offset="463" length="8"/>
+      <text>diabetes</text>
+    </annotation>
+    <annotation id="15">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="586" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="16">
+      <infon key="MESH">D009765</infon>
+      <infon key="type">Disease</infon>
+      <location offset="65" length="20"/>
+      <text>hypothalamic obesity</text>
+    </annotation>
+    <annotation id="17">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="735" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="18">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="782" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="19">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="89" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="20">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="895" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="21">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="957" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="22">
+      <infon key="MESH">D006984</infon>
+      <infon key="type">Disease</infon>
+      <location offset="980" length="11"/>
+      <text>Hypertrophy</text>
+    </annotation>
+  </passage>
+</document>
+<document>
+  <id>100014</id>
+  <passage>
+    <infon key="type">title</infon>
+    <offset>0</offset>
+    <text>Regulation of glycogen resynthesis in muscles of rats following exercise.</text>
+  </passage>
+  <passage>
+    <infon key="type">abstract</infon>
+    <offset>Following a strenuous bout of exercise, glycogen repletion occurred most rapidly in the fast-twitch red type of muscle, least rapidly in fast-twitch white, and at an intermediate rate in slow-twitch red muscle. There was a linear correlation between glycogen synthase I activity and the rate of glycogen synthesis in the three types of muscle. This finding helps explain the differences between the rates of glycogen resynthesis in the three muscle types, and supports the view that glycogen synthase activity is the most important factor determining the rate of glycogen synthesis when substrate supply is adequate. There was an inverse correlation between muscle glycogen concentration and percent glycogen synthase I. Plasma insulin concentration was low and norepinephrine and glucagon concentrations were elevated in the postexercise period. The finding that rapid glycogen synthesis occurred despite a hormonal milieu conducive to glycogenolysis provides evidence that a low glycogen concentration is a potent stimulus to glycogen synthesis that overrides the effects of low insulin, and high norepinephrine and glucagon levels.</offset>
+    <text>Following a strenuous bout of exercise, glycogen repletion occurred most rapidly in the fast-twitch red type of muscle, least rapidly in fast-twitch white, and at an intermediate rate in slow-twitch red muscle. There was a linear correlation between glycogen synthase I activity and the rate of glycogen synthesis in the three types of muscle. This finding helps explain the differences between the rates of glycogen resynthesis in the three muscle types, and supports the view that glycogen synthase activity is the most important factor determining the rate of glycogen synthesis when substrate supply is adequate. There was an inverse correlation between muscle glycogen concentration and percent glycogen synthase I. Plasma insulin concentration was low and norepinephrine and glucagon concentrations were elevated in the postexercise period. The finding that rapid glycogen synthesis occurred despite a hormonal milieu conducive to glycogenolysis provides evidence that a low glycogen concentration is a potent stimulus to glycogen synthesis that overrides the effects of low insulin, and high norepinephrine and glucagon levels.</text>
+    <annotation id="0">
+      <infon key="MESH">D009638</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="1173" length="14"/>
+      <text>norepinephrine</text>
+    </annotation>
+    <annotation id="1">
+      <infon key="NCBI Species">10116</infon>
+      <infon key="type">Species</infon>
+      <location offset="49" length="4"/>
+      <text>rats</text>
+    </annotation>
+    <annotation id="2">
+      <infon key="MESH">D009638</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="836" length="14"/>
+      <text>norepinephrine</text>
+    </annotation>
+  </passage>
+</document>
+<document>
+  <id>100015</id>
+  <passage>
+    <infon key="type">title</infon>
+    <offset>0</offset>
+    <text>Circadian rhythm dissociation in an environment with conflicting temporal information.</text>
+  </passage>
+  <passage>
+    <infon key="type">abstract</infon>
+    <offset>The relative contributions of light-dark (LD) cycles and feeding (EF) cycles in providing temporal information to the circadian time-keeping system were examined in chair-acclimatized squirrel monkeys (Saimiri sciureus). The circadian rhythms of drinking, colonic temperature, urine volume, and urinary potassium excretion were measured with the LD and EF cycles providing either conflicting phases or periods. In conflicting phase experiments, animals were exposed to 24-h LD cycles consisting of 12 h of 600 lx followed by 12 h of less than 1 ls and concurrent 24-h EF cycles in which the animals ate for 3 h and then fasted for 21 h. One group had food available at the beginning and a second group at the end of the light period. In conflicting period experiments, monkeys were exposed to 23-h LD cycles (LD 11.5:11.5) and 24-h EF cycles (EF 3:21). Analysis of the rhythms showed that both phase and period information were conveyed to the drinking and urinary rhythms by the EF cycle, and to the temperature rhythm by the LD cycle.</offset>
+    <text>The relative contributions of light-dark (LD) cycles and feeding (EF) cycles in providing temporal information to the circadian time-keeping system were examined in chair-acclimatized squirrel monkeys (Saimiri sciureus). The circadian rhythms of drinking, colonic temperature, urine volume, and urinary potassium excretion were measured with the LD and EF cycles providing either conflicting phases or periods. In conflicting phase experiments, animals were exposed to 24-h LD cycles consisting of 12 h of 600 lx followed by 12 h of less than 1 ls and concurrent 24-h EF cycles in which the animals ate for 3 h and then fasted for 21 h. One group had food available at the beginning and a second group at the end of the light period. In conflicting period experiments, monkeys were exposed to 23-h LD cycles (LD 11.5:11.5) and 24-h EF cycles (EF 3:21). Analysis of the rhythms showed that both phase and period information were conveyed to the drinking and urinary rhythms by the EF cycle, and to the temperature rhythm by the LD cycle.</text>
+    <annotation id="0">
+      <infon key="NCBI Species">9521</infon>
+      <infon key="type">Species</infon>
+      <location offset="289" length="16"/>
+      <text>Saimiri sciureus</text>
+    </annotation>
+    <annotation id="1">
+      <infon key="MESH">D011188</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="390" length="9"/>
+      <text>potassium</text>
+    </annotation>
+  </passage>
+</document>
+<document>
+  <id>100018</id>
+  <passage>
+    <infon key="type">title</infon>
+    <offset>0</offset>
+    <text>Tetracycline-induced inhibition of Na+ transport in the toad urinary bladder.</text>
+  </passage>
+  <passage>
+    <infon key="type">abstract</infon>
+    <offset>The effects of three tetracyclines, demethylchlortetracycline (DMC), minocycline (MNC), and oxytetracycline (OTC), on Na+ transport (measured as short-circuit current) were examined in toad urinary bladders mounted in modified Ussing chambers. During a 1-h incubation period serosal DMC (but not MNC or OTC) inhibited basal Na+ transport, whereas MNC (but not DMC or OTC) inhibited ADH-stimulated Na+ transport. MNC also inhibited cyclic AMP-stimulated Na+ transport. During longer incubation periods all three drugs inhibited basal Na+ transport. The DMC-induced inhibition of basal Na+ transport and the MNC-induced inhibition of ADH-stimulated Na+ transport were paralleled by an inhibition of the active conductance of the bladders. Thus, although all three drugs inhibit basal Na+ transport, only MNC inhibits ADH-stimulated Na+ transport. This effect does not correlate with the known effects of the tetracyclines on ADH-stimulated water flow or with drug-protein binding, and may be related to the greater lipid solubility of MNC.</offset>
+    <text>The effects of three tetracyclines, demethylchlortetracycline (DMC), minocycline (MNC), and oxytetracycline (OTC), on Na+ transport (measured as short-circuit current) were examined in toad urinary bladders mounted in modified Ussing chambers. During a 1-h incubation period serosal DMC (but not MNC or OTC) inhibited basal Na+ transport, whereas MNC (but not DMC or OTC) inhibited ADH-stimulated Na+ transport. MNC also inhibited cyclic AMP-stimulated Na+ transport. During longer incubation periods all three drugs inhibited basal Na+ transport. The DMC-induced inhibition of basal Na+ transport and the MNC-induced inhibition of ADH-stimulated Na+ transport were paralleled by an inhibition of the active conductance of the bladders. Thus, although all three drugs inhibit basal Na+ transport, only MNC inhibits ADH-stimulated Na+ transport. This effect does not correlate with the known effects of the tetracyclines on ADH-stimulated water flow or with drug-protein binding, and may be related to the greater lipid solubility of MNC.</text>
+    <annotation id="0">
+      <infon key="MESH">D013752</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="0" length="12"/>
+      <text>Tetracycline</text>
+    </annotation>
+    <annotation id="1">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="1111" length="3"/>
+      <text>MNC</text>
+    </annotation>
+    <annotation id="2">
+      <infon key="MESH">D003707</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="114" length="25"/>
+      <text>demethylchlortetracycline</text>
+    </annotation>
+    <annotation id="3">
+      <infon key="MESH">C004944</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="141" length="3"/>
+      <text>DMC</text>
+    </annotation>
+    <annotation id="4">
+      <infon key="MESH">D008911</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="147" length="11"/>
+      <text>minocycline</text>
+    </annotation>
+    <annotation id="5">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="160" length="3"/>
+      <text>MNC</text>
+    </annotation>
+    <annotation id="6">
+      <infon key="MESH">D010118</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="170" length="15"/>
+      <text>oxytetracycline</text>
+    </annotation>
+    <annotation id="7">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="187" length="3"/>
+      <text>OTC</text>
+    </annotation>
+    <annotation id="8">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="196" length="3"/>
+      <text>Na+</text>
+    </annotation>
+    <annotation id="9">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="35" length="2"/>
+      <text>Na</text>
+    </annotation>
+    <annotation id="10">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="35" length="3"/>
+      <text>Na+</text>
+    </annotation>
+    <annotation id="11">
+      <infon key="MESH">C004944</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="361" length="3"/>
+      <text>DMC</text>
+    </annotation>
+    <annotation id="12">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="374" length="3"/>
+      <text>MNC</text>
+    </annotation>
+    <annotation id="13">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="381" length="3"/>
+      <text>OTC</text>
+    </annotation>
+    <annotation id="14">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="402" length="2"/>
+      <text>Na</text>
+    </annotation>
+    <annotation id="15">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="402" length="3"/>
+      <text>Na+</text>
+    </annotation>
+    <annotation id="16">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="425" length="3"/>
+      <text>MNC</text>
+    </annotation>
+    <annotation id="17">
+      <infon key="MESH">C004944</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="438" length="3"/>
+      <text>DMC</text>
+    </annotation>
+    <annotation id="18">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="445" length="3"/>
+      <text>OTC</text>
+    </annotation>
+    <annotation id="19">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="475" length="3"/>
+      <text>Na+</text>
+    </annotation>
+    <annotation id="20">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="490" length="3"/>
+      <text>MNC</text>
+    </annotation>
+    <annotation id="21">
+      <infon key="MESH">D000242</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="509" length="10"/>
+      <text>cyclic AMP</text>
+    </annotation>
+    <annotation id="22">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="531" length="3"/>
+      <text>Na+</text>
+    </annotation>
+    <annotation id="23">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="611" length="3"/>
+      <text>Na+</text>
+    </annotation>
+    <annotation id="24">
+      <infon key="MESH">C004944</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="630" length="3"/>
+      <text>DMC</text>
+    </annotation>
+    <annotation id="25">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="662" length="3"/>
+      <text>Na+</text>
+    </annotation>
+    <annotation id="26">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="662" length="2"/>
+      <text>Na</text>
+    </annotation>
+    <annotation id="27">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="684" length="3"/>
+      <text>MNC</text>
+    </annotation>
+    <annotation id="28">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="725" length="3"/>
+      <text>Na+</text>
+    </annotation>
+    <annotation id="29">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="860" length="3"/>
+      <text>Na+</text>
+    </annotation>
+    <annotation id="30">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="880" length="3"/>
+      <text>MNC</text>
+    </annotation>
+    <annotation id="31">
+      <infon key="MESH">Unknown</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="908" length="3"/>
+      <text>Na+</text>
+    </annotation>
+    <annotation id="32">
+      <infon key="MESH">D013754</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="984" length="13"/>
+      <text>tetracyclines</text>
+    </annotation>
+    <annotation id="33">
+      <infon key="MESH">D013754</infon>
+      <infon key="type">Chemical</infon>
+      <location offset="99" length="13"/>
+      <text>tetracyclines</text>
+    </annotation>
+  </passage>
+</document>
+</collection>

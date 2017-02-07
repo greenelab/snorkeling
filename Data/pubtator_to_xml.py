@@ -72,30 +72,32 @@ def bioconcepts2pubtator_annotations(tag, index):
     return annt
 
 
-def article_generator(file_lines):
+def pubtator_stanza_to_article(file_lines):
     """Article Generator
 
     Returns an article that is a dictionary with the following keywords:
-    Title- an array of the document id and the title string
-    Abstract-  an array of document id, title offset, and abstract string
-    Title_Annot- A filtered array of tags specific to the title
-    Abstract_Annot- A filtered array of tags specific to the abstract
+    Document ID - a document identifier
+    Title- the title string
+    Abstract-  the abstract string
+    Title_Annot- A filtered list of tags specific to the title
+    Abstract_Annot- A filtered list of tags specific to the abstract
 
     Keywords:
-    file_lines - this is an array of file lines passed from bioconcepts2pubtator_offsets function
+    file_lines - this is a list of file lines passed from bioconcepts2pubtator_offsets function
     """
     article = {}
+
     # title
     title_heading = file_lines[0].split('|')
-    title_len = len(title_heading[1])
-    article["Title"] = [title_heading[0], title_heading[1]]
-
+    title_len = len(title_heading[2])
+    article["Document ID"] = title_heading[0]
+    article["Title"] = title_heading[2]
+    title_len = len(title_heading[2])
     # abstract
-    abstract_heading = file_lines[1]
-    article["Abstract"] = [abstract_heading[0], title_len, abstract_heading[1]]
+    abstract_heading = file_lines[1].split("|")
+    article["Abstract"] = abstract_heading[2]
 
     # set up the csv reader
-
     annts = csv.DictReader(file_lines[2:], fieldnames=['Document', 'Start', 'End', 'Term', 'Type', 'ID'], delimiter=str("\t"))
     sorted_annts = sorted(annts, key=lambda x: x["Start"])
     article["Title_Annot"] = filter(lambda x: x["Start"] < title_len, sorted_annts)
@@ -114,21 +116,27 @@ def bioconcepts2pubtator_offsets(input_file):
     input_file - the name of the bioconcepts2putator_offset file (obtained from pubtator's ftp site: ftp://ftp.ncbi.nlm.nih.gov/pub/lu/PubTator/)
     """
     file_lines = list()
-    with open(input_file, "rb") as f:
-        for line in f:
-            # Convert "illegal chracters" (i.e. < > &) in the main text
-            # into html entities
-            line = cgi.escape(line.rstrip()).encode("ascii", "xmlcharrefreplace")
-            if line:
-                file_lines.append(line)
-            else:
-                yield article_generator(file_lines)
-                file_lines = list()
+    if ".gz" in input_file:
+        f = gzip.open(input_file, "rb")
+    else:
+        f = open(input_file, "rb")
 
-        # we missed a document because the file didn't
-        # end in a new line
-        if len(file_lines) > 0:
-            yield article_generator(file_lines)
+    for line in f:
+        # Convert "illegal chracters" (i.e. < > &) in the main text
+        # into html entities
+        line = cgi.escape(line.rstrip()).encode("ascii", "xmlcharrefreplace")
+        if line:
+            file_lines.append(line)
+        else:
+            yield pubtator_stanza_to_article(file_lines)
+            file_lines = list()
+
+    # we missed a document because the file didn't
+    # end in a new line
+    if len(file_lines) > 0:
+        yield pubtator_stanza_to_article(file_lines)
+
+    f.close()
 
 
 def convert_pubtator(input_file, output_file=None):
@@ -159,21 +167,22 @@ def convert_pubtator(input_file, output_file=None):
         xml_head = xml_header[:-len(xml_tail)]
         g.write(xml_head)
 
+        article_generator = bioconcepts2pubtator_offsets(input_file)
         # Write each article in BioC format
-        for article in tqdm.tqdm(bioconcepts2pubtator_offsets(input_file)):
+        for article in tqdm.tqdm(article_generator):
             id_index = 0
             document = BioCDocument()
-            document.id = article["Title"][0]
+            document.id = article["Document ID"]
 
             title_passage = BioCPassage()
             title_passage.put_infon('type', 'title')
             title_passage.offset = '0'
-            title_passage.text = article["Title"][1]
+            title_passage.text = article["Title"]
 
             abstract_passage = BioCPassage()
             abstract_passage.put_infon('type', 'abstract')
-            abstract_passage.offset = str(article["Abstract"][1])
-            abstract_passage.text = article["Abstract"][2]
+            abstract_passage.offset = str(article["Abstract"])
+            abstract_passage.text = article["Abstract"]
 
             for tag in article["Title_Annot"]:
                 title_passage.annotations.append(bioconcepts2pubtator_annotations(tag, id_index))

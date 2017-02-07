@@ -21,8 +21,8 @@ dependencies:
 - scipy=0.18.1  
 - sqlalchemy=1.1.4
 - pip:
+    - future==0.16.0
     - git+https://github.com/HazyResearch/numbskull@40ac1af20538c17b4726c963c69adcb81314efa5
     - git+https://github.com/en-dash/PyBioC@a21bd181ce3b89de791db4bb7db6ca1c48167648
     - tensorflow==0.12.1
     - tqdm==4.11.2
-    
