@@ -204,12 +204,13 @@ def convert_pubtator(input_file, output_file=None):
         g.write(xml_tail)
 
 # Main
-parser = argparse.ArgumentParser(description='Extracts the annotations from the BioC xml format')
-parser.add_argument("--documents", nargs=1, help="File path pointing to input file.")
-parser.add_argument("--output", nargs="?", help="File path for destination of output.")
-args = parser.parse_args()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Extracts the annotations from the BioC xml format')
+    parser.add_argument("--documents", help="File path pointing to input file.", required=True)
+    parser.add_argument("--output", help="File path for destination of output.", required=True)
+    args = parser.parse_args()
 
-if not(args.documents):
-    raise Exception("PLEASE GIVE FILE INPUT PATH")
+    if not(args.documents):
+        raise Exception("PLEASE GIVE FILE INPUT PATH")
 
-convert_pubtator(args.documents[0], args.output)
+    convert_pubtator(args.documents, args.output)
