@@ -73,8 +73,19 @@ def bioconcepts2pubtator_annotations(tag, index):
 
 
 def bioconcepts2pubtator_offsets(input_file):
+    """Bioconcepts to pubtator
+
+    Yields an article that is a dictionary with the following keywords:
+    Title- an array of the document id and the title string
+    Abstract-  an array of document id, title offset, and abstract string
+    Title_Annot- A filtered array of tags specific to the title
+    Abstract_Annot- A filtered array of tags specific to the abstract
+
+    Keywords:
+    input_file - the name of the bioconcepts2putator_offset file (obtained from pubtator's ftp site: ftp://ftp.ncbi.nlm.nih.gov/pub/lu/PubTator/)
+    """
     file_lines = list()
-    with gzip.open(input_file, "rb") as f:
+    with open(input_file, "rb") as f:
         for line in f:
             # Convert "illegal chracters" (i.e. < > &) in the main text
             # into html entities
@@ -103,6 +114,29 @@ def bioconcepts2pubtator_offsets(input_file):
                 yield article
                 file_lines = list()
 
+        # we missed a document because the file didn't
+        # end in a new line
+        if len(file_lines) > 0:
+            article = {}
+
+            # title
+            title_heading = file_lines[0].split('|')
+            title_len = len(title_heading[1])
+            article["Title"] = [title_heading[0], title_heading[1]]
+
+            # abstract
+            abstract_heading = file_lines[1]
+            article["Abstract"] = [abstract_heading[0], title_len, abstract_heading[1]]
+
+            # set up the csv reader
+
+            annts = csv.DictReader(file_lines[2:], fieldnames=['Document', 'Start', 'End', 'Term', 'Type', 'ID'], delimiter=str("\t"))
+            sorted_annts = sorted(annts, key=lambda x: x["Start"])
+            article["Title_Annot"] = filter(lambda x: x["Start"] < title_len, sorted_annts)
+            article["Abstract_Annot"] = filter(lambda x: x["Start"] > title_len, sorted_annts)
+
+            yield article
+
 
 def convert_pubtator(input_file, output_file=None):
     """Convert pubtators annotation list to BioC XML
@@ -124,13 +158,12 @@ def convert_pubtator(input_file, output_file=None):
     collection.key = "Pubtator.key"
 
     with open(output_file, 'wb') as g:
-        term_tags = set()
 
         # Have to manually do this because hangs otherwise
         # Write the head of the xml file
         xml_header = writer.tostring('UTF-8')
-        xml_end = u'</collection>\n'
-        xml_head = xml_header[:-len(xml_end)]
+        xml_tail = '</collection>\n'
+        xml_head = xml_header[:-len(xml_tail)]
         g.write(xml_head)
 
         # Write each article in BioC format

@@ -8,6 +8,12 @@ import tqdm
 
 def extract_annotations(xml_file, output_file):
     """ Extract the annotations from pubtator xml formatted file
+    Outputs a TSV file with the following header terms:
+    Document - the corresponding pubmed id
+    Type - the type of term (i.e. Chemical, Disease, Gene etc.)
+    ID - the appropiate MESH or NCBI ID if known
+    Offset - the character position where the term starts
+    End - the character position where the term ends
 
     Keywords arguments:
     xml_file -- The path to the xml data file
