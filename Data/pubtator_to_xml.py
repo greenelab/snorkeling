@@ -124,7 +124,7 @@ def bioconcepts2pubtator_offsets(input_file):
     for line in f:
         # Convert "illegal chracters" (i.e. < > &) in the main text
         # into html entities
-        line = cgi.escape(line.rstrip()).encode("ascii", "xmlcharrefreplace")
+        line = line.rstrip()
         if line:
             file_lines.append(line)
         else:
