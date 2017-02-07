@@ -1,0 +1,123 @@
+1|t|Formate assay in body fluids: application in methanol poisoning.
+1|a|
+1	0	7	Formate	Chemical	MESH:C030544
+1	45	53	methanol	Chemical	MESH:D000432
+
+100|t|Bovine mannosidosis--a model lysosomal storage disease.
+100|a|
+100	29	54	lysosomal storage disease	Disease	MESH:D016464
+100	0	6	Bovine	Species	9913
+
+100000|t|Drugs and the high cost of health care.
+100000|a|
+
+100001|t|Surgical approach for patients with unstable angina pectoris: role of the response to initial medical therapy and intraaortic balloon pumping in perioperative complications after aortocoronary bypass grafting.
+100001|a|
+100001	36	60	unstable angina pectoris	Disease	MESH:D000789
+100001	22	30	patients	Species	9606
+
+100002|t|Value and limitations of the electrocardiographic response to exercise in the assessment of patients with coronary artery disease. Controversies in cardiology--II.
+100002|a|The results of exercise testing provide a probabibity statement rather than a definitive answer regarding the existence of coronary disease. Moreover, in asymptomatic subjects (1) the S-T segment response to exercise testing has a relatively poor predictive accuracy, (2) exercise testing does not appear to be a practical screening method for detecting subjects at high risk of sudden death, and (3) risk factors should be vigorously treated regardless of the results of screening studies for coronary artery disease. Hence, the probability statements derived from the electrocardiographic response to exercise testing do not appear to provide important enough diagnostic or prognostic information to justify routine use in asymptomatic subjects. Although exercise screening studies provide only marginal aid in detection coronary artery disease in symptomatic patients, important prognostic information may be derived that could influence decisions regarding pharmacologic or surgical therapy. Thus, although electrocardiographic stress testing should not be used as a routine screening procedure, its judicious use in symptomatic patients may provide the physician with important information for patient management.
+100002	658	681	coronary artery disease	Disease	MESH:D003324
+100002	987	1010	coronary artery disease	Disease	MESH:D003324
+100002	106	129	coronary artery disease	Disease	MESH:D003324
+100002	287	303	coronary disease	Disease	MESH:D003327
+100002	543	555	sudden death	Disease	MESH:D003645
+100002	92	100	patients	Species	9606
+100002	1026	1034	patients	Species	9606
+100002	1297	1305	patients	Species	9606
+100002	1363	1370	patient	Species	9606
+
+100003|t|Group G streptococcal endocarditis.
+100003|a|The group G streptococcus may be a more common human pathogen than previously recognized. A case of group G streptococcal endocarditis is reported and the 11 cases reported previously are reviewed. Group G endocarditis may have significant clinical and prognostic differences from endocarditis caused by the more commonly identified viridans or group D streptococci. Routine serologic grouping of beta-hemolytic streptococcal isolates from serious infections is warranted.
+100003	317	329	endocarditis	Disease	MESH:D004696
+100003	22	34	endocarditis	Disease	MESH:D004696
+100003	484	494	infections	Disease	MESH:D007239
+100003	242	254	endocarditis	Disease	MESH:D004696
+100003	158	170	endocarditis	Disease	MESH:D004696
+100003	83	88	human	Species	9606
+
+100012|t|Cellular Cl content and concentration of amphibian skeletal and heart muscle.
+100012|a|Toads (Bufo marinus) and frogs (Rana pipiens pipiens) were given intraperitoneal injections of Na36Cl and Na235SO4. After in vivo equilibration for 20--180 min, the animals were pithed, and their ventricular and semitendinosus muscles were excised. Measurements of total Cl (by titrimetry) and 36Cl (by radioassay) showed that specific radioactivities of plasma and mus les approached equality within 1 h after injection for toad skeletal and heart muscle and frog ventricles, indicating complete exchange of cellular Cl with 36Cl. From the simultaneously measured muscle water contents and 35SO4 spaces, intracellular Cl concentrations in vivo (in mumol/g cell water) for semitendinosus and ventricular muscles were calculated to be, respectively, 1.4 +/- 0.3 and 2.3 +/- 0.8 for Bufo and 1.7 +/- 0.7 and 4.8 +/- 2.4 for Rana. In view of these low values, active cellular Cl accumulation seems improbable, but cannot be rigorously excluded without simultaneous membrane potential and intracellular ion activity measurements. A high concentration of Cl in the sarcoplasmic reticulum of skeletal muscle is also inconsistent with these measurements.
+100012	9	11	Cl	Chemical	
+100012	173	179	Na36Cl	Chemical	
+100012	184	192	Na235SO4	Chemical	
+100012	349	351	Cl	Chemical	
+100012	596	598	Cl	Chemical	
+100012	697	699	Cl	Chemical	
+100012	951	953	Cl	Chemical	
+100012	1128	1130	Cl	Chemical	
+
+100013|t|Transplantation of pancreatic beta-cells prevents development of hypothalamic obesity in rats.
+100013|a|The present experiments have tested the hypothesis that ventromedial hypothalamic (VMH) lesions enhance insulin secretion by neural mechanisms. Rats were made diabetic by injecting streptozotocin to destroy their own pancreatic beta-cells. Subsequently, transplants of fetal pancreatic tissue were placed under the renal capsule. VMH lesions were placed in rats whose diabetes was cured with transplants as well as sham-transplanted animals. The animals were followed for 4 wk. The lesioned rats with pancreatic transplants gained no more weight than the sham-operated controls. There was no significant rise in insulin in the transplanted rats after VMH lesioning, but the VMH lesioned rats with intact pancreatic tissue showed the expected rise in insulin. Food intake rose 71% in the VMH lesioned rats with intact beta-cells, but only 23% in the VMH lesioned rats with transplants. Hypertrophy of the pancreatic islets was also observed in the VMH lesioned rats with an intact pancreas, but was not found in the VMH lesioned rats with a transplanted pancreas. Thus, transplantation of pancreatic tissue beneath the renal capsule of diabetic rats prevented the characteristic hyperphagia, hyperinsulinemia, and obesity in VMH lesioned rats whose pancreas was free from intact innervation. The results support the hypothesis that neural mediation of the rise in insulin is the primary factor in the development of hypothalamic obesity.
+100013	276	290	streptozotocin	Chemical	MESH:D013311
+100013	980	991	Hypertrophy	Disease	MESH:D006984
+100013	463	471	diabetes	Disease	MESH:D003920
+100013	1230	1238	diabetic	Disease	MESH:D003920
+100013	1273	1284	hyperphagia	Disease	MESH:D006963
+100013	1286	1302	hyperinsulinemia	Disease	MESH:D006946
+100013	254	262	diabetic	Disease	MESH:D003920
+100013	1308	1315	obesity	Disease	MESH:D009765
+100013	65	85	hypothalamic obesity	Disease	MESH:D009765
+100013	151	190	ventromedial hypothalamic (VMH) lesions	Disease	MESH:D007027
+100013	1510	1530	hypothalamic obesity	Disease	MESH:D009765
+100013	89	93	rats	Species	10116
+100013	239	243	Rats	Species	10116
+100013	452	456	rats	Species	10116
+100013	586	590	rats	Species	10116
+100013	735	739	rats	Species	10116
+100013	782	786	rats	Species	10116
+100013	895	899	rats	Species	10116
+100013	957	961	rats	Species	10116
+100013	1055	1059	rats	Species	10116
+100013	1123	1127	rats	Species	10116
+100013	1239	1243	rats	Species	10116
+100013	1332	1336	rats	Species	10116
+
+100014|t|Regulation of glycogen resynthesis in muscles of rats following exercise.
+100014|a|Following a strenuous bout of exercise, glycogen repletion occurred most rapidly in the fast-twitch red type of muscle, least rapidly in fast-twitch white, and at an intermediate rate in slow-twitch red muscle. There was a linear correlation between glycogen synthase I activity and the rate of glycogen synthesis in the three types of muscle. This finding helps explain the differences between the rates of glycogen resynthesis in the three muscle types, and supports the view that glycogen synthase activity is the most important factor determining the rate of glycogen synthesis when substrate supply is adequate. There was an inverse correlation between muscle glycogen concentration and percent glycogen synthase I. Plasma insulin concentration was low and norepinephrine and glucagon concentrations were elevated in the postexercise period. The finding that rapid glycogen synthesis occurred despite a hormonal milieu conducive to glycogenolysis provides evidence that a low glycogen concentration is a potent stimulus to glycogen synthesis that overrides the effects of low insulin, and high norepinephrine and glucagon levels.
+100014	836	850	norepinephrine	Chemical	MESH:D009638
+100014	1173	1187	norepinephrine	Chemical	MESH:D009638
+100014	49	53	rats	Species	10116
+
+100015|t|Circadian rhythm dissociation in an environment with conflicting temporal information.
+100015|a|The relative contributions of light-dark (LD) cycles and feeding (EF) cycles in providing temporal information to the circadian time-keeping system were examined in chair-acclimatized squirrel monkeys (Saimiri sciureus). The circadian rhythms of drinking, colonic temperature, urine volume, and urinary potassium excretion were measured with the LD and EF cycles providing either conflicting phases or periods. In conflicting phase experiments, animals were exposed to 24-h LD cycles consisting of 12 h of 600 lx followed by 12 h of less than 1 ls and concurrent 24-h EF cycles in which the animals ate for 3 h and then fasted for 21 h. One group had food available at the beginning and a second group at the end of the light period. In conflicting period experiments, monkeys were exposed to 23-h LD cycles (LD 11.5:11.5) and 24-h EF cycles (EF 3:21). Analysis of the rhythms showed that both phase and period information were conveyed to the drinking and urinary rhythms by the EF cycle, and to the temperature rhythm by the LD cycle.
+100015	390	399	potassium	Chemical	MESH:D011188
+100015	289	305	Saimiri sciureus	Species	9521
+
+100018|t|Tetracycline-induced inhibition of Na+ transport in the toad urinary bladder.
+100018|a|The effects of three tetracyclines, demethylchlortetracycline (DMC), minocycline (MNC), and oxytetracycline (OTC), on Na+ transport (measured as short-circuit current) were examined in toad urinary bladders mounted in modified Ussing chambers. During a 1-h incubation period serosal DMC (but not MNC or OTC) inhibited basal Na+ transport, whereas MNC (but not DMC or OTC) inhibited ADH-stimulated Na+ transport. MNC also inhibited cyclic AMP-stimulated Na+ transport. During longer incubation periods all three drugs inhibited basal Na+ transport. The DMC-induced inhibition of basal Na+ transport and the MNC-induced inhibition of ADH-stimulated Na+ transport were paralleled by an inhibition of the active conductance of the bladders. Thus, although all three drugs inhibit basal Na+ transport, only MNC inhibits ADH-stimulated Na+ transport. This effect does not correlate with the known effects of the tetracyclines on ADH-stimulated water flow or with drug-protein binding, and may be related to the greater lipid solubility of MNC.
+100018	0	12	Tetracycline	Chemical	MESH:D013752
+100018	35	37	Na	Chemical	
+100018	35	38	Na+	Chemical	
+100018	99	112	tetracyclines	Chemical	MESH:D013754
+100018	114	139	demethylchlortetracycline	Chemical	MESH:D003707
+100018	141	144	DMC	Chemical	MESH:C004944
+100018	147	158	minocycline	Chemical	MESH:D008911
+100018	160	163	MNC	Chemical	
+100018	170	185	oxytetracycline	Chemical	MESH:D010118
+100018	187	190	OTC	Chemical	
+100018	196	199	Na+	Chemical	
+100018	361	364	DMC	Chemical	MESH:C004944
+100018	374	377	MNC	Chemical	
+100018	381	384	OTC	Chemical	
+100018	402	404	Na	Chemical	
+100018	402	405	Na+	Chemical	
+100018	425	428	MNC	Chemical	
+100018	438	441	DMC	Chemical	MESH:C004944
+100018	445	448	OTC	Chemical	
+100018	475	478	Na+	Chemical	
+100018	490	493	MNC	Chemical	
+100018	509	519	cyclic AMP	Chemical	MESH:D000242
+100018	531	534	Na+	Chemical	
+100018	611	614	Na+	Chemical	
+100018	630	633	DMC	Chemical	MESH:C004944
+100018	662	665	Na+	Chemical	
+100018	662	664	Na	Chemical	
+100018	684	687	MNC	Chemical	
+100018	725	728	Na+	Chemical	
+100018	860	863	Na+	Chemical	
+100018	880	883	MNC	Chemical	
+100018	908	911	Na+	Chemical	
+100018	984	997	tetracyclines	Chemical	MESH:D013754
+100018	1111	1114	MNC	Chemical	
