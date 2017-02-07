@@ -170,7 +170,6 @@ def convert_pubtator(input_file, output_file=None):
         article_generator = bioconcepts2pubtator_offsets(input_file)
         # Write each article in BioC format
         for article in tqdm.tqdm(article_generator):
-            id_index = 0
             document = BioCDocument()
             document.id = article["Document ID"]
 
@@ -184,13 +183,14 @@ def convert_pubtator(input_file, output_file=None):
             abstract_passage.offset = str(article["Abstract"])
             abstract_passage.text = article["Abstract"]
 
+            id_index = 0
             for tag in article["Title_Annot"]:
                 title_passage.annotations.append(bioconcepts2pubtator_annotations(tag, id_index))
-                id_index = id_index + 1
+                id_index += 1
 
             for tag in article["Abstract_Annot"]:
                 abstract_passage.annotations.append(bioconcepts2pubtator_annotations(tag, id_index))
-                id_index = id_index + 1
+                id_index += 1
 
             document.add_passage(title_passage)
             document.add_passage(abstract_passage)
