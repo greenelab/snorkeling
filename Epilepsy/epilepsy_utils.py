@@ -1,8 +1,13 @@
 from collections import defaultdict
+import csv
+import os
 from itertools import product
 from string import punctuation
 
-from pandas import DataFrame
+import lxml.etree as et
+from snorkel.parser import DocPreprocessor
+from snorkel.models import Document
+
 
 def offsets_to_token(left, right, offset_array, lemmas, punc=set(punctuation)):
     """Calculate the offset from tag to token
@@ -14,7 +19,7 @@ def offsets_to_token(left, right, offset_array, lemmas, punc=set(punctuation)):
     Keyword arguments
     left - the start of the tag
     right - the end of the tag
-    offset_array - array of offsets given by stanford corenlp 
+    offset_array - array of offsets given by stanford corenlp
     lemmas - array of lemmas given by stanford corenlp
     punc - a list of punctuation characters
     """
@@ -30,29 +35,30 @@ def offsets_to_token(left, right, offset_array, lemmas, punc=set(punctuation)):
     return range(token_start, token_end)
 
 
-
 class Tagger(object):
     """Custom Tagger Class
-    This is a custom class that is designed to tag each relevant word in a given sentence
-    i.e if it see GAD then this tagger will give GAD a Gene tag.
+    This is a custom class that is designed to tag each relevant word
+    in a given sentence.
+    i.e if it sees GAD then this tagger will give GAD a Gene tag.
     """
-    
-    def __init__(self,file_name):
+
+    def __init__(self, file_name):
         """ Initialize the tagger class
 
         Keyword arguments:
         self -- the class object
         file_name -- the name of the file that contains the document annotations
         """
-        self.open_file = open(file_name,"r")
+        self.csvfile = open(file_name, "r")
+        self.document_annotations = csv.DictReader(self.csvfile, delimiter='\t')
+        self.temp_storage = None
 
-    
-    def __del__(self):
-        self.open_file.close()
+    def __exit__(self):
+        self.csvfile.close()
 
-    def retrieve_document(self,pubmed_id):
+    def retrieve_document(self, pubmed_id):
         """Retrieve pubtator's annotations and pythonize them.
-        
+
         Keyword arguments:
         self -- The class object
         pubmed_id -- The id of the pubmed abstract
@@ -60,31 +66,18 @@ class Tagger(object):
         Returns:
         A python object containing the annotations specific to a given document
         """
+        if not(self.temp_storage):
+            doc_chunk = []
+        else:
+            doc_chunk = [self.temp_storage]
 
-        #perform inline search to find correct document
-        for line in self.open_file:
-            file_descriptor, tags = line.rstrip('\r\n').split("::")
-            if file_descriptor[0] == pubmed_id:
-                break
-        #Set file pointer back to beginning of file 
-        self.open_file.seek(0) 
-        converted_tags = []
+        for row in self.document_annotations:
+            if row['Document'] == pubmed_id:
+                doc_chunk.append(row)
+            else:
+                self.temp_storage = row
+                yield doc_chunk
 
-        #for each document annotation pythonize it
-        for data in tags.split(":"):
-            tagged_offsets = data.split(",")
-            if len(tagged_offsets) == 3:
-                temp_tags = []
-                for x in data.split(","):
-                    if "|" in x:
-                        temp_tags.append(x)
-                    else:
-                        temp_tags.append(int(x))
-                converted_tags.append(tuple(temp_tags))
-
-        return converted_tags
-
-    
     def tag(self, parts):
         """Tag each Sentence
 
@@ -95,25 +88,67 @@ class Tagger(object):
         Returns:
         An updated parts object containing specified custom tags.
         """
-
         pubmed_id, _, _, sent_start, sent_end = parts['stable_id'].split(':')
         sent_start, sent_end = int(sent_start), int(sent_end)
-        tags = self.retrieve_document(pubmed_id)
+        tag_generator = self.retrieve_document(pubmed_id)
 
-        #IGNORE for debugging purposes only
-        #from IPython.core.debugger import Tracer
-        #Tracer()() #this one triggers the debugger
-        #print tags
+        # For each tag in the given document
+        # assign it to the correct word and move on
+        for tags in tag_generator:
+            for tag in tags:
+                if not (sent_start <= int(tag['Offset']) <= sent_end):
+                    continue
+                offsets = [offset + sent_start for offset in parts['char_offsets']]
+                toks = offsets_to_token(int(tag['Offset']), int(tag['End']), offsets, parts['lemmas'])
+                for tok in toks:
+                    parts['entity_types'][tok] = tag['Type']
+                    parts['entity_cids'][tok] = tag['ID']
+            return parts
 
-        #For each tag in the given document
-        #assign it to the correct word and move on
-        for tag in tags:
-            if not (sent_start <= tag[1] <= sent_end):
-                continue
-            offsets = [offset + sent_start for offset in parts['char_offsets']]
-            toks = offsets_to_token(tag[1], tag[2], offsets, parts['lemmas'])
-            for tok in toks:
-                ts = tag[0].split('|')
-                parts['entity_types'][tok] = ts[0]
-                parts['entity_cids'][tok] = ts[1]
-        return parts
+
+class XMLMultiDocPreprocessor(DocPreprocessor):
+    """Hijacked this class to make it memory efficient
+        Fixes the main issue where crashes if GB files are introduced
+        et.iterparse for the win in memory efficiency
+    """
+    def __init__(self, path, doc='.//document', text='./text/text()', id='./id/text()'):
+        """Initialize the XMLMultiDocPreprocessor Class
+
+        Keyword Arguments:
+        path - the absolute path of the xml file
+        doc - the xpath notation for document obejcts
+        test - the xpath for grabbing all the text objects
+        id - the xpath for grabbing all the id tags
+        """
+        DocPreprocessor.__init__(self, path)
+        self.doc = doc
+        self.text = text
+        self.id = id
+
+    def parse_file(self, f, file_name):
+        """This method overrides the original method
+
+        Keyword arguments:
+        f - the file object to be parsed by lxml
+        file_name - the name of the file used as metadata
+
+        Yields:
+        A document object in sqlalchemy format and the corresponding text
+        that will be parsed by CoreNLP
+        """
+        for event, doc in et.iterparse(f, tag='document'):
+            doc_id = str(doc.xpath(self.id)[0])
+            text = '\n'.join(filter(lambda t: t is not None, doc.xpath(self.text)))
+            # guarentees that resources are freed after they have been used
+            doc.clear()
+            meta = {'file_name': str(file_name)}
+            stable_id = self.get_stable_id(doc_id)
+            yield Document(name=doc_id, stable_id=stable_id, meta=meta), text
+
+    def _can_read(self, fpath):
+        """ Straight forward function
+        
+        Keyword Arguments:
+        fpath - the absolute path of the file.
+        """
+        return fpath.endswith('.xml')
