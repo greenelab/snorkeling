@@ -2,7 +2,9 @@ from collections import defaultdict
 import csv
 import os
 from itertools import product
+import shelve
 from string import punctuation
+import sys
 
 import lxml.etree as et
 from snorkel.parser import DocPreprocessor
@@ -49,34 +51,7 @@ class Tagger(object):
         self -- the class object
         file_name -- the name of the file that contains the document annotations
         """
-        self.csvfile = open(file_name, "r")
-        self.document_annotations = csv.DictReader(self.csvfile, delimiter='\t')
-        self.temp_storage = None
-
-    def __exit__(self):
-        self.csvfile.close()
-
-    def retrieve_document(self, pubmed_id):
-        """Retrieve pubtator's annotations and pythonize them.
-
-        Keyword arguments:
-        self -- The class object
-        pubmed_id -- The id of the pubmed abstract
-
-        Returns:
-        A python object containing the annotations specific to a given document
-        """
-        if not(self.temp_storage):
-            doc_chunk = []
-        else:
-            doc_chunk = [self.temp_storage]
-
-        for row in self.document_annotations:
-            if row['Document'] == pubmed_id:
-                doc_chunk.append(row)
-            else:
-                self.temp_storage = row
-                yield doc_chunk
+        self.annt_dict = shelve.open(file_name)
 
     def tag(self, parts):
         """Tag each Sentence
@@ -90,20 +65,21 @@ class Tagger(object):
         """
         pubmed_id, _, _, sent_start, sent_end = parts['stable_id'].split(':')
         sent_start, sent_end = int(sent_start), int(sent_end)
-        tag_generator = self.retrieve_document(pubmed_id)
 
         # For each tag in the given document
         # assign it to the correct word and move on
-        for tags in tag_generator:
-            for tag in tags:
-                if not (sent_start <= int(tag['Offset']) <= sent_end):
-                    continue
-                offsets = [offset + sent_start for offset in parts['char_offsets']]
-                toks = offsets_to_token(int(tag['Offset']), int(tag['End']), offsets, parts['lemmas'])
-                for tok in toks:
-                    parts['entity_types'][tok] = tag['Type']
-                    parts['entity_cids'][tok] = tag['ID']
+        if pubmed_id not in self.annt_dict:
             return parts
+
+        for tag in self.annt_dict[pubmed_id]:
+            if not (sent_start <= int(tag['Offset']) <= sent_end):
+                continue
+            offsets = [offset + sent_start for offset in parts['char_offsets']]
+            toks = offsets_to_token(int(tag['Offset']), int(tag['End']), offsets, parts['lemmas'])
+            for tok in toks:
+                parts['entity_types'][tok] = tag['Type']
+                parts['entity_cids'][tok] = tag['ID']
+        return parts
 
 
 class XMLMultiDocPreprocessor(DocPreprocessor):
@@ -143,11 +119,12 @@ class XMLMultiDocPreprocessor(DocPreprocessor):
             doc.clear()
             meta = {'file_name': str(file_name)}
             stable_id = self.get_stable_id(doc_id)
+            assert not(text == '')
             yield Document(name=doc_id, stable_id=stable_id, meta=meta), text
 
     def _can_read(self, fpath):
         """ Straight forward function
-        
+
         Keyword Arguments:
         fpath - the absolute path of the file.
         """
