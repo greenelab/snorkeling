@@ -119,7 +119,7 @@ class XMLMultiDocPreprocessor(DocPreprocessor):
             doc.clear()
             meta = {'file_name': str(file_name)}
             stable_id = self.get_stable_id(doc_id)
-            assert not(text == '')
+            assert text
             yield Document(name=doc_id, stable_id=stable_id, meta=meta), text
 
     def _can_read(self, fpath):

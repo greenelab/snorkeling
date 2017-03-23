@@ -9,17 +9,39 @@ get_ipython().magic(u'load_ext autoreload')
 get_ipython().magic(u'autoreload 2')
 get_ipython().magic(u'matplotlib inline')
 
+import re
 import os
-database_str = "sqlite:///" + os.environ['WORKINGPATH'] + "/Database/epilepsy.db"
-os.environ['SNORKELDB'] = database_str
 
 from snorkel import SnorkelSession
-session = SnorkelSession()
+from snorkel.annotations import FeatureAnnotator
+from snorkel.annotations import LabelAnnotator
+from snorkel.models import candidate_subclass
+from snorkel.viewer import SentenceNgramViewer
+from snorkel.lf_helpers import (
+    get_left_tokens,
+    get_right_tokens, 
+    get_between_tokens,
+    get_tagged_text,
+    get_text_between,
+    rule_regex_search_tagged_text,
+    rule_regex_search_btw_AB,
+    rule_regex_search_btw_BA,
+    rule_regex_search_before_A,
+    rule_regex_search_before_B,
+)
+import pandas as pd
 
 
 # In[ ]:
 
-from snorkel.models import candidate_subclass
+database_str = "sqlite:///" + os.environ['WORKINGPATH'] + "/Database/epilepsy.db"
+os.environ['SNORKELDB'] = database_str
+
+
+session = SnorkelSession()
+
+
+# In[ ]:
 
 DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 
@@ -29,8 +51,6 @@ DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 # Use this to look at loaded candidates from a given set. The constants represent the index to retrieve the training set, development set and testing set.
 
 # In[ ]:
-
-from snorkel.viewer import SentenceNgramViewer
 
 TRAIN = 0
 DEV = 1
@@ -51,24 +71,6 @@ sv
 
 # In[ ]:
 
-import re
-from snorkel.lf_helpers import (
-    get_left_tokens,
-    get_right_tokens, 
-    get_between_tokens,
-    get_tagged_text,
-    get_text_between,
-    rule_regex_search_tagged_text,
-    rule_regex_search_btw_AB,
-    rule_regex_search_btw_BA,
-    rule_regex_search_before_A,
-    rule_regex_search_before_B,
-)
-
-
-# In[ ]:
-
-import pandas as pd
 gene_list = pd.read_csv('epilepsy-genes.tsv',sep="\t")
 
 
@@ -104,81 +106,105 @@ model_organisms = {"mice", "zebrafish", "drosophila"}
 
 disease_context = {"patients with", "individuals with", "cases of", "treatment of"}
 
-# IF {{B}}} {{A}} or vice versa then not a valid relationship
 def LF_abbreviation(c):
+    """
+    IF {{B}}} {{A}} or vice versa then not a valid relationship
+    """
     if len(get_text_between(c)) < 3:
         return -1
     return 0
 
-# IF {{a}} is a {{B}} or {{B}} is a {{A}}
 def LF_is_a(c):
+    """
+    If {{a}} is a {{B}} or {{B}} is a {{A}}
+    """
     return rule_regex_search_btw_AB(c,r'.* is a .*',-1) or rule_regex_search_btw_BA(c,r'is a',-1)
 
-# If variation keyword in close proximity then label as positive
 def LF_variation(c):
+    """
+    If variation keyword in close proximity then label as positive
+    """
     if len(variation_words.intersection(get_left_tokens(c[1]))) > 0:
         return 1
     if len(variation_words.intersection(get_right_tokens(c[1]))) > 0:
         return 1
     return 0
 
-# If mentions model organism then c[1] should be a gene
 def LF_model_organisms(c):
+    """
+    If mentions model organism then c[1] should be a gene
+    """
     if len(model_organisms.intersection(get_left_tokens(c[1]))) > 0:
         return 1
     if len(model_organisms.intersection(get_left_tokens(c[1]))) > 0:
         return 1
     return 0
 
-# If the causual keywords are between disease and gene then should be positive predictor
 def LF_cause(c):
+    """
+    If the causual keywords are between disease and gene then should be positive predictor
+    """
     if len(cause_words.intersection(get_between_tokens(c))) > 0:
         return 1
     return 0
 
-# If it mentions serum or intervention before or after gene then negative 
 def LF_neg_words(c):
+    """
+    If it mentions serum or intervention before or after gene then negative 
+    """
     if len(neg_words.intersection(get_left_tokens(c[1],window=3))) > 0:
         return -1
     if len(neg_words.intersection(get_right_tokens(c[1],window=3))) > 0:
         return -1
     return 0
 
-# If candidate has gene word near it
 def LF_gene(c):
+    """
+    If candidate has gene word near it
+    """
     if "gene" in get_left_tokens(c[1]) or "gene" in get_right_tokens(c[1]):
         return 1
     return 0
 
-# Add epilepsy specific symptoms
 def LF_symptoms(c):
+    """
+    Add epilepsy specific symptoms
+    """
     if c[0].get_span().lower() in related_diseases_symptoms:
         return 1
     return -1
 
-# Label abbreviations
 def LF_disease_abbreviations(c):
+    """
+    Label abbreviations
+    """
     if c[0].get_span().lower() in disease_abbreviations_pos:
         return 1
     if c[0].get_span().lower() in disease_abbreviations_neg:
         return -1
     return 0
-
-# if the disease is completely unrelated remove 
+ 
 def LF_unrelated_disease(c):
+    """
+    If the disease is completely unrelated remove
+    """
     if c[0].get_span() in unrelated_diseases:
         return -1
     return 0
 
-# If there is a GENE with a -related tag next to it, then it might be important.
 def LF_related_adj(c):
+    """
+    If there is a GENE with a -related tag next to it, then it might be important.
+    """
     for adj in gene_adj:
         if adj in c[1].get_span().lower():
             return 1
     return 0
 
-# If mentions cases of or patients with -> disease
 def LF_disease_context(c):
+    """
+    If mentions cases of or patients with -> disease
+    """
     tokens = "".join(get_left_tokens(c[1],window=3))
     for context in disease_context:
         if context in tokens:
@@ -190,8 +216,10 @@ def LF_disease_context(c):
 
 # In[ ]:
 
-# If in knowledge base
 def LF_KB(c):
+    """
+    If in knowledge base
+    """
     if c[0].sentence.entity_cids[c[0].get_word_start()] == "D004827":
         if ";" in c[1].sentence.entity_cids[c[1].get_word_start()]:
             gene_id = int(c[1].sentence.entity_cids[c[1].get_word_start()].split(";")[0])
@@ -201,8 +229,10 @@ def LF_KB(c):
             return 1
     return -1
 
-# If the name is a gene
 def LF_is_gene(c):
+    """
+    If the name is a gene
+    """
     if c[1].get_span() in set(gene_list["gene_name"]) or c[1].get_span() in set(gene_list["gene_symbol"]):
         return 0
     return -1
@@ -265,10 +295,6 @@ for c in candidates:
     print c
     print get_tagged_text(c)
     print c[1].sentence.entity_cids[c[1].get_word_start()]
-    #if len(get_text_between(c)) < 2:
-    #    print c.id
-        #labeled.append(c.id)
-#print "Number labeled:", len(labeled)
 
 
 # # Label The Candidates
@@ -277,7 +303,6 @@ for c in candidates:
 
 # In[ ]:
 
-from snorkel.annotations import LabelAnnotator
 labeler = LabelAnnotator(f=LFs)
 
 get_ipython().magic(u'time L_train = labeler.apply(split=0)')
@@ -287,7 +312,6 @@ get_ipython().magic(u'time L_test = labeler.apply_existing(split=2)')
 
 # In[ ]:
 
-from snorkel.annotations import FeatureAnnotator
 featurizer = FeatureAnnotator()
 
 get_ipython().magic(u'time F_train = featurizer.apply(split=0)')
