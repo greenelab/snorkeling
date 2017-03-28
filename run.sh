@@ -19,4 +19,5 @@ fi
 # Launch jupyter notebook!
 echo "Launching Jupyter Notebook..."
 cd "$WORKINGPATH"
+jupyter nbextension enable --py --sys-prefix widgetsnbextension
 jupyter notebook
