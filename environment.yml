@@ -27,6 +27,6 @@ dependencies:
 - tqdm=4.14.0
 - conda-forge::tika=1.14.1
 - pip:
-    - git+https://github.com/HazyResearch/numbskull@40ac1af20538c17b4726c963c69adcb81314efa5
+    - git+https://github.com/HazyResearch/numbskull@ac52265038bac8edca3f8e930eff34ebaef4c7a0
     - neo4j-driver==1.3.1
     - tensorflow==1.2.0
