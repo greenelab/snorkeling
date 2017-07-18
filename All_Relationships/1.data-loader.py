@@ -24,7 +24,7 @@ import tqdm
 #Set up the environment
 username = "danich1"
 password = "snorkel"
-dbname = "pubmeddb2"
+dbname = "pubmeddb"
 
 #Path subject to change for different os
 database_str = "postgresql+psycopg2://{}:{}@/{}?host=/var/run/postgresql".format(username, password, dbname)
