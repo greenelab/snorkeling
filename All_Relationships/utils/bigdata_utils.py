@@ -123,8 +123,13 @@ class XMLMultiDocPreprocessor(DocPreprocessor):
 
         for event, doc in et.iterparse(f, tag='document'):
             doc_id = str(doc.xpath(self.id)[0])
+
+            if int(doc_id) not in self.tag_filter:
+                doc.clear()
+                continue
+
             text = '\n'.join(filter(lambda t: t is not None, doc.xpath(self.text)))
-           
+
             # guarentees that resources are freed after they have been used
             doc.clear()
             meta = {'file_name': str(file_name)}
