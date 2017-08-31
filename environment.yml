@@ -27,7 +27,7 @@ dependencies:
 - tqdm=4.14.0
 - conda-forge::tika=1.14.1
 - pip:
-    - backports.lzma-0.0.8
+    - backports.lzma==0.0.8
     - git+https://github.com/HazyResearch/numbskull@ac52265038bac8edca3f8e930eff34ebaef4c7a0
     - lxml==3.6.4
     - neo4j-driver==1.3.1
