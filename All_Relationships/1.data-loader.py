@@ -3,6 +3,8 @@
 
 # # MUST RUN AT THE START OF EVERYTHING
 
+# Load all necessary imports for the rest of this notebook. Plus, set up the postgres database for database operations. 
+
 # In[1]:
 
 
@@ -50,7 +52,7 @@ from sqlalchemy import func
 
 # # Parse the Pubmed Abstracts
 
-# The code below is designed to read and parse data gathered from pubtator. Pubtator outputs their annotated text in xml format, so that is the standard file format we are going to use. 
+# The code below is designed to read and parse data gathered from our [pubtator repo](https://github.com/greenelab/pubtator) (will refer as PubtatorR for clarity). PubtatorR is designed to gather and parse [NER](https://en.wikipedia.org/wiki/Named-entity_recognition) tagged Medline abstracts from NCBI's [PubTator](https://www.ncbi.nlm.nih.gov/CBBresearch/Lu/Demo/PubTator/). It outputs PubTator's annotated text in xml format, which is the standard format we are going to use. For this project, the id's are not from PubTator but from [Hetionet](https://think-lab.github.io/p/rephetio/). Since Pubtator contains over 10 million abstracts, the code below and in subsequent notebooks have been optimized to be memory efficient.
 
 # In[ ]:
 
@@ -107,7 +109,7 @@ if len(document_chunk) > 0:
 
 # # Get each candidate relation
 
-# This block of code below is designed to gather and tag each sentence found. **Note**: This does include the title of each abstract.
+# After parsing the above abstracts, the next step in this pipeline is to extract candidates from all the tagged sentences. A candidate is considered a candidate if two mentions occur in the same sentence. For this pilot study, we are only considering the follow candidate relationships: Disease-Gene, Gene-Gene, Compound-Gene, Compound-Disease. In conjunction with extracting candidates, this part of the pipeline also stratifies each sentence into three different categories: Train (70%), Dev (20%), and Test (10%). These set categories will be used in subsequent notebooks ([3](3.data-gen-model.ipynb), [4](4.data-disc-model.ipynb), [5](5.data-analysis.ipynb)) for training and testing the machine learning algorithms.
 
 # In[4]:
 
@@ -221,7 +223,7 @@ print_candidates(CompoundDisease, 'CompoundDisease')
 
 # # Look at the Potential Candidates
 
-# The one cool thing about jupyter is that you can use this tool to look at candidates. Check it out after everything above has finished running
+# The one cool thing about jupyter is that you can use this tool to look at candidates. Check it out after everything above has finished running. The highlighted words are what Hetionet tagged as name entities.
 
 # In[ ]:
 
@@ -234,7 +236,7 @@ TEST_SET = 2
 # In[ ]:
 
 
-candidates = session.query(DiseaseGene).filter(DiseaseGene.split==TEST_SET)
+candidates = session.query(DiseaseGene).filter(DiseaseGene.split==TRAINING_SET).limit(100)
 sv = SentenceNgramViewer(candidates, session)
 
 
