@@ -132,8 +132,8 @@ top_neg_predict_model_marginals = model_marginals.sort_values("LR_Marginals", as
 # In[ ]:
 
 
-from collections import defaultdict
-pos_feature_freq = defaultdict(int)
+from collections import Counter
+pos_feature_freq = Counter()
 for index in tqdm.tqdm(top_pos_predict_model_marginals.index):
     top_match_feat = F_test[index,:].nonzero()[1]
     for feature in lr_df["Feature"][top_match_feat]:
@@ -144,8 +144,8 @@ pos_features_df = pd.DataFrame(pos_feature_freq.items(), columns=["Feature", "Fr
 # In[ ]:
 
 
-from collections import defaultdict
-neg_feature_freq = defaultdict(int)
+from collections import Counter
+neg_feature_freq = Counter()
 for index in tqdm.tqdm(top_neg_predict_model_marginals.index):
     top_match_feat = F_test[index,:].nonzero()[1]
     for feature in lr_df["Feature"][top_match_feat]:

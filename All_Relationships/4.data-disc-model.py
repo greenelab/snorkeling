@@ -171,7 +171,7 @@ np.savetxt("pmacs/train_marginals", train_marginals)
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u"train_kwargs = {\n    'lr':         0.001,\n    'dim':        100,\n    'n_epochs':   10,\n    'dropout':    0.5,\n    'print_freq': 1,\n    'max_sentence_length': 1000,\n}\n\nlstm = reRNN(seed=100, n_threads=4)\n#lstm.train(train_cands, train_marginals[0:10], X_dev=dev_cands, Y_dev=L_dev[0:10], **train_kwargs)")
+get_ipython().run_cell_magic(u'time', u'', u'"""\ntrain_kwargs = {\n    \'lr\':         0.001,\n    \'dim\':        100,\n    \'n_epochs\':   10,\n    \'dropout\':    0.5,\n    \'print_freq\': 1,\n    \'max_sentence_length\': 1000,\n}\n"""\nlstm = reRNN(seed=100, n_threads=4)\n#lstm.train(train_cands, train_marginals[0:10], X_dev=dev_cands, Y_dev=L_dev[0:10], **train_kwargs)')
 
 
 # ### Write the Training data to an External File
@@ -182,21 +182,28 @@ get_ipython().run_cell_magic(u'time', u'', u"train_kwargs = {\n    'lr':        
 import csv
 chunksize = 100000
 start = 0
-with open('pmacs/train_candidates_ends.csv', 'wb') as g:
-    with open("pmacs/train_candidates_offsets.csv", "wb") as f:
-        while True:
-            train_cands = session.query(DiseaseGene).filter(DiseaseGene.split == 0).order_by(DiseaseGene.id).limit(chunksize).offset(start).all()
-            
-            if not train_cands:
-                break
-                
-            output = csv.writer(f)
-            for c in tqdm.tqdm(train_cands):
-                data, ends = lstm._preprocess_data([c], extend=True)
-                output.writerow(data[0])
-                g.write("{}\n".format(ends[0]))
-            
-            start += chunksize
+with open('pmacs/dev_candidates_ends.csv', 'wb') as g, open("pmacs/dev_candidates_offsets.csv", "wb") as f:
+    while True:
+        train_cands = (
+                session
+                .query(DiseaseGene)
+                .filter(DiseaseGene.split == 0)
+                .order_by(DiseaseGene.id)
+                .limit(chunksize)
+                .offset(start)
+                .all()
+        )
+        
+        if not train_cands:
+            break
+
+        output = csv.writer(f)
+        for c in tqdm.tqdm(train_cands):
+            data, ends = lstm._preprocess_data([c], extend=True)
+            output.writerow(data[0])
+            g.write("{}\n".format(ends[0]))
+
+        start += chunksize
 
 
 # ### Save the word dictionary to an External File
@@ -217,18 +224,17 @@ with open("pmacs/train_word_dict.csv", 'w') as f:
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'dev_cands = session.query(DiseaseGene).filter(DiseaseGene.split == 1).order_by(DiseaseGene.id).all()')
+get_ipython().run_cell_magic(u'time', u'', u'dev_cands = (\n        session\n        .query(DiseaseGene)\n        .filter(DiseaseGene.split == 1)\n        .order_by(DiseaseGene.id)\n        .all()\n)')
 
 
 # In[ ]:
 
 
 import csv
-with open('pmacs/dev_candidates_ends.csv', 'wb') as g:
-    with open("pmacs/dev_candidates_offsets.csv", "wb") as f:
-        output = csv.writer(f)
-        for c in tqdm.tqdm(dev_cands):
-            data, ends = lstm._preprocess_data([c])
-            output.writerow(data[0])
-            g.write("{}\n".format(ends[0]))
+with open('pmacs/dev_candidates_ends.csv', 'wb') as g, open("pmacs/dev_candidates_offsets.csv", "wb") as f:
+    output = csv.writer(f)
+    for c in tqdm.tqdm(dev_cands):
+        data, ends = lstm._preprocess_data([c])
+        output.writerow(data[0])
+        g.write("{}\n".format(ends[0]))
 
