@@ -1,7 +1,11 @@
 
 # coding: utf-8
 
-# # MUST RUN AT THE START OF EVERYTHING
+# # Label The Candidates! Extract The Features!
+
+# This notebook corresponds to labeling and genearting features for each extracted candidate from the [previous notebook](1.data-loader.ipynb).
+
+# ## MUST RUN AT THE START OF EVERYTHING
 
 # Load all the imports and set up the database for database operations. Plus, set up the particular candidate type this notebook is going to work with. 
 
@@ -105,7 +109,7 @@ sv
 
 
 if edge_type == "dg":
-    from utils.disease_gene_lf import *
+    from utils.disease_gene_lf import get_lfs, LF_IN_KB, LF_DEBUG
 elif edge_type == "gg":
     from utils.gene_gene_lf import *
 elif edge_type == "cg":
