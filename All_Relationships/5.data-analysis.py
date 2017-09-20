@@ -99,8 +99,10 @@ get_ipython().run_cell_magic(u'time', u'', u'L_test = labeler.load_matrix(sessio
 # In[8]:
 
 
-model_marginals = pd.read_csv("disc_marginals.csv")
-lr_df = pd.read_csv("LR_model.csv")
+model_marginals = pd.read_csv("Experiment 1/disc_marginals.csv")
+
+# Grab the features of the Logistic Regression Model
+lr_df = pd.read_csv("Experiment 1/LR_model.csv")
 
 
 # # Accuracy ROC
@@ -150,67 +152,11 @@ plt.ylim([0, 1.05])
 plt.legend(loc="lower right")
 
 
-# # Confusion Matrix
-
-# This code below produces a [confusion matrix](https://en.wikipedia.org/wiki/Confusion_matrix) for futher ML analysis/
-
-# In[58]:
-
-
-from sklearn.metrics import confusion_matrix
-tn, fp, fn, tp = confusion_matrix(model_marginals["LR_Predictions"], model_marginals["True Labels"]).ravel()
-ax = sns.heatmap([[tp, fn],[fp,tn]], annot=True, fmt='d', cmap="GnBu")
-ax.set_xticklabels(["True", "False"])
-ax.set_yticklabels(["False", "True"])
-plt.xlabel("Classifier Prediction")
-plt.ylabel("True Labels")
-plt.title("LR Confusion Matrix")
-
-
-# In[59]:
-
-
-from sklearn.metrics import confusion_matrix
-tn, fp, fn, tp = confusion_matrix(model_marginals["RNN_1_Predictions"], model_marginals["True Labels"]).ravel()
-ax = sns.heatmap([[tp, fn],[fp,tn]], annot=True, fmt='d', cmap="GnBu")
-ax.set_xticklabels(["True", "False"])
-ax.set_yticklabels(["False", "True"])
-plt.xlabel("Classifier Prediction")
-plt.ylabel("True Labels")
-plt.title("RNN 1% Confusion Matrix")
-
-
-# In[60]:
-
-
-from sklearn.metrics import confusion_matrix
-tn, fp, fn, tp= confusion_matrix(model_marginals["RNN_10_Predictions"], model_marginals["True Labels"]).ravel()
-ax = sns.heatmap([[tp, fn],[fp,tn]], annot=True, fmt='d', cmap="GnBu")
-ax.set_xticklabels(["True", "False"])
-ax.set_yticklabels(["False", "True"])
-plt.xlabel("Classifier Prediction")
-plt.ylabel("True Labels")
-plt.title("RNN 10% Confusion Matrix")
-
-
-# In[61]:
-
-
-from sklearn.metrics import confusion_matrix
-tn, fp, fn, tp= confusion_matrix(model_marginals["RNN_Full_Predictions"], model_marginals["True Labels"]).ravel()
-ax = sns.heatmap([[tp, fn],[fp,tn]], annot=True, fmt='d', cmap="GnBu")
-ax.set_xticklabels(["True", "False"])
-ax.set_yticklabels(["False", "True"])
-plt.xlabel("Classifier Prediction")
-plt.ylabel("True Labels")
-plt.title("RNN 100% Confusion Matrix")
-
-
 # # Error Analysis
 
 # This code shows the amount of true positives, false positives, true negatives and false negatives.
 
-# In[62]:
+# In[11]:
 
 
 result_category = "fp"
@@ -238,7 +184,7 @@ else:
     print ("Please re-run cell with correct options")
 
 
-# In[14]:
+# In[12]:
 
 
 display_columns = ["LR_Marginals", "RNN_1_Marginals", "RNN_10_Marginals", "RNN_Full_Marginals", "True Labels"]
@@ -246,20 +192,20 @@ display_columns = ["LR_Marginals", "RNN_1_Marginals", "RNN_10_Marginals", "RNN_F
 
 # ## LR
 
-# In[28]:
+# In[13]:
 
 
 model_marginals[lr_cond].sort_values("LR_Marginals", ascending=False).head(10)[display_columns]
 
 
-# In[29]:
+# In[14]:
 
 
 cand_index = list(model_marginals[lr_cond].sort_values("LR_Marginals", ascending=False).head(10).index)
 lr_cands = [L_test.get_candidate(session, i) for i in cand_index]
 
 
-# In[30]:
+# In[15]:
 
 
 print "Category: {}".format(result_category)
@@ -277,21 +223,21 @@ for cand, cand_ind in zip(lr_cands, cand_index):
     print
 
 
-# In[ ]:
+# In[16]:
 
 
 F_cand_index = 137865
 print "Confidence Level: ", model_marginals["LR_Marginals"][F_cand_index]
 
 
-# In[ ]:
+# In[17]:
 
 
 F_cand_index = 137865
 lr_df.iloc[F_test[F_cand_index, :].nonzero()[1]].sort_values("Weight", ascending=False)
 
 
-# In[ ]:
+# In[18]:
 
 
 cand = session.query(Candidate).filter(Candidate.id == L_test.get_candidate(session, 137865).id).one()
@@ -302,20 +248,20 @@ xmltree.render_tree(highlight=[range(cand[0].get_word_start(), cand[0].get_word_
 
 # ## LSTM 1% Sub-Sampling
 
-# In[31]:
+# In[19]:
 
 
 model_marginals[rnn1_cond].sort_values("RNN_1_Marginals", ascending=False).head(10)[display_columns]
 
 
-# In[32]:
+# In[20]:
 
 
 cand_index = list(model_marginals[rnn1_cond].sort_values("RNN_1_Marginals", ascending=False).head(10).index)
 lr_cands = [L_test.get_candidate(session, i) for i in cand_index]
 
 
-# In[33]:
+# In[21]:
 
 
 print "Category: {}".format(result_category)
@@ -334,20 +280,20 @@ for cand in lr_cands:
 
 # ## LSTM 10% Sub-Sampling
 
-# In[34]:
+# In[22]:
 
 
 model_marginals[rnn10_cond].sort_values("RNN_10_Marginals", ascending=False).head(10)[display_columns]
 
 
-# In[35]:
+# In[23]:
 
 
 cand_index = list(model_marginals[rnn10_cond].sort_values("RNN_10_Marginals", ascending=False).head(10).index)
 lr_cands = [L_test.get_candidate(session, i) for i in cand_index]
 
 
-# In[36]:
+# In[24]:
 
 
 print "Category: {}".format(result_category)
@@ -366,20 +312,20 @@ for cand in lr_cands:
 
 # # FULL LSTM
 
-# In[63]:
+# In[25]:
 
 
 model_marginals[rnn100_cond].sort_values("RNN_Full_Marginals", ascending=False).head(10)[display_columns]
 
 
-# In[64]:
+# In[26]:
 
 
 cand_index = list(model_marginals[rnn100_cond].sort_values("RNN_Full_Marginals", ascending=False).head(10).index)
 lr_cands = [L_test.get_candidate(session, i) for i in cand_index]
 
 
-# In[66]:
+# In[27]:
 
 
 print "Category: {}".format(result_category)
@@ -398,11 +344,11 @@ for cand in lr_cands:
 
 # # Write Results to TSV
 
-# In[87]:
+# In[ ]:
 
 
 field_names = ["Disease ID", "Disease Char Start", "Disease Char End", "Gene ID", "Gene Char Start", "Gene Char End", "Sentence", "Prediction"]
-with open("test_set_results.tsv", "w") as f:
+with open("LSTM_results.tsv", "w") as f:
     writer = csv.DictWriter(f, fieldnames=field_names)
     writer.writeheader()
     for i in tqdm.tqdm(model_marginals.index):
