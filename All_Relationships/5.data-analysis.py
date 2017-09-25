@@ -9,7 +9,7 @@
 
 # Load the database and other helpful functions for analysis.
 
-# In[ ]:
+# In[1]:
 
 
 get_ipython().magic(u'load_ext autoreload')
@@ -21,13 +21,14 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import re
 import pandas as pd
 import seaborn as sns
 from sklearn.metrics import average_precision_score, precision_recall_curve, roc_curve, auc, f1_score
 import tqdm
 
 
-# In[ ]:
+# In[2]:
 
 
 #Set up the environment
@@ -43,7 +44,7 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[ ]:
+# In[3]:
 
 
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator, load_marginals
@@ -52,17 +53,18 @@ from snorkel.learning.disc_models.rnn import reRNN
 from snorkel.learning.utils import RandomSearch
 from snorkel.models import Candidate, FeatureKey, candidate_subclass
 from snorkel.utils import get_as_dict
+from snorkel.viewer import SentenceNgramViewer
 from tree_structs import corenlp_to_xmltree
 from treedlib import compile_relation_feature_generator
 
 
-# In[ ]:
+# In[4]:
 
 
 edge_type = "dg"
 
 
-# In[ ]:
+# In[5]:
 
 
 if edge_type == "dg":
@@ -81,119 +83,44 @@ else:
 
 # Here is where we load the test dataset in conjunction with the previously trained disc models. Each algorithm will output a probability of a candidate being a true candidate.
 
-# In[ ]:
+# In[6]:
 
 
 featurizer = FeatureAnnotator()
 labeler = LabelAnnotator(lfs=[])
 
 
-# In[ ]:
+# In[7]:
 
 
 get_ipython().run_cell_magic(u'time', u'', u'L_test = labeler.load_matrix(session,split=2)\nF_test = featurizer.load_matrix(session, split=2)')
 
 
-# In[ ]:
+# In[8]:
 
 
-lr_model = SparseLogisticRegression()
-lstm_model = reRNN(seed=100, n_threads=4)
+model_marginals = pd.read_csv("Experiment 1/disc_marginals.csv")
 
-
-# In[ ]:
-
-
-lr_model.load(save_dir='checkpoints/grid_search/', model_name="SparseLogisticRegression_1")
-lstm_model.load(save_dir='checkpoints/rnn', model_name="RNN")
-
-
-# # Export the Data for analysis below
-
-# Export the necessary data such as top predicted candidates and the traning marginals from the SparseLogisticRegression (SLR) model. LSTM and deep learning data to come.
-
-# In[ ]:
-
-
-lr_marginals = lr_model.marginals(F_test)
-rnn_marginals = lstm.marginals(F_test)
-marginal_df = pd.DataFrame([lr_marginals, rnn_marginals], columns=["LR_Marginals", "RNN_marginals"])
-marginal_df.to_csv("disc_marginals.csv", index=False)
-
-
-# In[ ]:
-
-
-model_marginals = pd.read_csv("disc_marginals.csv")
-top_pos_predict_model_marginals = model_marginals.sort_values("LR_Marginals", ascending=False).head(10)
-top_neg_predict_model_marginals = model_marginals.sort_values("LR_Marginals", ascending=True).head(10)
-
-
-# In[ ]:
-
-
-from collections import Counter
-pos_feature_freq = Counter()
-for index in tqdm.tqdm(top_pos_predict_model_marginals.index):
-    top_match_feat = F_test[index,:].nonzero()[1]
-    for feature in lr_df["Feature"][top_match_feat]:
-        pos_feature_freq[feature] += 1
-pos_features_df = pd.DataFrame(pos_feature_freq.items(), columns=["Feature", "Frequency"])
-
-
-# In[ ]:
-
-
-from collections import Counter
-neg_feature_freq = Counter()
-for index in tqdm.tqdm(top_neg_predict_model_marginals.index):
-    top_match_feat = F_test[index,:].nonzero()[1]
-    for feature in lr_df["Feature"][top_match_feat]:
-        neg_feature_freq[feature] += 1
-neg_features_df = pd.DataFrame(neg_feature_freq.items(), columns=["Feature", "Frequency"])
-
-
-# In[ ]:
-
-
-pos_features_df.sort_values("Frequency", ascending=False).to_csv('POS_LR_Feat.csv', index=False)
-
-
-# In[ ]:
-
-
-neg_features_df.sort_values("Frequency", ascending=False).to_csv("NEG_LR_Feat.csv", index=False)
-
-
-# # Error Analysis
-
-# This code shows the amount of true positives, false positives, true negatives and false negatives.
-
-# In[ ]:
-
-
-_, _, _, _ = lr_model.error_analysis(session, F_test, L_test)
-
-
-# In[ ]:
-
-
-_, _, _, _ = lstm_model.error_analysis(session, F_test, L_test)
+# Grab the features of the Logistic Regression Model
+lr_df = pd.read_csv("Experiment 1/LR_model.csv")
 
 
 # # Accuracy ROC
 
 # From the probabilities calculated above, we can create a [Receiver Operator Curve](http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html) (ROC) graph to measure the false positive rate and the true positive rate at each calculated threshold.
 
-# In[ ]:
+# In[9]:
 
 
-plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+models = ["LR_Marginals", "RNN_1_Marginals", "RNN_10_Marginals", "RNN_Full_Marginals"]
+model_colors = ["darkorange", "red", "green", "magenta"]
+model_labels = ["LogReg", "RNN_1%", "RNN_10%", "RNN_100%"]
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
 
-for model_marginals, color in zip(["LR_Marginals", "RNN_marginals"], ["darkorange", "red"]):
-    fpr, tpr, _= roc_curve(L_test[0:].todense(), marginal_df[model_marginals])
+for model_label, marginal_label, color in zip(model_labels, models, model_colors):
+    fpr, tpr, _= roc_curve(model_marginals["True Labels"], model_marginals[marginal_label])
     model_auc = auc(fpr, tpr)
-    plt.plot(fpr, tpr, color=color, label="{} curve (area = {0.2f})".format(model_auc))
+    plt.plot(fpr, tpr, color=color, label="{} (area = {:0.2f})".format(model_label, model_auc))
 
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
@@ -205,88 +132,231 @@ plt.legend(loc="lower right")
 
 # This code produces a [Precision-Recall](http://scikit-learn.org/stable/auto_examples/model_selection/plot_precision_recall.html) graph, which shows the trade off between [precision and recall](https://en.wikipedia.org/wiki/Precision_and_recall) at each given probability threshold.
 
-# In[ ]:
+# In[10]:
 
 
-for model_marginals, color in zip(["LR_Marginals", "RNN_marginals"], ["darkorange", "red"]):
-    precision, recall, _=  precision_recall_curve(L_test[0:].todense(), marginal_df[model_marginals])
-    model_f1 = f1_score(L_test[0:].todense(), marginal_df[model_marginals])
-    plt.plot(fpr, tpr, color=color, label="{} curve (area = {0.2f})".format(model_f1))
+models = ["LR_Marginals", "RNN_1_Marginals", "RNN_10_Marginals", "RNN_Full_Marginals"]
+model_colors = ["darkorange", "red", "green", "magenta"]
+model_labels = ["LogReg", "RNN_1%", "RNN_10%", "RNN_100%"]
 
-plt.xlabel('Precision')
-plt.ylabel('Recall')
+for model_label, marginal_label, color in zip(model_labels, models, model_colors):
+    precision, recall, _ = precision_recall_curve(model_marginals["True Labels"], model_marginals[marginal_label])
+    model_precision = average_precision_score(model_marginals["True Labels"], model_marginals[marginal_label])
+    plt.plot(recall, precision, color=color, label="{} curve (area = {:0.2f})".format(model_label, model_precision))
+
+plt.ylabel('Precision')
+plt.xlabel('Recall')
 plt.title('Precision vs Recall')
+plt.xlim([0, 1.01])
+plt.ylim([0, 1.05])
 plt.legend(loc="lower right")
 
 
-# # LR Model Details
+# # Error Analysis
 
-# ## Global Picture of the Model
+# This code shows the amount of true positives, false positives, true negatives and false negatives.
 
-# Taking a deeper look into the SLR model, we can see that the highest weighted features are all cancer related. This leads one to think that majority of these abstracts are cancer related. Looking at the distribution of the weights it follows a normal distribution with a significant number of zeros. These zeros are desired which means majority of these feautres do not have significant weight to determine if a candidate is true or not. Furthermore, using the last cell of this block we can take a close look at the [dependency tree](https://nlp.stanford.edu/software/stanford-dependencies.shtml) stanford's core nlp used for generating features.
-
-# In[ ]:
+# In[11]:
 
 
-lr_df = pd.read_csv("LR_model.csv")
+result_category = "fp"
+if result_category == "tp":
+    lr_cond = (model_marginals["LR_Predictions"] == 1)&(model_marginals["True Labels"] == 1)
+    rnn1_cond = (model_marginals["RNN_1_Predictions"] == 1)&(model_marginals["True Labels"] == 1)
+    rnn10_cond = (model_marginals["RNN_10_Predictions"] == 1)&(model_marginals["True Labels"] == 1)
+    rnn100_cond = (model_marginals["RNN_Full_Predictions"] == 1)&(model_marginals["True Labels"] == 1)
+elif result_category == "fp":
+    lr_cond = (model_marginals["LR_Predictions"] == 1)&(model_marginals["True Labels"] == -1)
+    rnn1_cond = (model_marginals["RNN_1_Predictions"] == 1)&(model_marginals["True Labels"] == -1)
+    rnn10_cond = (model_marginals["RNN_10_Predictions"] == 1)&(model_marginals["True Labels"] == -1)
+    rnn100_cond = (model_marginals["RNN_Full_Predictions"] == 1)&(model_marginals["True Labels"] == -1)
+elif result_category == "tn":
+    lr_cond = (model_marginals["LR_Predictions"] == -1)&(model_marginals["True Labels"] == -1)
+    rnn1_cond = (model_marginals["RNN_1_Predictions"] == -1)&(model_marginals["True Labels"] == -1)
+    rnn10_cond = (model_marginals["RNN_10_Predictions"] == -1)&(model_marginals["True Labels"] == -1)
+    rnn100_cond = (model_marginals["RNN_Full_Predictions"] == -1)&(model_marginals["True Labels"] == -1)
+elif result_category == "fn":
+    lr_cond = (model_marginals["LR_Predictions"] == -1)&(model_marginals["True Labels"] == 1)
+    rnn1_cond = (model_marginals["RNN_1_Predictions"] == -1)&(model_marginals["True Labels"] == 1)
+    rnn10_cond = (model_marginals["RNN_10_Predictions"] == -1)&(model_marginals["True Labels"] == 1)
+    rnn100_cond = (model_marginals["RNN_Full_Predictions"] == -1)&(model_marginals["True Labels"] == 1)
+else:
+    print ("Please re-run cell with correct options")
 
 
-# In[ ]:
+# In[12]:
 
 
-weight_df = lr_df.sort_values("Weight", ascending=False, kind='mergesort')
-weight_df.head(15)
+display_columns = ["LR_Marginals", "RNN_1_Marginals", "RNN_10_Marginals", "RNN_Full_Marginals", "True Labels"]
 
 
-# In[ ]:
+# ## LR
+
+# In[13]:
 
 
-n, bins, patches = plt.hist(weight_df["Weight"])
-plt.xlabel('Weight')
-plt.ylabel('Count')
-plt.title('Distribution of LR Weights')
+model_marginals[lr_cond].sort_values("LR_Marginals", ascending=False).head(10)[display_columns]
 
 
-# In[ ]:
+# In[14]:
 
 
-cand = session.query(Candidate).filter(Candidate.id==674118).all()
-print cand
-print cand[0].get_parent()
+cand_index = list(model_marginals[lr_cond].sort_values("LR_Marginals", ascending=False).head(10).index)
+lr_cands = [L_test.get_candidate(session, i) for i in cand_index]
 
 
-# In[ ]:
+# In[15]:
 
 
-cand = session.query(Candidate).filter(Candidate.id == 19841894).one()
+print "Category: {}".format(result_category)
+print 
+for cand, cand_ind in zip(lr_cands, cand_index):
+    text = cand[0].get_parent().text
+    text = re.sub(cand[0].get_span().replace(")", "\)"), "--[[{}]]D--".format(cand[0].get_span()), text)
+    text = re.sub(cand[1].get_span().replace(")", "\)"), "--[[{}]]G--".format(cand[1].get_span()), text)
+    print cand_ind
+    print "Candidate: ", cand
+    print
+    print "Text: \"{}\"".format(text)
+    print
+    print "--------------------------------------------------------------------------------------------"
+    print
+
+
+# In[16]:
+
+
+F_cand_index = 137865
+print "Confidence Level: ", model_marginals["LR_Marginals"][F_cand_index]
+
+
+# In[17]:
+
+
+F_cand_index = 137865
+lr_df.iloc[F_test[F_cand_index, :].nonzero()[1]].sort_values("Weight", ascending=False)
+
+
+# In[18]:
+
+
+cand = session.query(Candidate).filter(Candidate.id == L_test.get_candidate(session, 137865).id).one()
 print cand
 xmltree = corenlp_to_xmltree(get_as_dict(cand.get_parent()))
 xmltree.render_tree(highlight=[range(cand[0].get_word_start(), cand[0].get_word_end() + 1), range(cand[1].get_word_start(), cand[1].get_word_end()+1)])
 
 
-# ## Taking a Deeper Look into the Model
+# ## LSTM 1% Sub-Sampling
 
-# From the above cells we saw that the SLR model is somewhat behaving as we expected. This section here attempts to dive deeper into the model and examine the top predicted candidates (both positive and negative). After gathering each candidate, we take a consensus of all the features these top candidates share, so we can have a better understanding on how these predictions came to be.
+# In[19]:
+
+
+model_marginals[rnn1_cond].sort_values("RNN_1_Marginals", ascending=False).head(10)[display_columns]
+
+
+# In[20]:
+
+
+cand_index = list(model_marginals[rnn1_cond].sort_values("RNN_1_Marginals", ascending=False).head(10).index)
+lr_cands = [L_test.get_candidate(session, i) for i in cand_index]
+
+
+# In[21]:
+
+
+print "Category: {}".format(result_category)
+print 
+for cand in lr_cands:
+    text = cand[0].get_parent().text
+    text = re.sub(cand[0].get_span().replace(")", "\)"), "--[[{}]]D--".format(cand[0].get_span()), text)
+    text = re.sub(cand[1].get_span().replace(")", "\)"), "--[[{}]]G--".format(cand[1].get_span()), text)
+    print "Candidate: ", cand
+    print
+    print "Text: \"{}\"".format(text)
+    print
+    print "--------------------------------------------------------------------------------------------"
+    print
+
+
+# ## LSTM 10% Sub-Sampling
+
+# In[22]:
+
+
+model_marginals[rnn10_cond].sort_values("RNN_10_Marginals", ascending=False).head(10)[display_columns]
+
+
+# In[23]:
+
+
+cand_index = list(model_marginals[rnn10_cond].sort_values("RNN_10_Marginals", ascending=False).head(10).index)
+lr_cands = [L_test.get_candidate(session, i) for i in cand_index]
+
+
+# In[24]:
+
+
+print "Category: {}".format(result_category)
+print 
+for cand in lr_cands:
+    text = cand[0].get_parent().text
+    text = re.sub(cand[0].get_span().replace(")", "\)"), "--[[{}]]D--".format(cand[0].get_span()), text)
+    text = re.sub(cand[1].get_span().replace(")", "\)"), "--[[{}]]G--".format(cand[1].get_span()), text)
+    print "Candidate: ", cand
+    print
+    print "Text: \"{}\"".format(text)
+    print
+    print "--------------------------------------------------------------------------------------------"
+    print
+
+
+# # FULL LSTM
+
+# In[25]:
+
+
+model_marginals[rnn100_cond].sort_values("RNN_Full_Marginals", ascending=False).head(10)[display_columns]
+
+
+# In[26]:
+
+
+cand_index = list(model_marginals[rnn100_cond].sort_values("RNN_Full_Marginals", ascending=False).head(10).index)
+lr_cands = [L_test.get_candidate(session, i) for i in cand_index]
+
+
+# In[27]:
+
+
+print "Category: {}".format(result_category)
+print 
+for cand in lr_cands:
+    text = cand[0].get_parent().text
+    text = re.sub(cand[0].get_span().replace(")", "\)"), "--[[{}]]D--".format(cand[0].get_span()), text)
+    text = re.sub(cand[1].get_span().replace(")", "\)"), "--[[{}]]G--".format(cand[1].get_span()), text)
+    print "Candidate: ", cand
+    print
+    print "Text: \"{}\"".format(text)
+    print
+    print "--------------------------------------------------------------------------------------------"
+    print
+
+
+# # Write Results to TSV
 
 # In[ ]:
 
 
-pos_features_df = pd.read_csv("POS_LR_Feat.csv")
-neg_features_df = pd.read_csv("NEG_LR_Feat.csv")
+field_names = ["Disease ID", "Disease Char Start", "Disease Char End", "Gene ID", "Gene Char Start", "Gene Char End", "Sentence", "Prediction"]
+with open("LSTM_results.tsv", "w") as f:
+    writer = csv.DictWriter(f, fieldnames=field_names)
+    writer.writeheader()
+    for i in tqdm.tqdm(model_marginals.index):
+        cand = L_test.get_candidate(session, i)
+        row = {
+                "Disease ID": cand.Disease_cid, "Disease Char Start":cand[0].char_start, 
+                "Disease Char End": cand[0].char_end, "Gene ID": cand.Gene_cid, 
+                "Gene Char Start":cand[1].char_start, "Gene Char End":cand[1].char_end, 
+                "Sentence": cand.get_parent().text, "Prediction": model_marginals.iloc[i]["RNN_Full_Marginals"]}
+        writer.writerow(row)
 
-
-# In[ ]:
-
-
-pos_features_df.head(10)
-
-
-# In[ ]:
-
-
-neg_features_df.head(10)
-
-
-# # RNN Model Details
-
-# TBD
