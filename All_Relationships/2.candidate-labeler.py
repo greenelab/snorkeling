@@ -9,7 +9,7 @@
 
 # Load all the imports and set up the database for database operations. Plus, set up the particular candidate type this notebook is going to work with. 
 
-# In[2]:
+# In[1]:
 
 
 get_ipython().magic(u'load_ext autoreload')
@@ -17,7 +17,9 @@ get_ipython().magic(u'autoreload 2')
 get_ipython().magic(u'matplotlib inline')
 
 from collections import defaultdict
+import os
 import re
+
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +27,7 @@ import pandas as pd
 import tqdm
 
 
-# In[ ]:
+# In[2]:
 
 
 #Set up the environment
@@ -41,7 +43,7 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[ ]:
+# In[3]:
 
 
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator
@@ -51,14 +53,14 @@ from snorkel.models import Candidate
 from snorkel.viewer import SentenceNgramViewer
 
 
-# In[ ]:
+# In[4]:
 
 
 edge_type = "dg"
 debug = False
 
 
-# In[ ]:
+# In[5]:
 
 
 if edge_type == "dg":
@@ -105,11 +107,11 @@ sv
 
 # Here is one of the fundamental part of this project. Below are the label functions that are used to give a candidate a label of 1,0 or -1 which corresponds to correct label, unknown label and incorrection label. The goal here is to develop functions that can label accurately label as many candidates as possible. This idea comes from the [data programming paradigm](https://papers.nips.cc/paper/6523-data-programming-creating-large-training-sets-quickly), where the goal is to be able to create labels that machine learning algorithms can use for accurate classification.  
 
-# In[ ]:
+# In[21]:
 
 
 if edge_type == "dg":
-    from utils.disease_gene_lf import get_lfs, LF_IN_KB, LF_DEBUG
+    from utils.disease_gene_lf import get_lfs
 elif edge_type == "gg":
     from utils.gene_gene_lf import *
 elif edge_type == "cg":
@@ -120,10 +122,17 @@ else:
     print("Please pick a valid edge type")
 
 
-# In[ ]:
+# In[22]:
 
 
-LFs = get_lfs(debug)
+candidates = session.query(DiseaseGene).filter(DiseaseGene.split==0).limit(1).all()
+LF_DEBUG(candidates[0])
+
+
+# In[7]:
+
+
+LFs = get_lfs()
 
 
 # # Label The Candidates
@@ -152,7 +161,7 @@ get_ipython().magic(u'time L_test = labeler.apply_existing(split=2, cids_query=c
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'featurizer = FeatureAnnotator()\nfeaturizer.apply(split=0, clear=False)\ntime F_dev = featurizer.apply_existing(split=1, parallelism=5, clear=False)\ntime F_test = featurizer.apply_existing(split=2, parallelism=5, clear=False)')
+get_ipython().run_cell_magic(u'time', u'', u'featurizer = FeatureAnnotator()\nfeaturizer.apply(split=0, clear=False)\n\nF_dev = featurizer.apply_existing(split=1, parallelism=5, clear=False)\nF_test = featurizer.apply_existing(split=2, parallelism=5, clear=False)')
 
 
 # # Work Around for above code
