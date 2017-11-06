@@ -1,7 +1,11 @@
 
 # coding: utf-8
 
-# # MUST RUN AT THE START OF EVERYTHING
+# # Train the Generative Model for Accurate Labeling
+
+# This notebook is designed to run the generative model snorkel uses for estimating the probability of each candidate being a true candidate (label of 1). 
+
+# ## MUST RUN AT THE START OF EVERYTHING
 
 # Import the necessary modules and set up the database for database operations.
 
@@ -94,7 +98,7 @@ print
 
 # # Train the Generative Model
 
-# Here is the first step of classification step of this project, where we train a gnerative model to discriminate the correct label each candidate will receive. Snorkel's generative model uses a Gibbs Sampling on a [factor graph](http://deepdive.stanford.edu/assets/factor_graph.pdf), to generate the probability of a potential candidate being a true candidate (receiving a label of 1).
+# Here is the first step of classification step of this project, where we train a gnerative model to discriminate the correct label each candidate will receive. Snorkel's generative model uses a Gibbs Sampling on a [factor graph](http://deepdive.stanford.edu/assets/factor_graph.pdf), to generate the probability of a potential candidate being a true candidate (label of 1).
 
 # In[ ]:
 
