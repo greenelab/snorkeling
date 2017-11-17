@@ -5,14 +5,14 @@
 
 # After predicting the co-occurence of candidates on the sentence level, the next step is to predict whether a candidate is a true relationship or just occured by chance. Through out this notebook the main events involved here are calculating summary statistics and obtaining the LSTM marginal probabilities.
 
-# In[14]:
+# In[ ]:
 
 
 get_ipython().magic(u'load_ext autoreload')
 get_ipython().magic(u'autoreload 2')
 get_ipython().magic(u'matplotlib inline')
 
-from collections import defaultdict
+from collections import Counter
 import csv
 import os
 
@@ -29,7 +29,7 @@ from sklearn.model_selection import RandomizedSearchCV
 import seaborn as sns
 
 
-# In[15]:
+# In[ ]:
 
 
 #Set up the environment
@@ -45,14 +45,14 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[16]:
+# In[ ]:
 
 
 from snorkel.models import Candidate, candidate_subclass
 from snorkel.learning.disc_models.rnn import reRNN
 
 
-# In[17]:
+# In[ ]:
 
 
 DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
@@ -60,21 +60,28 @@ DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 
 # # Count the Number of Sentences for Each Candidate
 
-# In[ ]:
-
-
-get_ipython().run_cell_magic(u'time', u'', u'doc_counter = defaultdict(set)\nsentence_counter = defaultdict(set)\noffset = 0\nchunk_size = 1e5\n\nwhile True:\n    cands = session.query(DiseaseGene).limit(chunk_size).offset(offset).all()\n    \n    if not cands:\n        break\n        \n    for candidate in tqdm.tqdm(cands):\n        sentence_counter[(candidate.Disease_cid, candidate.Gene_cid)].add(hash(candidate[0].get_parent()))\n        doc_counter[(candidate.Disease_cid, candidate.Gene_cid)].add(hash(candidate[0].get_parent().document_id))\n    \n    offset+= chunk_size')
-
+# For this block of code we are cycling through each disease-gene candidate in the database and counting the number of unique sentences and unique abstracts containing the specific candidate. **NOTE**: This section will quite a few hours to cycle through the entire database.
 
 # In[ ]:
 
 
-candidate_df = pd.DataFrame(map(lambda x: [x[0], x[1], len(sentence_counter[x]), len(doc_counter[x])], sentence_counter), columns=["disease_id", "gene_id", "sentence_count", "doc_count"])
+get_ipython().run_cell_magic(u'time', u'', u'doc_counter = Counter()\nsentence_counter = Counter()\noffset = 0\nchunk_size = 1e5\n\nwhile True:\n    cands = session.query(DiseaseGene).limit(chunk_size).offset(offset).all()\n    \n    if not cands:\n        break\n        \n    for candidate in tqdm.tqdm(cands):\n        sentence_counter[(candidate.Disease_cid, candidate.Gene_cid)] += 1\n        doc_counter[(candidate.Disease_cid, candidate.Gene_cid)] += 1\n\n    offset+= chunk_size')
+
+
+# In[ ]:
+
+
+candidate_df = pd.DataFrame(
+    map(lambda x: [x[0], x[1], sentence_counter[x], doc_counter[x]], sentence_counter),
+    columns=["disease_id", "gene_id", "sentence_count", "doc_count"]
+    )
 
 
 # # Perform Fisher Exact Test on each Co-Occurence
 
-# In[6]:
+# Here we want to perform the fisher exact test for each disease-gene co-occurence. A more detailed explanation [here](https://github.com/greenelab/snorkeling/issues/26).
+
+# In[ ]:
 
 
 def diffprop(obs):
@@ -105,7 +112,7 @@ def diffprop(obs):
     return delta, ci, corrected_ci
 
 
-# In[7]:
+# In[ ]:
 
 
 total = candidate_df["sentence_count"].sum()
@@ -115,17 +122,17 @@ expected = []
 lower_ci = []
 
 for disease, gene in tqdm.tqdm(zip(candidate_df["disease_id"],candidate_df["gene_id"])):
-    cond = (candidate_df["disease_id"] == disease) & (candidate_df["gene_id"] == gene)
-    a = candidate_df[cond]["sentence_count"].values[0] + 1
+    cond_df = candidate_df.query("disease_id == @disease & gene_id == @gene")
+    a = cond_df["sentence_count"].values[0] + 1
                                         
-    cond = (candidate_df["disease_id"] != disease) & (candidate_df["gene_id"] == gene)
-    b = sum(candidate_df[cond]["sentence_count"].values) + 1
+    cond_df = candidate_df.query("disease_id != @disease & gene_id == @gene")
+    b = cond_df["sentence_count"].sum() + 1
     
-    cond = (candidate_df["disease_id"] == disease) & (candidate_df["gene_id"] != gene)
-    c = sum(candidate_df[cond]["sentence_count"].values) +1
+    cond_df = candidate_df.query("disease_id == @disease & gene_id != @gene")
+    c = cond_df["sentence_count"].sum() + 1
     
-    cond = (candidate_df["disease_id"] != disease) & (candidate_df["gene_id"] != gene)
-    d = sum(candidate_df[cond]["sentence_count"].values) + 1
+    cond_df = candidate_df.query("disease_id != @disease & gene_id != @gene")
+    d = cond_df["sentence_count"].sum() + 1
     
     c_table = np.array([[a, b], [c, d]])
     
@@ -143,7 +150,7 @@ for disease, gene in tqdm.tqdm(zip(candidate_df["disease_id"],candidate_df["gene
     total_gene = candidate_df[candidate_df["gene_id"] == gene]["sentence_count"].sum()
     expected.append((total_gene * total_disease)/float(total))
 
-candidate_df["p_value"] = p_val
+candidate_df["nlog10_p_value"] = -np.log10(p_val)
 candidate_df["odds_ratio"] = odds
 candidate_df["expected_sen"] = expected
 candidate_df["lower_ci"] = lower_ci
@@ -152,12 +159,14 @@ candidate_df["lower_ci"] = lower_ci
 # In[ ]:
 
 
-candidate_df.sort_values("p_value", ascending=True).head(20)
+candidate_df.sort_values("nlog10_p_value", ascending=False).head(20)
 
 
-# # Combine sentence marginals
+# # Combine Sentence Marginal Probabilities
 
-# In[19]:
+# In this section we incorporate the marginal probabilites that are calculated from the bi-directional LSTM used in the [previous notebook](4.sentence-level-prediction.ipynb). For each sentence we grouped them by their disease-gene mention and report their marginal probabilites in different quantiles (0, 0.2, 0.4, 0.6, 0.8). Lastly we took the average of each sentence marginal to generate the "avg_marginal" column.
+
+# In[ ]:
 
 
 train_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/lstm_train_marginals.csv")
@@ -165,7 +174,7 @@ dev_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/lstm_d
 test_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/lstm_test_marginals.csv")
 
 
-# In[20]:
+# In[ ]:
 
 
 train_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/train_candidates_sentences.csv")
@@ -173,7 +182,7 @@ dev_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/dev_ca
 test_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/test_candidates_sentences.csv")
 
 
-# In[23]:
+# In[ ]:
 
 
 train_sentences_df["marginals"] = train_marginals_df["RNN_marginals"].values
@@ -181,31 +190,17 @@ dev_sentences_df["marginals"] = dev_marginals_df["RNN_marginals"].values
 test_sentences_df["marginals"] = test_marginals_df["RNN_10_Marginals"].values
 
 
-# # Combine Marginal Probabilities
-
-# In[30]:
-
-
-candidate_df = pd.read_csv("disease_gene_summary_stats.csv")
-
-
-# In[43]:
-
-
-candidate_df.head(10)
-
-
-# In[37]:
+# In[ ]:
 
 
 candidate_marginals = (
-                        train_sentences_df[["disease_id", "gene_id", "marginals"]]
-                        .append(dev_sentences_df[["disease_id", "gene_id", "marginals"]])
-                        .append(test_sentences_df[["disease_id", "gene_id", "marginals"]])
-                      )
+    train_sentences_df[["disease_id", "gene_id", "marginals"]]
+    .append(dev_sentences_df[["disease_id", "gene_id", "marginals"]])
+    .append(test_sentences_df[["disease_id", "gene_id", "marginals"]])
+    )
 
 
-# In[42]:
+# In[ ]:
 
 
 group = candidate_marginals.groupby(["disease_id", "gene_id"])
@@ -236,7 +231,7 @@ candidate_df["avg_marginal"] = avg_marginals
 
 # ## Save the data to a file
 
-# In[44]:
+# In[ ]:
 
 
 candidate_df.to_csv("disease_gene_summary_stats.csv", index=False)
