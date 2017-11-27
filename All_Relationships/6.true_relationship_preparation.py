@@ -5,7 +5,7 @@
 
 # After predicting the co-occurence of candidates on the sentence level, the next step is to predict whether a candidate is a true relationship or just occured by chance. Through out this notebook the main events involved here are calculating summary statistics and obtaining the LSTM marginal probabilities.
 
-# In[1]:
+# In[ ]:
 
 get_ipython().magic(u'load_ext autoreload')
 get_ipython().magic(u'autoreload 2')
@@ -28,7 +28,7 @@ from sklearn.model_selection import RandomizedSearchCV
 import seaborn as sns
 
 
-# In[2]:
+# In[ ]:
 
 #Set up the environment
 username = "danich1"
@@ -43,13 +43,13 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[3]:
+# In[ ]:
 
 from snorkel.models import Candidate, candidate_subclass
 from snorkel.learning.disc_models.rnn import reRNN
 
 
-# In[4]:
+# In[ ]:
 
 DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 
@@ -157,33 +157,28 @@ candidate_df.sort_values("nlog10_p_value", ascending=False).head(20)
 
 # In this section we incorporate the marginal probabilites that are calculated from the bi-directional LSTM used in the [previous notebook](4.sentence-level-prediction.ipynb). For each sentence we grouped them by their disease-gene mention and report their marginal probabilites in different quantiles (0, 0.2, 0.4, 0.6, 0.8). Lastly we took the average of each sentence marginal to generate the "avg_marginal" column.
 
-# In[5]:
-
-candidate_df = pd.read_csv("disease_gene_summary_stats.csv")
-
-
-# In[6]:
+# In[ ]:
 
 train_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/lstm_train_marginals.csv")
 dev_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/lstm_dev_marginals.csv")
 test_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/lstm_test_marginals.csv")
 
 
-# In[7]:
+# In[ ]:
 
 train_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/train_candidates_sentences.csv")
 dev_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/dev_candidates_sentences.csv")
 test_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/test_candidates_sentences.csv")
 
 
-# In[8]:
+# In[ ]:
 
 train_sentences_df["marginals"] = train_marginals_df["RNN_marginals"].values
 dev_sentences_df["marginals"] = dev_marginals_df["RNN_marginals"].values
 test_sentences_df["marginals"] = test_marginals_df["RNN_10_Marginals"].values
 
 
-# In[9]:
+# In[ ]:
 
 candidate_marginals = (
     train_sentences_df[["disease_id", "gene_id", "marginals"]]
@@ -192,7 +187,7 @@ candidate_marginals = (
     )
 
 
-# In[17]:
+# In[ ]:
 
 quantile_list = [0,0.2,0.4,0.6,0.8]
 quantile_data = []
@@ -203,17 +198,16 @@ for i, cand in tqdm.tqdm(candidate_df[["disease_id", "gene_id"]].iterrows()):
     dg_series = group.get_group((cand["disease_id"], cand["gene_id"]))
     avg_marginals.append(dg_series["marginals"].mean())
     quantile_data.append(map(lambda x: dg_series["marginals"].quantile(x), quantile_list))
-    if i == 10:
-        break
-print len(quantile_data[0])
+
+
 # Save the evidence into a dataframe
 candidate_df = pd.concat(
     [
-        candidate_df.head(11),
+        candidate_df,
         pd.DataFrame(
-                quantile_data,
-                index=candidate_df.index,
-                columns=map(lambda x: 'quantile_{:.2f}'.format(x), quantile_list)
+            quantile_data,
+            index=candidate_df.index,
+            columns=map(lambda x: 'quantile_{:.2f}'.format(x), quantile_list)
         )
     ], axis=1
 )
