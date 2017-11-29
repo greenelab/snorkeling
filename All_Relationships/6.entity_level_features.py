@@ -7,11 +7,12 @@
 
 # In[ ]:
 
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
 
-from collections import Counter, defaultdict
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
+get_ipython().run_line_magic('matplotlib', 'inline')
+
+from collections import defaultdict
 import csv
 import os
 
@@ -30,6 +31,7 @@ import seaborn as sns
 
 # In[ ]:
 
+
 #Set up the environment
 username = "danich1"
 password = "snorkel"
@@ -45,11 +47,13 @@ session = SnorkelSession()
 
 # In[ ]:
 
+
 from snorkel.models import Candidate, candidate_subclass
 from snorkel.learning.disc_models.rnn import reRNN
 
 
 # In[ ]:
+
 
 DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 
@@ -60,13 +64,15 @@ DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 
 # In[ ]:
 
-get_ipython().run_cell_magic(u'time', u'', u'doc_counter = defaultdict(set)\nsentence_counter = Counter()\noffset = 0\nchunk_size = 1e5\n\nwhile True:\n    cands = session.query(DiseaseGene).limit(chunk_size).offset(offset).all()\n    \n    if not cands:\n        break\n        \n    for candidate in tqdm.tqdm(cands):\n        sentence_counter[(candidate.Disease_cid, candidate.Gene_cid)] += 1\n        doc_counter[(candidate.Disease_cid, candidate.Gene_cid)].add(candidate[0].get_parent().document_id)\n\n    offset+= chunk_size')
+
+get_ipython().run_cell_magic('time', '', 'pair_to_pmids = defaultdict(set)\npair_to_sentences = defaultdict(set)\noffset = 0\nchunk_size = 1e5\n\nwhile True:\n    cands = session.query(DiseaseGene).limit(chunk_size).offset(offset).all()\n    \n    if not cands:\n        break\n        \n    for candidate in tqdm.tqdm(cands):\n        pair = candidate.Disease_cid, candidate.Gene_cid\n        pair_to_sentences[pair].add(candidate[0].get_parent().id)\n        pair_to_pmids[pair].add(candidate[0].get_parent().document_id)\n\n    offset+= chunk_size')
 
 
 # In[ ]:
 
+
 candidate_df = pd.DataFrame(
-    map(lambda x: [x[0], x[1], sentence_counter[x], len(doc_counter[x])], sentence_counter),
+    map(lambda x: [x[0], x[1], len(pair_to_sentences[x]), len(pair_to_pmids[x])], pair_to_sentences),
     columns=["disease_id", "gene_id", "sentence_count", "doc_count"]
     )
 
@@ -76,6 +82,7 @@ candidate_df = pd.DataFrame(
 # Here we want to perform the fisher exact test for each disease-gene co-occurence. A more detailed explanation [here](https://github.com/greenelab/snorkeling/issues/26).
 
 # In[ ]:
+
 
 def diffprop(obs):
     """
@@ -106,6 +113,7 @@ def diffprop(obs):
 
 
 # In[ ]:
+
 
 total = candidate_df["sentence_count"].sum()
 odds = []
@@ -142,13 +150,14 @@ for disease, gene in tqdm.tqdm(zip(candidate_df["disease_id"],candidate_df["gene
     total_gene = candidate_df[candidate_df["gene_id"] == gene]["sentence_count"].sum()
     expected.append((total_gene * total_disease)/float(total))
 
-candidate_df["nlog10_p_value"] = -np.log10(p_val)
+candidate_df["nlog10_p_value"] = (-1 * np.log10(p_val))
 candidate_df["odds_ratio"] = odds
 candidate_df["expected_sen"] = expected
 candidate_df["lower_ci"] = lower_ci
 
 
 # In[ ]:
+
 
 candidate_df.sort_values("nlog10_p_value", ascending=False).head(20)
 
@@ -159,19 +168,26 @@ candidate_df.sort_values("nlog10_p_value", ascending=False).head(20)
 
 # In[ ]:
 
-train_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/lstm_train_marginals.csv")
-dev_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/lstm_dev_marginals.csv")
-test_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/lstm_test_marginals.csv")
+
+train_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/full_data/lstm_train_full_marginals.csv.csv")
+dev_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/full_data/lstm_dev_full_marginals.csv")
+test_marginals_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/full_data/lstm_test_full_marginals.csv")
 
 
 # In[ ]:
 
-train_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/train_candidates_sentences.csv")
-dev_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/dev_candidates_sentences.csv")
-test_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/test_candidates_sentences.csv")
+
+train_sentences_df = pd.read_csv("stratified_data/training_set.csv")
+dev_sentences_df = pd.read_csv("stratified_data/dev_set.csv")
+test_sentences_df = pd.read_csv("stratified_data/test_set.csv")
+
+train_sentences_df = train_sentences_df.query("pubmed == 1").drop("hetnet", axis=1)
+dev_sentences_df = dev_sentences_df.query("pubmed == 1").drop("hetnet", axis=1)
+test_sentences_df = test_sentences_df.query("pubmed == 1").drop("hetnet", axis=1)
 
 
 # In[ ]:
+
 
 train_sentences_df["marginals"] = train_marginals_df["RNN_marginals"].values
 dev_sentences_df["marginals"] = dev_marginals_df["RNN_marginals"].values
@@ -179,6 +195,7 @@ test_sentences_df["marginals"] = test_marginals_df["RNN_10_Marginals"].values
 
 
 # In[ ]:
+
 
 candidate_marginals = (
     train_sentences_df[["disease_id", "gene_id", "marginals"]]
@@ -188,6 +205,7 @@ candidate_marginals = (
 
 
 # In[ ]:
+
 
 quantile_list = [0,0.2,0.4,0.6,0.8]
 quantile_data = []
@@ -217,6 +235,7 @@ candidate_df["avg_marginal"] = avg_marginals
 # ## Save the data to a file
 
 # In[ ]:
+
 
 candidate_df.to_csv("disease_gene_summary_stats.csv", index=False)
 
