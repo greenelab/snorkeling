@@ -8,9 +8,9 @@
 # In[ ]:
 
 
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().magic(u'load_ext autoreload')
+get_ipython().magic(u'autoreload 2')
+get_ipython().magic(u'matplotlib inline')
 
 from collections import defaultdict
 import csv
@@ -65,7 +65,7 @@ DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 # In[ ]:
 
 
-get_ipython().run_cell_magic('time', '', 'pair_to_pmids = defaultdict(set)\npair_to_sentences = defaultdict(set)\noffset = 0\nchunk_size = 1e5\n\nwhile True:\n    cands = session.query(DiseaseGene).limit(chunk_size).offset(offset).all()\n    \n    if not cands:\n        break\n        \n    for candidate in tqdm.tqdm(cands):\n        pair = candidate.Disease_cid, candidate.Gene_cid\n        pair_to_sentences[pair].add(candidate[0].get_parent().id)\n        pair_to_pmids[pair].add(candidate[0].get_parent().document_id)\n\n    offset+= chunk_size')
+get_ipython().run_cell_magic(u'time', u'', u'pair_to_pmids = defaultdict(set)\npair_to_sentences = defaultdict(set)\noffset = 0\nchunk_size = 1e5\n\nwhile True:\n    cands = session.query(DiseaseGene).limit(chunk_size).offset(offset).all()\n    \n    if not cands:\n        break\n        \n    for candidate in cands:\n        pair = candidate.Disease_cid, candidate.Gene_cid\n        pair_to_sentences[pair].add(candidate[0].get_parent().id)\n        pair_to_pmids[pair].add(candidate[0].get_parent().document_id)\n\n    offset+= chunk_size')
 
 
 # In[ ]:
@@ -198,9 +198,9 @@ test_sentences_df["marginals"] = test_marginals_df["RNN_10_Marginals"].values
 
 
 candidate_marginals = (
-    train_sentences_df[["disease_id", "gene_id", "marginals"]]
-    .append(dev_sentences_df[["disease_id", "gene_id", "marginals"]])
-    .append(test_sentences_df[["disease_id", "gene_id", "marginals"]])
+    train_sentences_df
+    .append(dev_sentences_df)
+    .append(test_sentences_df)
     )
 
 
@@ -229,6 +229,10 @@ candidate_df = pd.concat(
         )
     ], axis=1
 )
+candidate_df = pd.merge(candidate_df, 
+                        candidate_marginals[["disease_id", "disease_name", "gene_id", "gene_name"]],
+                        on=["disease_id", "gene_id"]
+                       )
 candidate_df["avg_marginal"] = avg_marginals
 
 
