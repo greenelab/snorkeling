@@ -5,8 +5,7 @@
 
 # This notebook calculates the prior probabiltity of an edge type through permutation. This notebook will be used for various edge types as this project progresses.
 
-# In[ ]:
-
+# In[1]:
 
 from collections import defaultdict
 import itertools
@@ -18,21 +17,18 @@ from hetio.permute import permute_pair_list
 get_ipython().magic(u'matplotlib inline')
 
 
-# In[ ]:
-
+# In[2]:
 
 hetnet_df = pd.read_csv('hetnet_dg_kb.csv')
 
 
-# In[ ]:
-
+# In[3]:
 
 disease_degree = dict(hetnet_df["disease_id"].value_counts())
 gene_degree = dict(hetnet_df["gene_id"].value_counts())
 
 
-# In[ ]:
-
+# In[4]:
 
 association_edge = defaultdict(set)
 association_row = list()
@@ -45,57 +41,49 @@ pair_df = pd.DataFrame(association_row, columns=["disease_id", "gene_id", "disea
 pair_df.head(10)
 
 
-# In[ ]:
-
+# In[5]:
 
 associations = list(zip(hetnet_df["disease_id"], hetnet_df["gene_id"]))
 print(len(associations))
 
 
-# In[ ]:
-
+# In[6]:
 
 # Burn In
 pair_list, stats = permute_pair_list(associations, multiplier=10)
 burnin_stats = pd.DataFrame(stats)
 
 
-# In[ ]:
-
+# In[7]:
 
 burnin_stats
 
 
-# In[ ]:
-
+# In[8]:
 
 burnin_stats["unchanged"].plot()
 
 
-# In[ ]:
-
+# In[9]:
 
 # Burnin Stats
 multiplier = 3
 
 
-# In[ ]:
-
+# In[10]:
 
 # calculate the total number of permutations
 # divide the total number by half to prevent memory issues
 n_perm = hetnet_df["disease_id"].nunique() * hetnet_df["gene_id"].nunique()
-n_perm = n_perm * 0.5
+n_perm = int(n_perm * 0.5)
 
 
-# In[ ]:
-
+# In[11]:
 
 get_ipython().run_cell_magic(u'time', u'', u'edges_to_prob = {x: list() for x in association_edge}\n\nfor i in tqdm.tqdm(range(n_perm)):\n    pair_list, stats = permute_pair_list(pair_list, multiplier=multiplier, seed=i)\n    \n    pair_set = set(pair_list)\n    for degree, probs in edges_to_prob.items():\n        edges = association_edge[degree]\n        probs.append(len(edges & pair_set) / len(edges))')
 
 
-# In[ ]:
-
+# In[12]:
 
 rows = []
 
@@ -108,8 +96,7 @@ perm_df = pd.DataFrame(rows, columns=['disease_associates', 'gene_associates', '
 perm_df.head(10)
 
 
-# In[ ]:
-
+# In[13]:
 
 # Add unpermuted treatment prevalence columns
 rows = list()
@@ -123,27 +110,23 @@ degree_prior_df = perm_df.merge(degree_prior_df)
 degree_prior_df = degree_prior_df.sort_values(['disease_associates', 'gene_associates'], ascending=False)
 
 
-# In[ ]:
-
+# In[14]:
 
 degree_prior_df.head(5)
 
 
-# In[ ]:
-
+# In[15]:
 
 degree_prior_df.to_csv("degree-prior.csv", index=False, float_format='%.6g')
 
 
-# In[ ]:
-
+# In[16]:
 
 obs_pair_df = pair_df.merge(perm_df)
 obs_pair_df.head(10)
 
 
-# In[ ]:
-
+# In[17]:
 
 obs_pair_df.to_csv("observation-prior.csv", index=False, float_format='%.6g')
 
