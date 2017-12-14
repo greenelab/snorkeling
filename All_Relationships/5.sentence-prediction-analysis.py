@@ -210,8 +210,11 @@ def insert(x, g_start, g_end, d_start, d_end, proba, d_cid, g_cid):
 
 html_string = ""
 counter = 0
-condition = (model_predictions == 1)&(model_marginals["True_Labels"] == -1)
-sorted_marginals = model_marginals[condition].sort_values(marginal_criteria, ascending=False)
+sorted_marginals = (
+     model_marginals.query("@model_predictions ==1 & True_Labels == -1")
+                    .sort_values(marginal_criteria, ascending=False)
+)
+
 for cand_index, marginal in tqdm.tqdm(sorted_marginals[marginal_criteria].iteritems()):
     cand = test_set.iloc[cand_index]
     counter += 1
