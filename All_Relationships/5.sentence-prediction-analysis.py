@@ -11,7 +11,6 @@
 
 # In[1]:
 
-
 get_ipython().magic(u'load_ext autoreload')
 get_ipython().magic(u'autoreload 2')
 get_ipython().magic(u'matplotlib inline')
@@ -31,7 +30,6 @@ import tqdm
 
 # In[2]:
 
-
 #Set up the environment
 username = "danich1"
 password = "snorkel"
@@ -47,7 +45,6 @@ session = SnorkelSession()
 
 # In[3]:
 
-
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator, load_marginals
 from snorkel.learning import SparseLogisticRegression
 from snorkel.learning.disc_models.rnn import reRNN
@@ -62,12 +59,10 @@ from treedlib import compile_relation_feature_generator
 
 # In[4]:
 
-
 edge_type = "dg"
 
 
 # In[5]:
-
 
 if edge_type == "dg":
     DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
@@ -87,35 +82,46 @@ else:
 
 # In[6]:
 
-
 labeler = LabelAnnotator(lfs=[])
 
 
 # In[7]:
-
 
 get_ipython().run_cell_magic(u'time', u'', u'L_test = labeler.load_matrix(session,split=2)')
 
 
 # In[8]:
 
-
 L_test.shape
 
 
 # In[9]:
 
+marginal_files = [
+    "stratified_data/lstm_disease_gene_holdout/LR_data/LR_test_marginals.csv",
+    "stratified_data/lstm_disease_gene_holdout/lstm_one_percent.csv",
+    "stratified_data/lstm_disease_gene_holdout/lstm_ten_percent.csv",
+    "stratified_data/lstm_disease_gene_holdout/full_data/lstm_test_full_marginals.csv",
+]
 
-model_marginals = pd.read_csv("stratified_data/lstm_disease_gene_holdout/lstm_one_percent.csv")
-model_marginals["True_Labels"] = L_test.todense()
-model_marginals["RNN_1_Predictions"] = model_marginals["RNN_marginals"].apply(lambda x: 1 if x > 0.5 else -1)
-model_marginals = model_marginals.rename(index=str, columns={"RNN_marginals":"RNN_1_Marginals"})
-model_marginals["RNN_10_Marginals"] = pd.read_csv("stratified_data/lstm_disease_gene_holdout/lstm_ten_percent.csv").values
-model_marginals["RNN_10_Predictions"] = model_marginals["RNN_10_Marginals"].apply(lambda x: 1 if x > 0.5 else -1)
+file_labels = [
+    "LR_Marginals",
+    "RNN_1_Marginals",
+    "RNN_10_Marginals",
+    "RNN_100_Marginals"
+]
 
 
 # In[10]:
 
+model_marginals = pd.DataFrame(L_test.todense(), columns=["True_Labels"])
+for marginal_label, marginal_file in zip(file_labels, marginal_files):
+    model_marginals[marginal_label] = pd.read_csv(marginal_file)
+
+model_marginals.head(20)
+
+
+# In[11]:
 
 test_set = pd.read_csv("stratified_data/lstm_disease_gene_holdout/test_candidates_sentences.csv")
 
@@ -124,18 +130,18 @@ test_set = pd.read_csv("stratified_data/lstm_disease_gene_holdout/test_candidate
 
 # From the probabilities calculated above, we can create a [Receiver Operator Curve](http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html) (ROC) graph to measure the false positive rate and the true positive rate at each calculated threshold.
 
-# In[11]:
+# In[12]:
 
+marginal_labels = [col for col in model_marginals.columns if col != "True_Labels"]
+model_labels = ["LR", "RNN_1%", "RNN_10%", "RNN_100%"]
+model_colors = ["red", "cyan", "green", "magenta"]
 
-models = ["RNN_1_Marginals", "RNN_10_Marginals"]
-model_colors = ["green", "magenta"]
-model_labels = ["RNN_1%", "RNN_10%"]
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
 
-for model_label, marginal_label, color in zip(model_labels, models, model_colors):
+for marginal_label, model_label, model_color in zip(marginal_labels, model_labels, model_colors):
     fpr, tpr, _= roc_curve(model_marginals["True_Labels"], model_marginals[marginal_label])
     model_auc = auc(fpr, tpr)
-    plt.plot(fpr, tpr, color=color, label="{} (area = {:0.2f})".format(model_label, model_auc))
+    plt.plot(fpr, tpr, color=model_color, label="{} (area = {:0.2f})".format(model_label, model_auc))
 
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
@@ -147,18 +153,17 @@ plt.legend(loc="lower right")
 
 # This code produces a [Precision-Recall](http://scikit-learn.org/stable/auto_examples/model_selection/plot_precision_recall.html) graph, which shows the trade off between [precision and recall](https://en.wikipedia.org/wiki/Precision_and_recall) at each given probability threshold.
 
-# In[12]:
+# In[13]:
+
+marginal_labels = [col for col in model_marginals.columns if col != "True_Labels"]
+model_labels = ["LR", "RNN_1%", "RNN_10%", "RNN_100%"]
+model_colors = ["red", "cyan", "green", "magenta"]
 
 
-models = ["RNN_1_Marginals", "RNN_10_Marginals"]
-model_colors = ["green", "magenta"]
-model_labels = ["RNN_1%", "RNN_10%"]
-
-
-for model_label, marginal_label, color in zip(model_labels, models, model_colors):
+for marginal_label, model_label, model_color in zip(marginal_labels, model_labels, model_colors):
     precision, recall, _ = precision_recall_curve(model_marginals["True_Labels"], model_marginals[marginal_label])
     model_precision = average_precision_score(model_marginals["True_Labels"], model_marginals[marginal_label])
-    plt.plot(recall, precision, color=color, label="{} curve (area = {:0.2f})".format(model_label, model_precision))
+    plt.plot(recall, precision, color=model_color, label="{} curve (area = {:0.2f})".format(model_label, model_precision))
 
 plt.ylabel('Precision')
 plt.xlabel('Recall')
@@ -168,30 +173,22 @@ plt.ylim([0, 1.05])
 plt.legend(loc="lower right")
 
 
-# In[13]:
-
-
-for model in ["RNN_1_Predictions", "RNN_10_Predictions"]:
-    matrix = confusion_matrix(model_marginals["True_Labels"], model_marginals[model])
-    chart1, ax1 = plt.subplots()
-    plt.title(model)
-    ax = sns.heatmap(matrix, annot=True, fmt="d", cmap="BuGn", xticklabels=["No","Yes"], yticklabels=["No", "Yes"], ax=ax1)
-    ax.set_xlabel("Predicted Labels")
-    ax.set_ylabel("True Labels")
-
-
 # ## LSTM Model Analysis
 
 # In[14]:
 
-
-condition = (model_marginals["RNN_10_Predictions"] == 1)&(model_marginals["True_Labels"] == -1)
-indicies = set(model_marginals[condition].sort_values("RNN_10_Marginals", ascending=False).index)
-model_marginals[condition].sort_values("RNN_10_Marginals", ascending=False).head(10)
+marginal_criteria = "RNN_100_Marginals"
+model_predictions = model_marginals[marginal_criteria].apply(lambda x: 1 if x > 0.5 else -1)
+model_predictions.head(10)
 
 
 # In[15]:
 
+condition = (model_predictions == 1)&(model_marginals["True_Labels"] == -1)
+model_marginals[condition].sort_values(marginal_criteria, ascending=False).head(10)
+
+
+# In[16]:
 
 def insert(x, g_start, g_end, d_start, d_end, proba, d_cid, g_cid):
     if d_start == x[0] or g_start == x[0]:
@@ -209,18 +206,20 @@ def insert(x, g_start, g_end, d_start, d_end, proba, d_cid, g_cid):
 
 # ## Look at the Sentences and the LSTM's predictions
 
-# In[16]:
-
+# In[17]:
 
 html_string = ""
 counter = 0
-condition = (model_marginals["RNN_10_Predictions"] == 1)&(model_marginals["True_Labels"] == -1)
-for marginal in tqdm.tqdm(model_marginals[condition].itertuples()):
-    cand = test_set.iloc[int(marginal[0])]
-    
+sorted_marginals = (
+     model_marginals.query("@model_predictions ==1 & True_Labels == -1")
+                    .sort_values(marginal_criteria, ascending=False)
+)
+
+for cand_index, marginal in tqdm.tqdm(sorted_marginals[marginal_criteria].iteritems()):
+    cand = test_set.iloc[cand_index]
     counter += 1
     
-    if counter == 200:
+    if counter == 10:
         break
         
     if counter > 0:
@@ -228,17 +227,15 @@ for marginal in tqdm.tqdm(model_marginals[condition].itertuples()):
         gene_end = cand["gene_char_end"]
         disease_start = cand["disease_char_start"]
         disease_end = cand["disease_char_end"]
-        proba = marginal[4]
         letters = []
 
         for x in enumerate(cand["sentence"]):
-            letters.append(insert(x, gene_start, gene_end, disease_start, disease_end, proba, cand["disease_id"], cand["gene_id"]))
+            letters.append(insert(x, gene_start, gene_end, disease_start, disease_end, marginal, cand["disease_id"], cand["gene_id"]))
 
-        html_string += "<div title=\"{}\">{}</div><br />".format(proba, ''.join(letters))
+        html_string += "<div title=\"{}\">{}</div><br />".format(marginal, ''.join(letters))
 
 
-# In[17]:
-
+# In[18]:
 
 with open("html/candidate_viewer.html", 'r') as f:
     display(HTML(f.read().format(html_string)))
@@ -246,8 +243,7 @@ with open("html/candidate_viewer.html", 'r') as f:
 
 # # Write Results to CSV
 
-# In[ ]:
+# In[19]:
 
-
-model_marginals.to_csv("stratified_data/lstm_disease_gene_holdout/test_marginals.csv", index=False)
+model_marginals.to_csv("stratified_data/lstm_disease_gene_holdout/total_test_marginals.csv", index=False)
 

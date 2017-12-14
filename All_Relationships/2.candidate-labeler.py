@@ -9,14 +9,14 @@
 
 # Load all the imports and set up the database for database operations. Plus, set up the particular candidate type this notebook is going to work with. 
 
-# In[1]:
-
+# In[ ]:
 
 get_ipython().magic(u'load_ext autoreload')
 get_ipython().magic(u'autoreload 2')
 get_ipython().magic(u'matplotlib inline')
 
 from collections import defaultdict
+import csv
 import os
 import re
 
@@ -27,8 +27,7 @@ import pandas as pd
 import tqdm
 
 
-# In[2]:
-
+# In[ ]:
 
 #Set up the environment
 username = "danich1"
@@ -43,8 +42,7 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[3]:
-
+# In[ ]:
 
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator
 from snorkel.features import get_span_feats
@@ -53,15 +51,13 @@ from snorkel.models import Candidate
 from snorkel.viewer import SentenceNgramViewer
 
 
-# In[4]:
-
+# In[ ]:
 
 edge_type = "dg"
 debug = False
 
 
-# In[5]:
-
+# In[ ]:
 
 if edge_type == "dg":
     DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
@@ -85,20 +81,17 @@ else:
 
 # In[ ]:
 
-
 TRAIN = 0
 DEV = 1
 
 
 # In[ ]:
 
-
 candidates = session.query(DiseaseGene).filter(DiseaseGene.split==TRAIN).limit(100)
 sv = SentenceNgramViewer(candidates, session)
 
 
 # In[ ]:
-
 
 sv
 
@@ -107,8 +100,7 @@ sv
 
 # Here is one of the fundamental part of this project. Below are the label functions that are used to give a candidate a label of 1,0 or -1 which corresponds to correct label, unknown label and incorrection label. The goal here is to develop functions that can label accurately label as many candidates as possible. This idea comes from the [data programming paradigm](https://papers.nips.cc/paper/6523-data-programming-creating-large-training-sets-quickly), where the goal is to be able to create labels that machine learning algorithms can use for accurate classification.  
 
-# In[21]:
-
+# In[ ]:
 
 if edge_type == "dg":
     from utils.disease_gene_lf import get_lfs
@@ -122,15 +114,13 @@ else:
     print("Please pick a valid edge type")
 
 
-# In[22]:
-
+# In[ ]:
 
 candidates = session.query(DiseaseGene).filter(DiseaseGene.split==0).limit(1).all()
 LF_DEBUG(candidates[0])
 
 
-# In[7]:
-
+# In[ ]:
 
 LFs = get_lfs()
 
@@ -140,7 +130,6 @@ LFs = get_lfs()
 # Label each candidate based on the provided labels above. This code runs with realtive ease, but optimization is definitely needed when the number of label functions increases linearly.
 
 # In[ ]:
-
 
 labeler = LabelAnnotator(lfs=LFs)
 
@@ -160,7 +149,6 @@ get_ipython().magic(u'time L_test = labeler.apply_existing(split=2, cids_query=c
 
 # In[ ]:
 
-
 get_ipython().run_cell_magic(u'time', u'', u'featurizer = FeatureAnnotator()\nfeaturizer.apply(split=0, clear=False)\n\nF_dev = featurizer.apply_existing(split=1, parallelism=5, clear=False)\nF_test = featurizer.apply_existing(split=2, parallelism=5, clear=False)')
 
 
@@ -170,51 +158,7 @@ get_ipython().run_cell_magic(u'time', u'', u'featurizer = FeatureAnnotator()\nfe
 
 # In[ ]:
 
-
-group = 0
-chunksize = 1e5
-pointer = 0
-seen = set()
-feature_key_hash = defaultdict(int)
-
-with open('feature_key.sql', 'wb') as f:
-    with open('feature.sql', 'wb') as g:
-        # Write the headers
-        f.write("COPY feature_key(\"group\", name, id) from stdin with CSV DELIMITER '	' QUOTE '\"';\n")
-        g.write("COPY feature(value, candidate_id, key_id) from stdin with CSV DELIMITER '	' QUOTE '\"';\n")
-        
-        # Set up the writers
-        feature_key_writer = csv.writer(f, delimiter='\t',  quoting=csv.QUOTE_NONNUMERIC)
-        feature_writer = csv.writer(g, delimiter='\t', quoting=csv.QUOTE_NONNUMERIC)
-        
-        # For each split get and generate features
-        for split in [0,1,2]:    
-            candidate_query = session.query(Candidate).filter(Candidate.split==split).limit(chunksize)
-            
-            while True:
-                candidates = candidate_query.offset(pointer).all()
-                
-                if not candidates:
-                    break
-
-                for c in tqdm.tqdm(candidates):
-                    for name, value in get_span_feats(c):
-                        
-                        # If the training set, set the feature hash
-                        if split == 0:
-                            if name not in feature_key_hash:
-                                feature_key_hash[name] = feat_counter
-                                feat_counter = feat_counter + 1
-                                feature_key_writer.writerow([group, name, feature_key_hash[name]])
-                        
-                        if name in feature_key_hash:
-                            # prevent duplicates from being written to the file
-                            if (c.id, name) not in seen:
-                                feature_writer.writerow([value, c.id, feature_key_hash[name]])
-                                seen.add((c.id, name))
-
-                    #To prevent memory overload
-                    seen = set()
+get_ipython().run_cell_magic(u'time', u'', u'\ngroup = 0\nchunksize = 1e5\nseen = set()\nfeature_key_hash = defaultdict(int)\nfeat_counter = 0\n\nwith open(\'feature_key.sql\', \'wb\') as f:\n    with open(\'feature.sql\', \'wb\') as g:\n        # Write the headers\n        f.write("COPY feature_key(\\"group\\", name, id) from stdin with CSV DELIMITER \'\t\' QUOTE \'\\"\';\\n")\n        g.write("COPY feature(value, candidate_id, key_id) from stdin with CSV DELIMITER \'\t\' QUOTE \'\\"\';\\n")\n        \n        # Set up the writers\n        feature_key_writer = csv.writer(f, delimiter=\'\\t\',  quoting=csv.QUOTE_NONNUMERIC)\n        feature_writer = csv.writer(g, delimiter=\'\\t\', quoting=csv.QUOTE_NONNUMERIC)\n        \n        # For each split get and generate features\n        for split in [0,1,2]:\n    \n            #reset pointer to cycle through database again\n            pointer = 0\n            \n            print(split)\n            candidate_query = session.query(Candidate).filter(Candidate.split==split).limit(chunksize)\n            \n            while True:\n                candidates = candidate_query.offset(pointer).all()\n                \n                if not candidates:\n                    break\n\n                for c in tqdm.tqdm(candidates):\n                    try:\n                        for name, value in get_span_feats(c):\n\n                            # If the training set, set the feature hash\n                            if split == 0:\n                                if name not in feature_key_hash:\n                                    feature_key_hash[name] = feat_counter\n                                    feat_counter = feat_counter + 1\n                                    feature_key_writer.writerow([group, name, feature_key_hash[name]])\n\n                            if name in feature_key_hash:\n                                # prevent duplicates from being written to the file\n                                if (c.id, name) not in seen:\n                                    feature_writer.writerow([value, c.id, feature_key_hash[name]])\n                                    seen.add((c.id, name))\n\n                        #To prevent memory overload\n                        seen = set()\n                    \n                    except Exception as e:\n                        print(e.message)\n                        print(c)\n                        print(c.get_parent().text)\n\n                # update pointer for database\n                pointer = pointer + chunksize')
 
 
 # # Generate Coverage Stats
@@ -223,12 +167,10 @@ with open('feature_key.sql', 'wb') as f:
 
 # In[ ]:
 
-
 print L_train.lf_stats(session, )
 
 
 # In[ ]:
-
 
 print L_dev.lf_stats(session, )
 
