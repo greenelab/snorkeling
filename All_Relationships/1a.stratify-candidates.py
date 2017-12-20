@@ -5,7 +5,7 @@
 
 # From the [previous notebook](1.data-loader.ipynb) we aim to stratify the candidates into the appropiate categories (training, development, test). Since the hard work (data insertion) was already done, this part is easy as it breaks down into relabeling the split column inside the Candidate table. The split column will be used throughout the rest of this pipeline.
 
-# In[1]:
+# In[2]:
 
 
 get_ipython().magic(u'load_ext autoreload')
@@ -22,7 +22,7 @@ import pandas as pd
 import tqdm
 
 
-# In[2]:
+# In[3]:
 
 
 #Set up the environment
@@ -38,13 +38,13 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[3]:
+# In[4]:
 
 
 from snorkel.models import  candidate_subclass
 
 
-# In[4]:
+# In[5]:
 
 
 #This specifies the type of candidates to extract
@@ -118,13 +118,13 @@ dg_map_df.to_csv("dg_map.csv", index=False)
 
 # This code below changes the split column of the candidate table as mentioned above. Using sqlalchemy and the chunking strategy, every candidate that has the particular disease entity id (DOID:3393) will be given the category of 2. 2 Representes the testing set which will be used in the rest of the notebooks.
 
-# In[5]:
+# In[6]:
 
 
 dg_map_df = pd.read_csv("dg_map.csv")
 
 
-# In[6]:
+# In[7]:
 
 
 print dg_map_df[(dg_map_df["hetnet"] == 1)].shape
@@ -136,7 +136,7 @@ print dg_map_df[(dg_map_df["hetnet"] == -1)&(dg_map_df["pubmed"]== 1)].shape
 print dg_map_df[(dg_map_df["hetnet"] == -1)&(dg_map_df["pubmed"]== -1)].shape
 
 
-# In[7]:
+# In[20]:
 
 
 test_size = 0.1
@@ -149,11 +149,12 @@ sizes.append(dg_map_df[(dg_map_df["hetnet"] == 1)&(dg_map_df["pubmed"]== 1)].sha
 sizes.append(dg_map_df[(dg_map_df["hetnet"] == 1)&(dg_map_df["pubmed"]== -1)].shape[0])
 sizes.append(dg_map_df[(dg_map_df["hetnet"] == -1)&(dg_map_df["pubmed"]== 1)].shape[0])
 sizes.append(dg_map_df[(dg_map_df["hetnet"] == -1)&(dg_map_df["pubmed"]== -1)].shape[0])
+
 dummy_dg_map = dg_map_df
 
 for data_size, file_name in zip([test_size, dev_size], ["stratified_data/test_set.csv", "stratified_data/dev_set.csv"]):
     adjusted_size = np.round(np.array(sizes) * data_size).astype(int)
-    
+
     hetnet_pubmed = dummy_dg_map[(dummy_dg_map["hetnet"] == 1)&(dummy_dg_map["pubmed"]== 1)].sample(adjusted_size[0], random_state=random_seed)
     hetnet_no_pubmed = dummy_dg_map[(dummy_dg_map["hetnet"] == 1)&(dummy_dg_map["pubmed"]== -1)].sample(adjusted_size[1], random_state=random_seed)
     no_hetnet_pubmed = dummy_dg_map[(dummy_dg_map["hetnet"] == -1)&(dummy_dg_map["pubmed"]== 1)].sample(adjusted_size[2], random_state=random_seed)
@@ -164,7 +165,7 @@ for data_size, file_name in zip([test_size, dev_size], ["stratified_data/test_se
     dummy_dg_map = dummy_dg_map.drop(final_dataset.index)
 
 final_dataset = dummy_dg_map[(dummy_dg_map["hetnet"] == 1)&(dummy_dg_map["pubmed"]== 1)]
-final_datset = final_dataset.append(dummy_dg_map[(dummy_dg_map["hetnet"] == -1)&(dummy_dg_map["pubmed"]== 1)])
+final_dataset = final_dataset.append(dummy_dg_map[(dummy_dg_map["hetnet"] == -1)&(dummy_dg_map["pubmed"]== 1)])
 final_dataset = final_dataset.append(dummy_dg_map[(dummy_dg_map["hetnet"] == 1)&(dummy_dg_map["pubmed"]== -1)])
 final_dataset = final_dataset.append(dummy_dg_map[(dummy_dg_map["hetnet"] == -1)&(dummy_dg_map["pubmed"]== -1)].sample(10000, random_state=random_seed))
 final_dataset.to_csv("stratified_data/training_set.csv", index=False)
