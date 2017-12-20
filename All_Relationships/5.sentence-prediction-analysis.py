@@ -11,6 +11,7 @@
 
 # In[1]:
 
+
 get_ipython().magic(u'load_ext autoreload')
 get_ipython().magic(u'autoreload 2')
 get_ipython().magic(u'matplotlib inline')
@@ -30,6 +31,7 @@ import tqdm
 
 # In[2]:
 
+
 #Set up the environment
 username = "danich1"
 password = "snorkel"
@@ -45,6 +47,7 @@ session = SnorkelSession()
 
 # In[3]:
 
+
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator, load_marginals
 from snorkel.learning import SparseLogisticRegression
 from snorkel.learning.disc_models.rnn import reRNN
@@ -59,10 +62,12 @@ from treedlib import compile_relation_feature_generator
 
 # In[4]:
 
+
 edge_type = "dg"
 
 
 # In[5]:
+
 
 if edge_type == "dg":
     DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
@@ -82,25 +87,29 @@ else:
 
 # In[6]:
 
+
 labeler = LabelAnnotator(lfs=[])
 
 
 # In[7]:
+
 
 get_ipython().run_cell_magic(u'time', u'', u'L_test = labeler.load_matrix(session,split=2)')
 
 
 # In[8]:
 
+
 L_test.shape
 
 
 # In[9]:
 
+
 marginal_files = [
     "stratified_data/lstm_disease_gene_holdout/LR_data/LR_test_marginals.csv",
-    "stratified_data/lstm_disease_gene_holdout/lstm_one_percent.csv",
-    "stratified_data/lstm_disease_gene_holdout/lstm_ten_percent.csv",
+    "stratified_data/lstm_disease_gene_holdout/lstm_one_test_marginals.csv",
+    "stratified_data/lstm_disease_gene_holdout/lstm_ten_test_marginals.csv",
     "stratified_data/lstm_disease_gene_holdout/full_data/lstm_test_full_marginals.csv",
 ]
 
@@ -111,8 +120,23 @@ file_labels = [
     "RNN_100_Marginals"
 ]
 
+model_labels = [
+    "LR", 
+    "RNN_1%", 
+    "RNN_10%", 
+    "RNN_100%"
+]
+
+model_colors = [
+    "red", 
+    "cyan", 
+    "green", 
+    "magenta"
+]
+
 
 # In[10]:
+
 
 model_marginals = pd.DataFrame(L_test.todense(), columns=["True_Labels"])
 for marginal_label, marginal_file in zip(file_labels, marginal_files):
@@ -123,6 +147,7 @@ model_marginals.head(20)
 
 # In[11]:
 
+
 test_set = pd.read_csv("stratified_data/lstm_disease_gene_holdout/test_candidates_sentences.csv")
 
 
@@ -132,9 +157,8 @@ test_set = pd.read_csv("stratified_data/lstm_disease_gene_holdout/test_candidate
 
 # In[12]:
 
+
 marginal_labels = [col for col in model_marginals.columns if col != "True_Labels"]
-model_labels = ["LR", "RNN_1%", "RNN_10%", "RNN_100%"]
-model_colors = ["red", "cyan", "green", "magenta"]
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
 
@@ -155,10 +179,8 @@ plt.legend(loc="lower right")
 
 # In[13]:
 
-marginal_labels = [col for col in model_marginals.columns if col != "True_Labels"]
-model_labels = ["LR", "RNN_1%", "RNN_10%", "RNN_100%"]
-model_colors = ["red", "cyan", "green", "magenta"]
 
+marginal_labels = [col for col in model_marginals.columns if col != "True_Labels"]
 
 for marginal_label, model_label, model_color in zip(marginal_labels, model_labels, model_colors):
     precision, recall, _ = precision_recall_curve(model_marginals["True_Labels"], model_marginals[marginal_label])
@@ -177,6 +199,7 @@ plt.legend(loc="lower right")
 
 # In[14]:
 
+
 marginal_criteria = "RNN_100_Marginals"
 model_predictions = model_marginals[marginal_criteria].apply(lambda x: 1 if x > 0.5 else -1)
 model_predictions.head(10)
@@ -184,11 +207,13 @@ model_predictions.head(10)
 
 # In[15]:
 
+
 condition = (model_predictions == 1)&(model_marginals["True_Labels"] == -1)
 model_marginals[condition].sort_values(marginal_criteria, ascending=False).head(10)
 
 
 # In[16]:
+
 
 def insert(x, g_start, g_end, d_start, d_end, proba, d_cid, g_cid):
     if d_start == x[0] or g_start == x[0]:
@@ -207,6 +232,7 @@ def insert(x, g_start, g_end, d_start, d_end, proba, d_cid, g_cid):
 # ## Look at the Sentences and the LSTM's predictions
 
 # In[17]:
+
 
 html_string = ""
 counter = 0
@@ -237,6 +263,7 @@ for cand_index, marginal in tqdm.tqdm(sorted_marginals[marginal_criteria].iterit
 
 # In[18]:
 
+
 with open("html/candidate_viewer.html", 'r') as f:
     display(HTML(f.read().format(html_string)))
 
@@ -244,6 +271,7 @@ with open("html/candidate_viewer.html", 'r') as f:
 # # Write Results to CSV
 
 # In[19]:
+
 
 model_marginals.to_csv("stratified_data/lstm_disease_gene_holdout/total_test_marginals.csv", index=False)
 
