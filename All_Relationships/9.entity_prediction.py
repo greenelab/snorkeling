@@ -8,9 +8,9 @@
 # In[1]:
 
 
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 from collections import defaultdict
 import csv
@@ -108,58 +108,68 @@ n_iter = 100
 final_models = []
 
 lr = LogisticRegression()
-elastic_net = SGDClassifier(penalty='elasticnet', loss='log', random_state=100)
-
-lr_grid = {'C':np.linspace(1, 1000, num=100)}
-elastic_net_grid = {'alpha':np.linspace(1e-9,1, num=100), 'l1_ratio':np.linspace(0,1,num=10)}
+lr_grid = {'C':np.linspace(1, 100, num=100)}
 
 
 # In[9]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'\n# Train on data without LSTM input\nlstm_features = [\n    "avg_marginal", "quantile_zero", \n    "quantile_twenty","quantile_forty",\n    "quantile_sixty", "quantile_eighty", \n    "lower_ci"\n]\n\n\ntempX = X[[col for col in X.columns if col not in lstm_features]]\ntempX = tempX.append(X_dev[[col for col in X_dev.columns if col not in lstm_features]])\n\nfor models, grids in zip([lr, elastic_net], [lr_grid, elastic_net_grid]):\n    final_model = GridSearchCV(models, grids, cv=10, n_jobs=3)\n    final_model.fit(tempX, Y.append(Y_dev))\n    final_models.append(final_model)')
+get_ipython().run_cell_magic('time', '', '\n# Train on data without LSTM input\nlstm_features = [\n    "avg_marginal", "quantile_zero", \n    "quantile_twenty","quantile_forty",\n    "quantile_sixty", "quantile_eighty", \n    "lower_ci"\n]\n\n\ntempX = X[[col for col in X.columns if col not in lstm_features]]\ntempX = tempX.append(X_dev[[col for col in X_dev.columns if col not in lstm_features]])\n\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring=\'roc_auc\')\nfinal_model.fit(tempX, Y.append(Y_dev))\nfinal_models.append(final_model)')
 
 
 # In[10]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'\n# Train on data with LSTM input\nfor models, grids in zip([lr, elastic_net], [lr_grid, elastic_net_grid]):\n    final_model = GridSearchCV(models, grids, cv=10, n_jobs=3)\n    final_model.fit(X.append(X_dev), Y.append(Y_dev))\n    final_models.append(final_model)')
+get_ipython().run_cell_magic('time', '', '\n# Train on data with LSTM input\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3)\nfinal_model.fit(X.append(X_dev), Y.append(Y_dev))\nfinal_models.append(final_model)')
 
+
+# ## Parameter Optimization
 
 # In[11]:
 
 
-zip(final_models[0].best_estimator_.coef_[0], [col for col in training_set.columns if col not in lstm_features+non_features])
+no_lstm_result = pd.DataFrame(final_models[0].cv_results_)
+lstm_result = pd.DataFrame(final_models[1].cv_results_)
 
 
 # In[12]:
 
 
-zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.columns if col not in lstm_features+non_features])
+# No LSTM
+plt.plot(no_lstm_result['param_C'], no_lstm_result['mean_test_score'])
 
 
 # In[13]:
 
 
-zip(final_models[2].best_estimator_.coef_[0], [col for col in training_set.columns if col not in non_features])
+# LSTM
+plt.plot(lstm_result['param_C'], lstm_result['mean_test_score'])
 
+
+# ## LR Weights
 
 # In[14]:
 
 
-zip(final_models[3].best_estimator_.coef_[0], [col for col in training_set.columns if col not in non_features])
+zip(final_models[0].best_estimator_.coef_[0], [col for col in training_set.columns if col not in lstm_features+non_features])
 
-
-# # ML Performance
 
 # In[15]:
 
 
-colors = ["green","black","red", "blue"]
-labels = ["LR_NO_LSTM", "Elastic_Net_NO_LSTM", "LR_LSTM", "Elastic_Net_LSTM"]
+zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.columns if col not in non_features])
 
+
+# # ML Performance
 
 # In[16]:
+
+
+colors = ["green","red"]
+labels = ["LR_NO_LSTM","LR_LSTM"]
+
+
+# In[17]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -169,15 +179,13 @@ fpr, tpr, thresholds= roc_curve(Y_test, X_test["prior_perm"])
 model_auc = auc(fpr, tpr)
 plt.plot(fpr, tpr, color='cyan', label="{} (area = {:0.2f})".format("prior", model_auc))
 
-for models, color, label in zip(final_models[0:2], colors[0:2], labels[0:2]):
-    fpr, tpr, thresholds= roc_curve(Y_test, models.predict_proba(X_test[[col for col in X.columns if col not in lstm_features]])[:,1])
-    model_auc = auc(fpr, tpr)
-    plt.plot(fpr, tpr, color=color, label="{} (area = {:0.2f})".format(label, model_auc))
+fpr, tpr, thresholds= roc_curve(Y_test, final_models[0].predict_proba(X_test[[col for col in X.columns if col not in lstm_features]])[:,1])
+model_auc = auc(fpr, tpr)
+plt.plot(fpr, tpr, color=colors[0], label="{} (area = {:0.2f})".format(labels[0], model_auc))
 
-for models, color, label in zip(final_models[2:4], colors[2:4], labels[2:4]):
-    fpr, tpr, thresholds= roc_curve(Y_test, models.predict_proba(X_test)[:,1])
-    model_auc = auc(fpr, tpr)
-    plt.plot(fpr, tpr, color=color, label="{} (area = {:0.2f})".format(label, model_auc))
+fpr, tpr, thresholds= roc_curve(Y_test, final_models[1].predict_proba(X_test)[:,1])
+model_auc = auc(fpr, tpr)
+plt.plot(fpr, tpr, color=colors[1], label="{} (area = {:0.2f})".format(labels[1], model_auc))
 
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
@@ -185,7 +193,7 @@ plt.title('ROC')
 plt.legend(loc="lower right")
 
 
-# In[17]:
+# In[18]:
 
 
 plt.figure()
@@ -195,15 +203,13 @@ precision, recall, _= precision_recall_curve(Y_test, X_test["prior_perm"])
 model_precision = average_precision_score(Y_test, X_test["prior_perm"])
 plt.plot(recall, precision, color='cyan', label="{} (area = {:0.2f})".format("prior", model_precision))
 
-for models, color, label in zip(final_models[0:2], colors[0:2], labels[0:2]):
-    precision, recall, _ = precision_recall_curve(Y_test, models.predict_proba(X_test[[col for col in X.columns if col not in lstm_features]])[:,1])
-    model_precision = average_precision_score(Y_test, models.predict_proba(X_test[[col for col in X.columns if col not in lstm_features]])[:,1])
-    plt.plot(recall, precision, color=color, label="{} curve (area = {:0.2f})".format(label, model_precision))
-
-for models, color, label in zip(final_models[2:4], colors[2:4], labels[2:4]):    
-    precision, recall, _ = precision_recall_curve(Y_test, models.predict_proba(X_test)[:,1])
-    model_precision = average_precision_score(Y_test, models.predict_proba(X_test)[:,1])
-    plt.plot(recall, precision, color=color, label="{} curve (area = {:0.2f})".format(label, model_precision))
+precision, recall, _ = precision_recall_curve(Y_test, final_models[0].predict_proba(X_test[[col for col in X.columns if col not in lstm_features]])[:,1])
+model_precision = average_precision_score(Y_test, final_models[0].predict_proba(X_test[[col for col in X.columns if col not in lstm_features]])[:,1])
+plt.plot(recall, precision, color=colors[0], label="{} curve (area = {:0.2f})".format(labels[0], model_precision))
+  
+precision, recall, _ = precision_recall_curve(Y_test, final_models[1].predict_proba(X_test)[:,1])
+model_precision = average_precision_score(Y_test, final_models[1].predict_proba(X_test)[:,1])
+plt.plot(recall, precision, color=colors[1], label="{} curve (area = {:0.2f})".format(labels[1], model_precision))
 
 plt.ylabel('Precision')
 plt.xlabel('Recall')
@@ -215,15 +221,15 @@ plt.legend(loc="upper right")
 
 # ## Save Final Result in DF
 
-# In[18]:
+# In[19]:
 
 
-predictions = final_models[2].predict_proba(X_test[[col for col in training_set.columns if col not in ["hetnet","final_model_pred", "disease_id", "gene_id", "gene_name", "disease_name", "pubmed"]]])
+predictions = final_models[1].predict_proba(X_test[[col for col in training_set.columns if col not in ["hetnet","final_model_pred", "disease_id", "gene_id", "gene_name", "disease_name", "pubmed"]]])
 predictions_df = pd.DataFrame([], columns=["predictions"])
 predictions_df["predictions"] = predictions[:,1]
 
 
-# In[19]:
+# In[20]:
 
 
 predictions_df.to_csv("final_model_predictions.csv", index=False)
