@@ -18,7 +18,7 @@ dependencies:
 - numpy=1.13.0
 - pandas=0.22.0
 - psycopg2=2.7.3.2
-- python=3.6.2
+- python=3.6.4
 - py4j=0.10.6
 - requests=2.18.4
 - seaborn=0.8.1
@@ -28,10 +28,10 @@ dependencies:
 - six=1.11.0
 - sqlalchemy=1.1.13
 - sqlite=3.20.1
-- spacy=2.0.4
 - tensorflow==1.4.0
 - tqdm=4.19.5
 - tika=1.15
 - pip:
-    - git+https://github.com/HazyResearch/numbskull@ac52265038bac8edca3f8e930eff34ebaef4c7a0
+    - git+https://github.com/HazyResearch/numbskull@52192383b30f2835f5b1e17c6365e2f8c93d97da
     - hetio==0.2.6
+    - spacy==1.10.0
