@@ -1,4 +1,4 @@
-name: snorkeling3
+name: snorkeling
 dependencies:
 - beautifulsoup4=4.6.0
 - ipywidgets=6.0.0
