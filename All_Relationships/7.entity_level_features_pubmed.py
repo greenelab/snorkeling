@@ -185,12 +185,6 @@ test_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/test_
 # In[ ]:
 
 
-len(test_marginals_df["RNN_marginals"].values)
-
-
-# In[ ]:
-
-
 train_sentences_df["marginals"] = train_marginals_df["RNN_marginals"].values
 dev_sentences_df["marginals"] = dev_marginals_df["RNN_marginals"].values
 test_sentences_df["marginals"] = test_marginals_df["RNN_marginals"].values
@@ -200,22 +194,17 @@ test_sentences_df["marginals"] = test_marginals_df["RNN_marginals"].values
 
 
 candidate_marginals = (
-    train_sentences_df[["disease_id", "gene_id", "gene_name", "disease_name", "marginals"]]
-    .append(dev_sentences_df[["disease_id", "gene_id", "gene_name", "disease_name", "marginals"]])
-    .append(test_sentences_df[["disease_id", "gene_id", "gene_name", "disease_name", "marginals"]])
+    train_sentences_df[["disease_id", "gene_id", "marginals"]]
+    .append(dev_sentences_df[["disease_id", "gene_id", "marginals"]])
+    .append(test_sentences_df[["disease_id", "gene_id", "marginals"]])
     )
 
 
 # In[ ]:
 
 
-candidate_marginals.shape
-
-
-# In[ ]:
-
-
-candidate_df.shape
+dg_map = pd.read_csv("dg_map.csv").rename(
+    columns={"disease_ontology":"disease_id"},index=str)
 
 
 # In[ ]:
@@ -243,8 +232,8 @@ candidate_df = pd.concat(
     ], axis=1
 )
 candidate_df = pd.merge(candidate_df, 
-                        candidate_marginals[["disease_id", "disease_name", "gene_id", "gene_name"]],
-                        on=["disease_id", "gene_id"]
+                        dg_map[["disease_id", "disease_name", "gene_id", "gene_name"]],
+                        on=["disease_id", "gene_id"], how="inner"
                        ).drop_duplicates(["disease_id", "gene_id"])
 candidate_df["lstm_avg_marginal"] = avg_marginals
 
@@ -254,5 +243,5 @@ candidate_df["lstm_avg_marginal"] = avg_marginals
 # In[ ]:
 
 
-candidate_df.to_csv("disease_gene_summary_stats.csv", index=False)
+candidate_df.to_csv("data/disease_gene_summary_stats.csv", index=False)
 

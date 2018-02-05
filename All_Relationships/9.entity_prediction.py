@@ -32,8 +32,8 @@ import seaborn as sns
 # In[2]:
 
 
-candidate_df = pd.read_csv("disease_gene_summary_stats.csv")
-prior_df = pd.read_csv("observation-prior.csv")
+candidate_df = pd.read_csv("data/disease_gene_summary_stats.csv")
+prior_df = pd.read_csv("data/observation-prior.csv")
 
 
 # In[3]:
@@ -62,12 +62,12 @@ test_df = pd.read_csv("stratified_data/test_set.csv")
 
 
 # Gather the summary stats for each candidate
-training_set = pd.merge(candidate_df, train_df[["disease_id", "gene_id", "hetnet"]], 
-                        how='right', on=["disease_id", "gene_id"])
-dev_set = pd.merge(candidate_df, dev_df[["disease_id", "gene_id", "hetnet"]],
-                   how='right', on=["disease_id", "gene_id"])
-test_set = pd.merge(candidate_df, test_df[["disease_id", "gene_id", "hetnet"]], 
-                    how='right', on=["disease_id", "gene_id"])
+training_set = pd.merge(candidate_df, train_df.query("pubmed==1")[["disease_id", "gene_id", "hetnet"]], 
+                        how='inner', on=["disease_id", "gene_id"])
+dev_set = pd.merge(candidate_df, dev_df.query("pubmed==1")[["disease_id", "gene_id", "hetnet"]],
+                   how='inner', on=["disease_id", "gene_id"])
+test_set = pd.merge(candidate_df, test_df.query("pubmed==1")[["disease_id", "gene_id", "hetnet"]], 
+                    how='inner', on=["disease_id", "gene_id"])
 
 
 # Drop the values that aren't found in pubmed. 
@@ -114,13 +114,13 @@ lr = LogisticRegression()
 lr_grid = {'C':np.linspace(1, 100, num=100)}
 
 
-# In[ ]:
+# In[9]:
 
 
 get_ipython().run_cell_magic('time', '', '\n# Train on data without LSTM input\nlstm_features = [\n    "avg_marginal", "lstm_marginal_0_quantile", \n    "lstm_marginal_20_quantile","lstm_marginal_40_quantile",\n    "lstm_marginal_60_quantile", "lstm_marginal_80_quantile", \n]\n\n\ntempX = X[[col for col in X.columns if col not in lstm_features]]\ntempX = tempX.append(X_dev[[col for col in X_dev.columns if col not in lstm_features]])\n\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring=\'roc_auc\')\nfinal_model.fit(tempX, Y.append(Y_dev))\nfinal_models.append(final_model)')
 
 
-# In[ ]:
+# In[10]:
 
 
 get_ipython().run_cell_magic('time', '', '\n# Train on data with LSTM input\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3)\nfinal_model.fit(X.append(X_dev), Y.append(Y_dev))\nfinal_models.append(final_model)')
@@ -128,21 +128,21 @@ get_ipython().run_cell_magic('time', '', '\n# Train on data with LSTM input\nfin
 
 # ## Parameter Optimization
 
-# In[ ]:
+# In[11]:
 
 
 no_lstm_result = pd.DataFrame(final_models[0].cv_results_)
 lstm_result = pd.DataFrame(final_models[1].cv_results_)
 
 
-# In[ ]:
+# In[12]:
 
 
 # No LSTM
 plt.plot(no_lstm_result['param_C'], no_lstm_result['mean_test_score'])
 
 
-# In[ ]:
+# In[13]:
 
 
 # LSTM
@@ -151,13 +151,13 @@ plt.plot(lstm_result['param_C'], lstm_result['mean_test_score'])
 
 # ## LR Weights
 
-# In[ ]:
+# In[14]:
 
 
 list(zip(final_models[0].best_estimator_.coef_[0], [col for col in training_set.columns if col not in lstm_features+non_features]))
 
 
-# In[ ]:
+# In[15]:
 
 
 list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.columns if col not in non_features]))
@@ -165,7 +165,7 @@ list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.
 
 # # AUROCS
 
-# In[ ]:
+# In[16]:
 
 
 feature_rocs = []
@@ -180,14 +180,14 @@ sns.barplot(x="AUROC", y="Feature", data=feature_roc_df)
 
 # # ML Performance
 
-# In[ ]:
+# In[17]:
 
 
 colors = ["green","red"]
 labels = ["LR_NO_LSTM","LR_LSTM"]
 
 
-# In[ ]:
+# In[18]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -211,7 +211,7 @@ plt.title('ROC')
 plt.legend(loc="lower right")
 
 
-# In[ ]:
+# In[19]:
 
 
 plt.figure()
@@ -239,16 +239,18 @@ plt.legend(loc="upper right")
 
 # ## Save Final Result in DF
 
-# In[ ]:
+# In[20]:
 
 
-predictions = final_models[1].predict_proba(X_test[[col for col in training_set.columns if col not in ["hetnet","final_model_pred", "disease_id", "gene_id", "gene_name", "disease_name", "pubmed"]]])
-predictions_df = pd.DataFrame([], columns=["predictions"])
+predictions = final_models[1].predict_proba(X.append(X_dev).append(X_test))
+predictions_df = training_set.append(dev_set).append(test_set)[[
+    "disease_id","disease_name", 
+    "gene_id", "gene_name", 'hetnet']]
 predictions_df["predictions"] = predictions[:,1]
 
 
-# In[ ]:
+# In[21]:
 
 
-predictions_df.to_csv("final_model_predictions.csv", index=False)
+predictions_df.to_csv("data/vanilla_lstm/final_model_predictions.csv", index=False)
 
