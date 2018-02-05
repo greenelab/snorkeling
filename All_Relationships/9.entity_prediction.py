@@ -53,7 +53,7 @@ prior_df.head(10)
 # In[5]:
 
 
-train_df = pd.read_csv("stratified_data/training_set.csv")
+train_df = pd.read_csv("stratified_data/train_set.csv")
 dev_df = pd.read_csv("stratified_data/dev_set.csv")
 test_df = pd.read_csv("stratified_data/test_set.csv")
 
@@ -62,9 +62,12 @@ test_df = pd.read_csv("stratified_data/test_set.csv")
 
 
 # Gather the summary stats for each candidate
-training_set = pd.merge(candidate_df, train_df, how='right', on=["disease_id", "gene_id"])
-dev_set = pd.merge(candidate_df, dev_df, how='right', on=["disease_id", "gene_id"])
-test_set = pd.merge(candidate_df, test_df, how='right', on=["disease_id", "gene_id"])
+training_set = pd.merge(candidate_df, train_df[["disease_id", "gene_id", "hetnet"]], 
+                        how='right', on=["disease_id", "gene_id"])
+dev_set = pd.merge(candidate_df, dev_df[["disease_id", "gene_id", "hetnet"]],
+                   how='right', on=["disease_id", "gene_id"])
+test_set = pd.merge(candidate_df, test_df[["disease_id", "gene_id", "hetnet"]], 
+                    how='right', on=["disease_id", "gene_id"])
 
 
 # Drop the values that aren't found in pubmed. 
@@ -85,7 +88,7 @@ test_set = pd.merge(test_set, prior_df[["disease_id", "gene_id", "prior_perm"]])
 # In[7]:
 
 
-non_features = ["hetnet","final_model_pred", "disease_id", "gene_id", "gene_name", "disease_name", "pubmed"]
+non_features = ["hetnet", "disease_id", "gene_id", "gene_name", "disease_name", "pubmed"]
 
 X = training_set[[col for col in training_set.columns if col not in non_features]]
 Y = training_set["hetnet"]
@@ -111,13 +114,13 @@ lr = LogisticRegression()
 lr_grid = {'C':np.linspace(1, 100, num=100)}
 
 
-# In[9]:
+# In[ ]:
 
 
-get_ipython().run_cell_magic('time', '', '\n# Train on data without LSTM input\nlstm_features = [\n    "avg_marginal", "quantile_zero", \n    "quantile_twenty","quantile_forty",\n    "quantile_sixty", "quantile_eighty", \n    "lower_ci"\n]\n\n\ntempX = X[[col for col in X.columns if col not in lstm_features]]\ntempX = tempX.append(X_dev[[col for col in X_dev.columns if col not in lstm_features]])\n\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring=\'roc_auc\')\nfinal_model.fit(tempX, Y.append(Y_dev))\nfinal_models.append(final_model)')
+get_ipython().run_cell_magic('time', '', '\n# Train on data without LSTM input\nlstm_features = [\n    "avg_marginal", "lstm_marginal_0_quantile", \n    "lstm_marginal_20_quantile","lstm_marginal_40_quantile",\n    "lstm_marginal_60_quantile", "lstm_marginal_80_quantile", \n]\n\n\ntempX = X[[col for col in X.columns if col not in lstm_features]]\ntempX = tempX.append(X_dev[[col for col in X_dev.columns if col not in lstm_features]])\n\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring=\'roc_auc\')\nfinal_model.fit(tempX, Y.append(Y_dev))\nfinal_models.append(final_model)')
 
 
-# In[10]:
+# In[ ]:
 
 
 get_ipython().run_cell_magic('time', '', '\n# Train on data with LSTM input\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3)\nfinal_model.fit(X.append(X_dev), Y.append(Y_dev))\nfinal_models.append(final_model)')
@@ -125,21 +128,21 @@ get_ipython().run_cell_magic('time', '', '\n# Train on data with LSTM input\nfin
 
 # ## Parameter Optimization
 
-# In[11]:
+# In[ ]:
 
 
 no_lstm_result = pd.DataFrame(final_models[0].cv_results_)
 lstm_result = pd.DataFrame(final_models[1].cv_results_)
 
 
-# In[12]:
+# In[ ]:
 
 
 # No LSTM
 plt.plot(no_lstm_result['param_C'], no_lstm_result['mean_test_score'])
 
 
-# In[13]:
+# In[ ]:
 
 
 # LSTM
@@ -148,28 +151,43 @@ plt.plot(lstm_result['param_C'], lstm_result['mean_test_score'])
 
 # ## LR Weights
 
-# In[14]:
+# In[ ]:
 
 
-zip(final_models[0].best_estimator_.coef_[0], [col for col in training_set.columns if col not in lstm_features+non_features])
+list(zip(final_models[0].best_estimator_.coef_[0], [col for col in training_set.columns if col not in lstm_features+non_features]))
 
 
-# In[15]:
+# In[ ]:
 
 
-zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.columns if col not in non_features])
+list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.columns if col not in non_features]))
+
+
+# # AUROCS
+
+# In[ ]:
+
+
+feature_rocs = []
+for feature in X.columns:
+    fpr, tpr, _ = roc_curve(Y, X[feature])
+    feature_auc = auc(fpr, tpr)
+    feature_rocs.append((feature, feature_auc))
+
+feature_roc_df = pd.DataFrame(feature_rocs, columns=["Feature", "AUROC"])
+sns.barplot(x="AUROC", y="Feature", data=feature_roc_df)
 
 
 # # ML Performance
 
-# In[16]:
+# In[ ]:
 
 
 colors = ["green","red"]
 labels = ["LR_NO_LSTM","LR_LSTM"]
 
 
-# In[17]:
+# In[ ]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -193,7 +211,7 @@ plt.title('ROC')
 plt.legend(loc="lower right")
 
 
-# In[18]:
+# In[ ]:
 
 
 plt.figure()
@@ -221,7 +239,7 @@ plt.legend(loc="upper right")
 
 # ## Save Final Result in DF
 
-# In[19]:
+# In[ ]:
 
 
 predictions = final_models[1].predict_proba(X_test[[col for col in training_set.columns if col not in ["hetnet","final_model_pred", "disease_id", "gene_id", "gene_name", "disease_name", "pubmed"]]])
@@ -229,7 +247,7 @@ predictions_df = pd.DataFrame([], columns=["predictions"])
 predictions_df["predictions"] = predictions[:,1]
 
 
-# In[20]:
+# In[ ]:
 
 
 predictions_df.to_csv("final_model_predictions.csv", index=False)
