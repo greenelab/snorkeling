@@ -169,25 +169,37 @@ list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.
 
 
 feature_rocs = []
+train_Y = Y.append(Y_dev)
+train_X = X.append(X_dev)
 for feature in X.columns:
-    fpr, tpr, _ = roc_curve(Y, X[feature])
+    fpr, tpr, _ = roc_curve(train_Y, train_X[feature])
     feature_auc = auc(fpr, tpr)
     feature_rocs.append((feature, feature_auc))
 
 feature_roc_df = pd.DataFrame(feature_rocs, columns=["Feature", "AUROC"])
-sns.barplot(x="AUROC", y="Feature", data=feature_roc_df)
+ax = sns.barplot(x="AUROC", y="Feature", data=feature_roc_df)
+plt.xlim([0.5,1])
+
+
+# # Corerlation Matrix
+
+# In[17]:
+
+
+feature_corr_mat = train_X.corr()
+sns.heatmap(feature_corr_mat, cmap="viridis")
 
 
 # # ML Performance
 
-# In[17]:
+# In[18]:
 
 
 colors = ["green","red"]
 labels = ["LR_NO_LSTM","LR_LSTM"]
 
 
-# In[18]:
+# In[19]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -211,7 +223,7 @@ plt.title('ROC')
 plt.legend(loc="lower right")
 
 
-# In[19]:
+# In[20]:
 
 
 plt.figure()
@@ -239,7 +251,7 @@ plt.legend(loc="upper right")
 
 # ## Save Final Result in DF
 
-# In[20]:
+# In[21]:
 
 
 predictions = final_models[1].predict_proba(X.append(X_dev).append(X_test))
@@ -249,7 +261,7 @@ predictions_df = training_set.append(dev_set).append(test_set)[[
 predictions_df["predictions"] = predictions[:,1]
 
 
-# In[21]:
+# In[22]:
 
 
 predictions_df.to_csv("data/vanilla_lstm/final_model_predictions.csv", index=False)
