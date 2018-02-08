@@ -256,12 +256,12 @@ precision, recall, _= precision_recall_curve(Y_test, X_test["prior_perm"])
 model_precision = average_precision_score(Y_test, X_test["prior_perm"])
 plt.plot(recall, precision, color='cyan', label="{} (area = {:0.2f})".format("prior", model_precision))
 
-precision, recall, _ = precision_recall_curve(Y_test, final_models[0].predict_proba(X_test[[col for col in X.columns if col not in lstm_features]])[:,1])
-model_precision = average_precision_score(Y_test, final_models[0].predict_proba(X_test[[col for col in X.columns if col not in lstm_features]])[:,1])
+precision, recall, _ = precision_recall_curve(Y_test, final_models[0].predict_proba(transformed_tempX_test)[:,1])
+model_precision = average_precision_score(Y_test, final_models[0].predict_proba(transformed_tempX_test)[:,1])
 plt.plot(recall, precision, color=colors[0], label="{} curve (area = {:0.2f})".format(labels[0], model_precision))
   
-precision, recall, _ = precision_recall_curve(Y_test, final_models[1].predict_proba(X_test)[:,1])
-model_precision = average_precision_score(Y_test, final_models[1].predict_proba(X_test)[:,1])
+precision, recall, _ = precision_recall_curve(Y_test, final_models[1].predict_proba(transformed_X_test)[:,1])
+model_precision = average_precision_score(Y_test, final_models[1].predict_proba(transformed_X_test)[:,1])
 plt.plot(recall, precision, color=colors[1], label="{} curve (area = {:0.2f})".format(labels[1], model_precision))
 
 plt.ylabel('Precision')
