@@ -26,6 +26,7 @@ from sqlalchemy import and_
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.metrics import average_precision_score, precision_recall_curve, roc_curve, auc, f1_score, confusion_matrix
 from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import StandardScaler
 import seaborn as sns
 
 
@@ -88,7 +89,13 @@ test_set = pd.merge(test_set, prior_df[["disease_id", "gene_id", "prior_perm"]])
 # In[7]:
 
 
-non_features = ["hetnet", "disease_id", "gene_id", "gene_name", "disease_name", "pubmed"]
+non_features = [
+    "hetnet", "disease_id", "gene_id", 
+    "gene_name", "disease_name",
+    "pubmed", "lstm_marginal_0_quantile", 
+    "lstm_marginal_20_quantile","lstm_marginal_40_quantile",
+    "lstm_marginal_60_quantile", "lstm_marginal_80_quantile"
+]
 
 X = training_set[[col for col in training_set.columns if col not in non_features]]
 Y = training_set["hetnet"]
@@ -113,36 +120,45 @@ final_models = []
 lr = LogisticRegression()
 lr_grid = {'C':np.linspace(1, 100, num=100)}
 
+no_lstm_normalizer = StandardScaler()
+lstm_normalizer = StandardScaler()
+
 
 # In[9]:
 
 
-get_ipython().run_cell_magic('time', '', '\n# Train on data without LSTM input\nlstm_features = [\n    "avg_marginal", "lstm_marginal_0_quantile", \n    "lstm_marginal_20_quantile","lstm_marginal_40_quantile",\n    "lstm_marginal_60_quantile", "lstm_marginal_80_quantile", \n]\n\n\ntempX = X[[col for col in X.columns if col not in lstm_features]]\ntempX = tempX.append(X_dev[[col for col in X_dev.columns if col not in lstm_features]])\n\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring=\'roc_auc\')\nfinal_model.fit(tempX, Y.append(Y_dev))\nfinal_models.append(final_model)')
+get_ipython().run_cell_magic('time', '', '\n# Train on data without LSTM input\nlstm_features = [\n    "lstm_avg_marginal"\n]\n\ntempX = X[[col for col in X.columns if col not in lstm_features]]\ntempX = tempX.append(X_dev[[col for col in X_dev.columns if col not in lstm_features]])\n\ntransformed_tempX = no_lstm_normalizer.fit_transform(tempX)\ntransformed_X = lstm_normalizer.fit_transform(X.append(X_dev))')
 
 
 # In[10]:
 
 
-get_ipython().run_cell_magic('time', '', '\n# Train on data with LSTM input\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3)\nfinal_model.fit(X.append(X_dev), Y.append(Y_dev))\nfinal_models.append(final_model)')
+get_ipython().run_cell_magic('time', '', "\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_tempX, Y.append(Y_dev))\nfinal_models.append(final_model)")
+
+
+# In[11]:
+
+
+get_ipython().run_cell_magic('time', '', "\n# Train on data with LSTM input\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_X, Y.append(Y_dev))\nfinal_models.append(final_model)")
 
 
 # ## Parameter Optimization
 
-# In[11]:
+# In[12]:
 
 
 no_lstm_result = pd.DataFrame(final_models[0].cv_results_)
 lstm_result = pd.DataFrame(final_models[1].cv_results_)
 
 
-# In[12]:
+# In[13]:
 
 
 # No LSTM
 plt.plot(no_lstm_result['param_C'], no_lstm_result['mean_test_score'])
 
 
-# In[13]:
+# In[14]:
 
 
 # LSTM
@@ -151,13 +167,13 @@ plt.plot(lstm_result['param_C'], lstm_result['mean_test_score'])
 
 # ## LR Weights
 
-# In[14]:
+# In[15]:
 
 
 list(zip(final_models[0].best_estimator_.coef_[0], [col for col in training_set.columns if col not in lstm_features+non_features]))
 
 
-# In[15]:
+# In[16]:
 
 
 list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.columns if col not in non_features]))
@@ -165,7 +181,7 @@ list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.
 
 # # AUROCS
 
-# In[16]:
+# In[17]:
 
 
 feature_rocs = []
@@ -183,23 +199,30 @@ plt.xlim([0.5,1])
 
 # # Corerlation Matrix
 
-# In[17]:
+# In[18]:
 
 
 feature_corr_mat = train_X.corr()
-sns.heatmap(feature_corr_mat, cmap="viridis")
+sns.heatmap(feature_corr_mat, cmap="RdBu")
 
 
 # # ML Performance
 
-# In[18]:
+# In[19]:
+
+
+transformed_tempX_test = no_lstm_normalizer.transform(X_test[[col for col in X.columns if col not in lstm_features]])
+transformed_X_test = lstm_normalizer.transform(X_test)
+
+
+# In[20]:
 
 
 colors = ["green","red"]
 labels = ["LR_NO_LSTM","LR_LSTM"]
 
 
-# In[19]:
+# In[21]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -209,11 +232,11 @@ fpr, tpr, thresholds= roc_curve(Y_test, X_test["prior_perm"])
 model_auc = auc(fpr, tpr)
 plt.plot(fpr, tpr, color='cyan', label="{} (area = {:0.2f})".format("prior", model_auc))
 
-fpr, tpr, thresholds= roc_curve(Y_test, final_models[0].predict_proba(X_test[[col for col in X.columns if col not in lstm_features]])[:,1])
+fpr, tpr, thresholds= roc_curve(Y_test, final_models[0].predict_proba(transformed_tempX_test)[:,1])
 model_auc = auc(fpr, tpr)
 plt.plot(fpr, tpr, color=colors[0], label="{} (area = {:0.2f})".format(labels[0], model_auc))
 
-fpr, tpr, thresholds= roc_curve(Y_test, final_models[1].predict_proba(X_test)[:,1])
+fpr, tpr, thresholds= roc_curve(Y_test, final_models[1].predict_proba(transformed_X_test)[:,1])
 model_auc = auc(fpr, tpr)
 plt.plot(fpr, tpr, color=colors[1], label="{} (area = {:0.2f})".format(labels[1], model_auc))
 
@@ -223,7 +246,7 @@ plt.title('ROC')
 plt.legend(loc="lower right")
 
 
-# In[20]:
+# In[22]:
 
 
 plt.figure()
@@ -251,7 +274,7 @@ plt.legend(loc="upper right")
 
 # ## Save Final Result in DF
 
-# In[21]:
+# In[ ]:
 
 
 predictions = final_models[1].predict_proba(X.append(X_dev).append(X_test))
@@ -261,7 +284,7 @@ predictions_df = training_set.append(dev_set).append(test_set)[[
 predictions_df["predictions"] = predictions[:,1]
 
 
-# In[22]:
+# In[ ]:
 
 
 predictions_df.to_csv("data/vanilla_lstm/final_model_predictions.csv", index=False)
