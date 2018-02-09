@@ -130,13 +130,13 @@ lstm_normalizer = StandardScaler()
 get_ipython().run_cell_magic('time', '', '\n# Train on data without LSTM input\nlstm_features = [\n    "lstm_avg_marginal"\n]\n\ntempX = X[[col for col in X.columns if col not in lstm_features]]\ntempX = tempX.append(X_dev[[col for col in X_dev.columns if col not in lstm_features]])\n\ntransformed_tempX = no_lstm_normalizer.fit_transform(tempX)\ntransformed_X = lstm_normalizer.fit_transform(X.append(X_dev))')
 
 
-# In[10]:
+# In[ ]:
 
 
 get_ipython().run_cell_magic('time', '', "\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_tempX, Y.append(Y_dev))\nfinal_models.append(final_model)")
 
 
-# In[11]:
+# In[ ]:
 
 
 get_ipython().run_cell_magic('time', '', "\n# Train on data with LSTM input\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_X, Y.append(Y_dev))\nfinal_models.append(final_model)")
@@ -144,21 +144,21 @@ get_ipython().run_cell_magic('time', '', "\n# Train on data with LSTM input\nfin
 
 # ## Parameter Optimization
 
-# In[12]:
+# In[ ]:
 
 
 no_lstm_result = pd.DataFrame(final_models[0].cv_results_)
 lstm_result = pd.DataFrame(final_models[1].cv_results_)
 
 
-# In[13]:
+# In[ ]:
 
 
 # No LSTM
 plt.plot(no_lstm_result['param_C'], no_lstm_result['mean_test_score'])
 
 
-# In[14]:
+# In[ ]:
 
 
 # LSTM
@@ -167,13 +167,13 @@ plt.plot(lstm_result['param_C'], lstm_result['mean_test_score'])
 
 # ## LR Weights
 
-# In[15]:
+# In[ ]:
 
 
 list(zip(final_models[0].best_estimator_.coef_[0], [col for col in training_set.columns if col not in lstm_features+non_features]))
 
 
-# In[16]:
+# In[ ]:
 
 
 list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.columns if col not in non_features]))
@@ -181,7 +181,7 @@ list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.
 
 # # AUROCS
 
-# In[17]:
+# In[ ]:
 
 
 feature_rocs = []
@@ -199,30 +199,30 @@ plt.xlim([0.5,1])
 
 # # Corerlation Matrix
 
-# In[18]:
+# In[ ]:
 
 
 feature_corr_mat = train_X.corr()
-sns.heatmap(feature_corr_mat, cmap="RdBu")
+sns.heatmap(feature_corr_mat, cmap="RdBu", center=0)
 
 
 # # ML Performance
 
-# In[19]:
+# In[ ]:
 
 
 transformed_tempX_test = no_lstm_normalizer.transform(X_test[[col for col in X.columns if col not in lstm_features]])
 transformed_X_test = lstm_normalizer.transform(X_test)
 
 
-# In[20]:
+# In[ ]:
 
 
 colors = ["green","red"]
 labels = ["LR_NO_LSTM","LR_LSTM"]
 
 
-# In[21]:
+# In[ ]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -246,7 +246,7 @@ plt.title('ROC')
 plt.legend(loc="lower right")
 
 
-# In[22]:
+# In[ ]:
 
 
 plt.figure()
