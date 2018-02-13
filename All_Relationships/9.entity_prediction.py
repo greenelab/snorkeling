@@ -5,7 +5,7 @@
 
 # This notebook is design to predict DG relationships on the entity level. Here we are taking the input from the Bi-LSTM model, prior probability notebook and the summary statistics notebook and combinging it into a single dataset. From there we train a Ridge LR model and an elastic net LR model to make the final prediction.
 
-# In[1]:
+# In[56]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -30,20 +30,20 @@ from sklearn.preprocessing import StandardScaler
 import seaborn as sns
 
 
-# In[2]:
+# In[57]:
 
 
 candidate_df = pd.read_csv("data/disease_gene_summary_stats.csv")
 prior_df = pd.read_csv("data/observation-prior.csv")
 
 
-# In[3]:
+# In[58]:
 
 
 candidate_df.head(10)
 
 
-# In[4]:
+# In[59]:
 
 
 prior_df.head(10)
@@ -51,7 +51,7 @@ prior_df.head(10)
 
 # # Set up the Training and Testing Set
 
-# In[5]:
+# In[60]:
 
 
 train_df = pd.read_csv("stratified_data/train_set.csv")
@@ -59,7 +59,7 @@ dev_df = pd.read_csv("stratified_data/dev_set.csv")
 test_df = pd.read_csv("stratified_data/test_set.csv")
 
 
-# In[6]:
+# In[61]:
 
 
 # Gather the summary stats for each candidate
@@ -86,7 +86,7 @@ dev_set = pd.merge(dev_set, prior_df[["disease_id", "gene_id", "prior_perm"]])
 test_set = pd.merge(test_set, prior_df[["disease_id", "gene_id", "prior_perm"]])
 
 
-# In[7]:
+# In[62]:
 
 
 non_features = [
@@ -107,11 +107,29 @@ X_test = test_set[[col for col in test_set.columns if col not in non_features]]
 Y_test = test_set["hetnet"]
 
 
+# In[63]:
+
+
+print(Y.value_counts())
+print()
+print(Y_dev.value_counts())
+print()
+print(Y_test.value_counts())
+print()
+
+
+# In[64]:
+
+
+train_Y = Y.append(Y_dev)
+train_X = X.append(X_dev)
+
+
 # # Train the Machine Learning Algorithms
 
 # Here we use gridsearch to optimize both models using 10 fold cross validation. After exhausting the list of parameters, the best model is chosen and analyzed in the next chunk. 
 
-# In[8]:
+# In[65]:
 
 
 n_iter = 100
@@ -124,41 +142,41 @@ no_lstm_normalizer = StandardScaler()
 lstm_normalizer = StandardScaler()
 
 
-# In[9]:
+# In[66]:
 
 
-get_ipython().run_cell_magic('time', '', '\n# Train on data without LSTM input\nlstm_features = [\n    "lstm_avg_marginal"\n]\n\ntempX = X[[col for col in X.columns if col not in lstm_features]]\ntempX = tempX.append(X_dev[[col for col in X_dev.columns if col not in lstm_features]])\n\ntransformed_tempX = no_lstm_normalizer.fit_transform(tempX)\ntransformed_X = lstm_normalizer.fit_transform(X.append(X_dev))')
+get_ipython().run_cell_magic('time', '', '\n# Train on data without LSTM input\nlstm_features = [\n    "lstm_avg_marginal"\n]\n\ntempX = train_X[[col for col in X.columns if col not in lstm_features]]\n\ntransformed_tempX = no_lstm_normalizer.fit_transform(tempX)\ntransformed_X = lstm_normalizer.fit_transform(train_X)')
 
 
-# In[ ]:
+# In[67]:
 
 
-get_ipython().run_cell_magic('time', '', "\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_tempX, Y.append(Y_dev))\nfinal_models.append(final_model)")
+get_ipython().run_cell_magic('time', '', "\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_tempX, train_Y)\nfinal_models.append(final_model)")
 
 
-# In[ ]:
+# In[68]:
 
 
-get_ipython().run_cell_magic('time', '', "\n# Train on data with LSTM input\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_X, Y.append(Y_dev))\nfinal_models.append(final_model)")
+get_ipython().run_cell_magic('time', '', "\n# Train on data with LSTM input\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_X, train_Y)\nfinal_models.append(final_model)")
 
 
 # ## Parameter Optimization
 
-# In[ ]:
+# In[69]:
 
 
 no_lstm_result = pd.DataFrame(final_models[0].cv_results_)
 lstm_result = pd.DataFrame(final_models[1].cv_results_)
 
 
-# In[ ]:
+# In[70]:
 
 
 # No LSTM
 plt.plot(no_lstm_result['param_C'], no_lstm_result['mean_test_score'])
 
 
-# In[ ]:
+# In[71]:
 
 
 # LSTM
@@ -167,13 +185,13 @@ plt.plot(lstm_result['param_C'], lstm_result['mean_test_score'])
 
 # ## LR Weights
 
-# In[ ]:
+# In[72]:
 
 
 list(zip(final_models[0].best_estimator_.coef_[0], [col for col in training_set.columns if col not in lstm_features+non_features]))
 
 
-# In[ ]:
+# In[73]:
 
 
 list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.columns if col not in non_features]))
@@ -181,12 +199,10 @@ list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.
 
 # # AUROCS
 
-# In[ ]:
+# In[74]:
 
 
 feature_rocs = []
-train_Y = Y.append(Y_dev)
-train_X = X.append(X_dev)
 for feature in X.columns:
     fpr, tpr, _ = roc_curve(train_Y, train_X[feature])
     feature_auc = auc(fpr, tpr)
@@ -194,12 +210,62 @@ for feature in X.columns:
 
 feature_roc_df = pd.DataFrame(feature_rocs, columns=["Feature", "AUROC"])
 ax = sns.barplot(x="AUROC", y="Feature", data=feature_roc_df)
+plt.title("Training AUROC")
 plt.xlim([0.5,1])
+
+
+# In[75]:
+
+
+feature_rocs = []
+for feature in X.columns:
+    fpr, tpr, _ = roc_curve(Y_test, X_test[feature])
+    feature_auc = auc(fpr, tpr)
+    feature_rocs.append((feature, feature_auc))
+
+feature_roc_df = pd.DataFrame(feature_rocs, columns=["Feature", "AUROC"])
+ax = sns.barplot(x="AUROC", y="Feature", data=feature_roc_df)
+plt.title("Testing AUROC")
+plt.xlim([0.5,1])
+
+
+# In[76]:
+
+
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
+
+for feature in train_X.columns:
+    # Plot the p_values log transformed
+    fpr, tpr, thresholds= roc_curve(train_Y, train_X[feature])
+    model_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label="{} (area = {:0.2f})".format(feature, model_auc))
+
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Train ROC')
+plt.legend(loc="lower right")
+
+
+# In[77]:
+
+
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
+
+for feature in X.columns:
+    # Plot the p_values log transformed
+    fpr, tpr, thresholds= roc_curve(Y_test, X_test[feature])
+    model_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label="{} (area = {:0.2f})".format(feature, model_auc))
+
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Test ROC')
+plt.legend(loc="lower right")
 
 
 # # Corerlation Matrix
 
-# In[ ]:
+# In[78]:
 
 
 feature_corr_mat = train_X.corr()
@@ -208,21 +274,45 @@ sns.heatmap(feature_corr_mat, cmap="RdBu", center=0)
 
 # # ML Performance
 
-# In[ ]:
+# In[79]:
 
 
 transformed_tempX_test = no_lstm_normalizer.transform(X_test[[col for col in X.columns if col not in lstm_features]])
 transformed_X_test = lstm_normalizer.transform(X_test)
 
 
-# In[ ]:
+# In[80]:
 
 
 colors = ["green","red"]
 labels = ["LR_NO_LSTM","LR_LSTM"]
 
 
-# In[ ]:
+# In[81]:
+
+
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
+
+# Plot the p_values log transformed
+fpr, tpr, thresholds= roc_curve(train_Y, train_X["prior_perm"])
+model_auc = auc(fpr, tpr)
+plt.plot(fpr, tpr, color='cyan', label="{} (area = {:0.2f})".format("prior", model_auc))
+
+fpr, tpr, thresholds= roc_curve(train_Y, final_models[0].predict_proba(transformed_tempX)[:,1])
+model_auc = auc(fpr, tpr)
+plt.plot(fpr, tpr, color=colors[0], label="{} (area = {:0.2f})".format(labels[0], model_auc))
+
+fpr, tpr, thresholds= roc_curve(train_Y, final_models[1].predict_proba(transformed_X)[:,1])
+model_auc = auc(fpr, tpr)
+plt.plot(fpr, tpr, color=colors[1], label="{} (area = {:0.2f})".format(labels[1], model_auc))
+
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Train ROC')
+plt.legend(loc="lower right")
+
+
+# In[82]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -242,11 +332,11 @@ plt.plot(fpr, tpr, color=colors[1], label="{} (area = {:0.2f})".format(labels[1]
 
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
-plt.title('ROC')
+plt.title('Test ROC')
 plt.legend(loc="lower right")
 
 
-# In[ ]:
+# In[83]:
 
 
 plt.figure()
@@ -266,7 +356,7 @@ plt.plot(recall, precision, color=colors[1], label="{} curve (area = {:0.2f})".f
 
 plt.ylabel('Precision')
 plt.xlabel('Recall')
-plt.title('Precision-Recall Curve')
+plt.title('Test Precision-Recall Curve')
 plt.xlim([0, 1.01])
 plt.ylim([0, 1.05])
 plt.legend(loc="upper right")
@@ -274,17 +364,17 @@ plt.legend(loc="upper right")
 
 # ## Save Final Result in DF
 
-# In[ ]:
+# In[84]:
 
 
-predictions = final_models[1].predict_proba(X.append(X_dev).append(X_test))
+predictions = final_models[1].predict_proba(train_X.append(X_test))
 predictions_df = training_set.append(dev_set).append(test_set)[[
     "disease_id","disease_name", 
     "gene_id", "gene_name", 'hetnet']]
 predictions_df["predictions"] = predictions[:,1]
 
 
-# In[ ]:
+# In[85]:
 
 
 predictions_df.to_csv("data/vanilla_lstm/final_model_predictions.csv", index=False)
