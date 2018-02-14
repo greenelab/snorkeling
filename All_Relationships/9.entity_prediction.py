@@ -5,7 +5,7 @@
 
 # This notebook is design to predict DG relationships on the entity level. Here we are taking the input from the Bi-LSTM model, prior probability notebook and the summary statistics notebook and combinging it into a single dataset. From there we train a Ridge LR model and an elastic net LR model to make the final prediction.
 
-# In[1]:
+# In[7]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import tqdm
 from scipy.stats import fisher_exact
+from scipy.special import logit
 import scipy
 from sqlalchemy import and_
 from sklearn.linear_model import LogisticRegression, SGDClassifier
@@ -30,29 +31,29 @@ from sklearn.preprocessing import StandardScaler
 import seaborn as sns
 
 
-# In[2]:
+# In[8]:
 
 
 candidate_df = pd.read_csv("data/disease_gene_summary_stats.csv")
 prior_df = pd.read_csv("data/observation-prior.csv")
 
 
-# In[3]:
+# In[9]:
 
 
 candidate_df.head(10)
 
 
-# In[4]:
+# In[10]:
 
 
-prior_df["log_prior_perm"] = pd.np.log(prior_df["prior_perm"])
+prior_df["logit_prior_perm"] = logit(prior_df["prior_perm"])
 prior_df.head(10)
 
 
 # # Set up the Training and Testing Set
 
-# In[5]:
+# In[11]:
 
 
 train_df = pd.read_csv("stratified_data/train_set.csv")
@@ -60,7 +61,7 @@ dev_df = pd.read_csv("stratified_data/dev_set.csv")
 test_df = pd.read_csv("stratified_data/test_set.csv")
 
 
-# In[6]:
+# In[12]:
 
 
 # Gather the summary stats for each candidate
@@ -82,12 +83,12 @@ dev_set = dev_set.dropna()
 test_set = test_set.dropna()
 
 # Add the prior prob to the different sets 
-training_set = pd.merge(training_set, prior_df[["disease_id", "gene_id", "log_prior_perm"]])
-dev_set = pd.merge(dev_set, prior_df[["disease_id", "gene_id", "log_prior_perm"]])
-test_set = pd.merge(test_set, prior_df[["disease_id", "gene_id", "log_prior_perm"]])
+training_set = pd.merge(training_set, prior_df[["disease_id", "gene_id", "logit_prior_perm"]])
+dev_set = pd.merge(dev_set, prior_df[["disease_id", "gene_id", "logit_prior_perm"]])
+test_set = pd.merge(test_set, prior_df[["disease_id", "gene_id", "logit_prior_perm"]])
 
 
-# In[7]:
+# In[13]:
 
 
 non_features = [
@@ -108,7 +109,7 @@ X_test = test_set[[col for col in test_set.columns if col not in non_features]]
 Y_test = test_set["hetnet"]
 
 
-# In[8]:
+# In[14]:
 
 
 print(Y.value_counts())
@@ -119,7 +120,7 @@ print(Y_test.value_counts())
 print()
 
 
-# In[9]:
+# In[15]:
 
 
 train_Y = Y.append(Y_dev)
@@ -130,7 +131,7 @@ train_X = X.append(X_dev)
 
 # Here we use gridsearch to optimize both models using 10 fold cross validation. After exhausting the list of parameters, the best model is chosen and analyzed in the next chunk. 
 
-# In[10]:
+# In[16]:
 
 
 n_iter = 100
@@ -143,19 +144,19 @@ no_lstm_normalizer = StandardScaler()
 lstm_normalizer = StandardScaler()
 
 
-# In[11]:
+# In[17]:
 
 
 get_ipython().run_cell_magic('time', '', '\n# Train on data without LSTM input\nlstm_features = [\n    "lstm_avg_marginal"\n]\n\ntempX = train_X[[col for col in X.columns if col not in lstm_features]]\n\ntransformed_tempX = no_lstm_normalizer.fit_transform(tempX)\ntransformed_X = lstm_normalizer.fit_transform(train_X)')
 
 
-# In[12]:
+# In[18]:
 
 
 get_ipython().run_cell_magic('time', '', "\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_tempX, train_Y)\nfinal_models.append(final_model)")
 
 
-# In[13]:
+# In[19]:
 
 
 get_ipython().run_cell_magic('time', '', "\n# Train on data with LSTM input\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_X, train_Y)\nfinal_models.append(final_model)")
@@ -163,21 +164,21 @@ get_ipython().run_cell_magic('time', '', "\n# Train on data with LSTM input\nfin
 
 # ## Parameter Optimization
 
-# In[14]:
+# In[20]:
 
 
 no_lstm_result = pd.DataFrame(final_models[0].cv_results_)
 lstm_result = pd.DataFrame(final_models[1].cv_results_)
 
 
-# In[15]:
+# In[21]:
 
 
 # No LSTM
 plt.plot(no_lstm_result['param_C'], no_lstm_result['mean_test_score'])
 
 
-# In[16]:
+# In[22]:
 
 
 # LSTM
@@ -186,13 +187,13 @@ plt.plot(lstm_result['param_C'], lstm_result['mean_test_score'])
 
 # ## LR Weights
 
-# In[17]:
+# In[23]:
 
 
 list(zip(final_models[0].best_estimator_.coef_[0], [col for col in training_set.columns if col not in lstm_features+non_features]))
 
 
-# In[18]:
+# In[24]:
 
 
 list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.columns if col not in non_features]))
@@ -200,7 +201,7 @@ list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.
 
 # # AUROCS
 
-# In[19]:
+# In[25]:
 
 
 feature_rocs = []
@@ -215,7 +216,7 @@ plt.title("Training AUROC")
 plt.xlim([0.5,1])
 
 
-# In[20]:
+# In[26]:
 
 
 feature_rocs = []
@@ -230,7 +231,7 @@ plt.title("Testing AUROC")
 plt.xlim([0.5,1])
 
 
-# In[21]:
+# In[27]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -247,7 +248,7 @@ plt.title('Train ROC')
 plt.legend(loc="lower right")
 
 
-# In[22]:
+# In[28]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -266,7 +267,7 @@ plt.legend(loc="lower right")
 
 # # Corerlation Matrix
 
-# In[23]:
+# In[29]:
 
 
 feature_corr_mat = train_X.corr()
@@ -275,27 +276,27 @@ sns.heatmap(feature_corr_mat, cmap="RdBu", center=0)
 
 # # ML Performance
 
-# In[24]:
+# In[30]:
 
 
 transformed_tempX_test = no_lstm_normalizer.transform(X_test[[col for col in X.columns if col not in lstm_features]])
 transformed_X_test = lstm_normalizer.transform(X_test)
 
 
-# In[25]:
+# In[31]:
 
 
 colors = ["green","red"]
 labels = ["LR_NO_LSTM","LR_LSTM"]
 
 
-# In[26]:
+# In[32]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
 
 # Plot the p_values log transformed
-fpr, tpr, thresholds= roc_curve(train_Y, train_X["log_prior_perm"])
+fpr, tpr, thresholds= roc_curve(train_Y, train_X["logit_prior_perm"])
 model_auc = auc(fpr, tpr)
 plt.plot(fpr, tpr, color='cyan', label="{} (area = {:0.2f})".format("prior", model_auc))
 
@@ -313,13 +314,13 @@ plt.title('Train ROC')
 plt.legend(loc="lower right")
 
 
-# In[27]:
+# In[33]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
 
 # Plot the p_values log transformed
-fpr, tpr, thresholds= roc_curve(Y_test, X_test["log_prior_perm"])
+fpr, tpr, thresholds= roc_curve(Y_test, X_test["logit_prior_perm"])
 model_auc = auc(fpr, tpr)
 plt.plot(fpr, tpr, color='cyan', label="{} (area = {:0.2f})".format("prior", model_auc))
 
@@ -337,14 +338,14 @@ plt.title('Test ROC')
 plt.legend(loc="lower right")
 
 
-# In[28]:
+# In[34]:
 
 
 plt.figure()
 
 # Plot the p_values log transformed
-precision, recall, _= precision_recall_curve(Y_test, X_test["log_prior_perm"])
-model_precision = average_precision_score(Y_test, X_test["log_prior_perm"])
+precision, recall, _= precision_recall_curve(Y_test, X_test["logit_prior_perm"])
+model_precision = average_precision_score(Y_test, X_test["logit_prior_perm"])
 plt.plot(recall, precision, color='cyan', label="{} (area = {:0.2f})".format("prior", model_precision))
 
 precision, recall, _ = precision_recall_curve(Y_test, final_models[0].predict_proba(transformed_tempX_test)[:,1])
