@@ -12,9 +12,9 @@
 # In[1]:
 
 
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 import csv
 import os
@@ -94,7 +94,7 @@ labeler = LabelAnnotator(lfs=[])
 # In[7]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'L_test = labeler.load_matrix(session,split=2)')
+get_ipython().run_cell_magic('time', '', 'L_test = labeler.load_matrix(session,split=2)')
 
 
 # In[8]:

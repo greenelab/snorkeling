@@ -5,7 +5,7 @@
 
 # After predicting the co-occurence of candidates on the sentence level, the next step is to predict whether a candidate is a true relationship or just occured by chance. Through out this notebook the main events involved here are calculating summary statistics and obtaining the LSTM marginal probabilities.
 
-# In[ ]:
+# In[1]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -29,7 +29,7 @@ from sklearn.model_selection import RandomizedSearchCV
 import seaborn as sns
 
 
-# In[ ]:
+# In[2]:
 
 
 #Set up the environment
@@ -45,14 +45,14 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[ ]:
+# In[3]:
 
 
 from snorkel.models import Candidate, candidate_subclass
 from snorkel.learning.disc_models.rnn import reRNN
 
 
-# In[ ]:
+# In[4]:
 
 
 DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
@@ -166,23 +166,31 @@ candidate_df.sort_values("nlog10_p_value", ascending=False).head(1000)
 
 # In this section we incorporate the marginal probabilites that are calculated from the bi-directional LSTM used in the [previous notebook](4.sentence-level-prediction.ipynb). For each sentence we grouped them by their disease-gene mention and report their marginal probabilites in different quantiles (0, 0.2, 0.4, 0.6, 0.8). Lastly we took the average of each sentence marginal to generate the "avg_marginal" column.
 
-# In[ ]:
+# In[5]:
 
 
-train_marginals_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/full_data/lstm_train_full_marginals.csv")
-dev_marginals_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/full_data/lstm_dev_full_marginals.csv")
-test_marginals_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/full_data/lstm_test_full_marginals.csv")
+candidate_df = pd.read_csv("data/disease_gene_summary_stats.csv")
+candidate_df = candidate_df[[column for column in candidate_df.columns if "lstm" not in column]]
+candidate_df = candidate_df.drop(["disease_name", "gene_name"], axis=1)
 
 
-# In[ ]:
+# In[6]:
 
 
-train_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/train_candidates_sentences.csv")
-dev_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/dev_candidates_sentences.csv")
-test_sentences_df = pd.read_csv("stratified_data/lstm_disease_gene_holdout/test_candidates_sentences.csv")
+train_marginals_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/fully_trained/one_hundred_percent_22/lstm_train_marginals_trained.csv")
+dev_marginals_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/fully_trained/one_hundred_percent_22/lstm_dev_marginals_trained.csv")
+test_marginals_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/fully_trained/one_hundred_percent_22/lstm_test_marginals_trained.csv")
 
 
-# In[ ]:
+# In[7]:
+
+
+train_sentences_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/train_candidates_sentences.csv")
+dev_sentences_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/dev_candidates_sentences.csv")
+test_sentences_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/test_candidates_sentences.csv")
+
+
+# In[8]:
 
 
 train_sentences_df["marginals"] = train_marginals_df["RNN_marginals"].values
@@ -190,7 +198,7 @@ dev_sentences_df["marginals"] = dev_marginals_df["RNN_marginals"].values
 test_sentences_df["marginals"] = test_marginals_df["RNN_marginals"].values
 
 
-# In[ ]:
+# In[9]:
 
 
 candidate_marginals = (
@@ -200,14 +208,14 @@ candidate_marginals = (
     )
 
 
-# In[ ]:
+# In[10]:
 
 
 dg_map = pd.read_csv("dg_map.csv").rename(
     columns={"disease_ontology":"disease_id"},index=str)
 
 
-# In[ ]:
+# In[11]:
 
 
 quantile_list = [0,0.2,0.4,0.6,0.8]
@@ -240,8 +248,8 @@ candidate_df["lstm_avg_marginal"] = avg_marginals
 
 # ## Save the data to a file
 
-# In[ ]:
+# In[12]:
 
 
-candidate_df.to_csv("data/disease_gene_summary_stats.csv", index=False)
+candidate_df.to_csv("data/disease_gene_summary_stats_lstm_full_trained.csv", index=False)
 
