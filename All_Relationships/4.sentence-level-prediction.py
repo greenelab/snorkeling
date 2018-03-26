@@ -12,9 +12,9 @@
 # In[ ]:
 
 
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 import csv
 import os
@@ -46,7 +46,7 @@ session = SnorkelSession()
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator, load_marginals
 from snorkel.learning import SparseLogisticRegression
 from snorkel.learning.disc_models.rnn import reRNN
-from snorkel.learning.utils import RandomSearch, ListParameter, RangeParameter
+from snorkel.learning.utils import RandomSearch
 from snorkel.models import Candidate, FeatureKey, candidate_subclass
 
 
@@ -78,7 +78,7 @@ else:
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'labeler = LabelAnnotator(lfs=[])\n\nL_train = labeler.load_matrix(session, split=0)\nL_dev = labeler.load_matrix(session, split=1)\nL_test = labeler.load_matrix(session, split=2)')
+get_ipython().run_cell_magic('time', '', 'labeler = LabelAnnotator(lfs=[])\n\nL_train = labeler.load_matrix(session, split=0)\nL_dev = labeler.load_matrix(session, split=1)\nL_test = labeler.load_matrix(session, split=2)')
 
 
 # In[ ]:
@@ -94,7 +94,7 @@ print
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'featurizer = FeatureAnnotator()\n\nF_train = featurizer.load_matrix(session, split=0)\nF_dev = featurizer.load_matrix(session, split=1)\nF_test = featurizer.load_matrix(session, split=2)')
+get_ipython().run_cell_magic('time', '', 'featurizer = FeatureAnnotator()\n\nF_train = featurizer.load_matrix(session, split=0)\nF_dev = featurizer.load_matrix(session, split=1)\nF_test = featurizer.load_matrix(session, split=2)')
 
 
 # In[ ]:
@@ -114,7 +114,7 @@ print
 # In[ ]:
 
 
-get_ipython().magic(u'time train_marginals = load_marginals(session, split=0)')
+get_ipython().run_line_magic('time', 'train_marginals = load_marginals(session, split=0)')
 
 
 # In[ ]:
@@ -142,7 +142,7 @@ searcher = RandomSearch(SparseLogisticRegression, rate_parameters, F_train,
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'np.random.seed(100)\ndisc_model, run_stats = searcher.fit(F_dev, L_dev, n_threads=4, n_epochs=50, rebalance=0.5, print_freq=25)')
+get_ipython().run_cell_magic('time', '', 'np.random.seed(100)\ndisc_model, run_stats = searcher.fit(F_dev, L_dev, n_threads=4, n_epochs=50, rebalance=0.5, print_freq=25)')
 
 
 # In[ ]:
@@ -172,14 +172,14 @@ directory = 'stratified_data/lstm_disease_gene_holdout/'
 # In[ ]:
 
 
-get_ipython().magic(u'time train_marginals = load_marginals(session, split=0)')
+get_ipython().run_line_magic('time', 'train_marginals = load_marginals(session, split=0)')
 np.savetxt("{}/train_marginals".format(directory), train_marginals)
 
 
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'"""\ntrain_kwargs = {\n    \'lr\':         0.001,\n    \'dim\':        100,\n    \'n_epochs\':   10,\n    \'dropout\':    0.5,\n    \'print_freq\': 1,\n    \'max_sentence_length\': 1000,\n}\n"""\nlstm = reRNN(seed=100, n_threads=4)\n#lstm.train(train_cands, train_marginals[0:10], X_dev=dev_cands, Y_dev=L_dev[0:10], **train_kwargs)')
+get_ipython().run_cell_magic('time', '', '"""\ntrain_kwargs = {\n    \'lr\':         0.001,\n    \'dim\':        100,\n    \'n_epochs\':   10,\n    \'dropout\':    0.5,\n    \'print_freq\': 1,\n    \'max_sentence_length\': 1000,\n}\n"""\nlstm = reRNN(seed=100, n_threads=4)\n#lstm.train(train_cands, train_marginals[0:10], X_dev=dev_cands, Y_dev=L_dev[0:10], **train_kwargs)')
 
 
 # ### Write the Training data to an External File
@@ -187,7 +187,7 @@ get_ipython().run_cell_magic(u'time', u'', u'"""\ntrain_kwargs = {\n    \'lr\': 
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'field_names = ["disease_id", "disease_char_start", "disease_char_end", "gene_id", "gene_char_start", "gene_char_end", "sentence", "pubmed"]\nchunksize = 100000\nstart = 0\n\nwith open(\'{}/train_candidates_ends.csv\'.format(directory), \'wb\') as g:\n    with open("{}/train_candidates_offsets.csv".format(directory), "wb") as f:\n        with open("{}/train_candidates_sentences.csv".format(directory), "wb") as h:\n            output = csv.writer(f)\n            writer = csv.DictWriter(h, fieldnames=field_names)\n            writer.writeheader()\n\n            while True:\n                train_cands = (\n                        session\n                        .query(DiseaseGene)\n                        .filter(DiseaseGene.split == 0)\n                        .order_by(DiseaseGene.id)\n                        .limit(chunksize)\n                        .offset(start)\n                        .all()\n                )\n\n                if not train_cands:\n                    break\n\n                \n                for c in tqdm.tqdm(train_cands):\n                    data, ends = lstm._preprocess_data([c], extend=True)\n                    output.writerow(data[0])\n                    g.write("{}\\n".format(ends[0]))\n                    \n                    row = {\n                    "disease_id": c.Disease_cid,"disease_name":c[0].get_span(),\n                    "disease_char_start":c[0].char_start, "disease_char_end": c[0].char_end, \n                    "gene_id": c.Gene_cid, "gene_name":c[1].get_span(), \n                    "gene_char_start":c[1].char_start, "gene_char_end":c[1].char_end, \n                    "sentence": c.get_parent().text, "pubmed", c.get_parent().get_parent().name\n                    }\n                \n                    writer.writerow(row)\n\n                start += chunksize')
+get_ipython().run_cell_magic('time', '', 'field_names = ["disease_id", "disease_char_start", "disease_char_end", "gene_id", "gene_char_start", "gene_char_end", "sentence", "pubmed"]\nchunksize = 100000\nstart = 0\n\nwith open(\'{}/train_candidates_ends.csv\'.format(directory), \'wb\') as g:\n    with open("{}/train_candidates_offsets.csv".format(directory), "wb") as f:\n        with open("{}/train_candidates_sentences.csv".format(directory), "wb") as h:\n            output = csv.writer(f)\n            writer = csv.DictWriter(h, fieldnames=field_names)\n            writer.writeheader()\n\n            while True:\n                train_cands = (\n                        session\n                        .query(DiseaseGene)\n                        .filter(DiseaseGene.split == 0)\n                        .order_by(DiseaseGene.id)\n                        .limit(chunksize)\n                        .offset(start)\n                        .all()\n                )\n\n                if not train_cands:\n                    break\n\n                \n                for c in tqdm.tqdm(train_cands):\n                    data, ends = lstm._preprocess_data([c], extend=True)\n                    output.writerow(data[0])\n                    g.write("{}\\n".format(ends[0]))\n                    \n                    row = {\n                    "disease_id": c.Disease_cid,"disease_name":c[0].get_span(),\n                    "disease_char_start":c[0].char_start, "disease_char_end": c[0].char_end, \n                    "gene_id": c.Gene_cid, "gene_name":c[1].get_span(), \n                    "gene_char_start":c[1].char_start, "gene_char_end":c[1].char_end, \n                    "sentence": c.get_parent().text, "pubmed", c.get_parent().get_parent().name\n                    }\n                \n                    writer.writerow(row)\n\n                start += chunksize')
 
 
 # ### Save the word dictionary to an External File
@@ -195,7 +195,7 @@ get_ipython().run_cell_magic(u'time', u'', u'field_names = ["disease_id", "disea
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'with open("{}/train_word_dict.csv".format(directory), \'w\') as f:\n    output = csv.DictWriter(f, fieldnames=["Key", "Value"])\n    output.writeheader()\n    for key in tqdm.tqdm(lstm.word_dict.d):\n        output.writerow({\'Key\':key, \'Value\': lstm.word_dict.d[key]})')
+get_ipython().run_cell_magic('time', '', 'with open("{}/train_word_dict.csv".format(directory), \'w\') as f:\n    output = csv.DictWriter(f, fieldnames=["Key", "Value"])\n    output.writeheader()\n    for key in tqdm.tqdm(lstm.word_dict.d):\n        output.writerow({\'Key\':key, \'Value\': lstm.word_dict.d[key]})')
 
 
 # ### Save the Development Candidates to an External File
@@ -218,7 +218,7 @@ hetnet_set = set(map(tuple,dev_cand_labels[dev_cand_labels["hetnet"] == 1][["dis
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'field_names = [\n    "disease_id", "disease_char_start", \n    "disease_char_end", "gene_id", \n    "gene_char_start", "gene_char_end", \n    "sentence", "pubmed"\n]\n\nwith open(\'{}/dev_candidates_offset.csv\'.format(directory), \'wb\') as g:\n    with open(\'{}/dev_candidates_labels.csv\'.format(directory), \'wb\') as f:\n        with open(\'{}/dev_candidates_sentences.csv\'.format(directory), \'wb\') as h:\n            \n            output = csv.writer(g)\n            label_output = csv.writer(f)\n            writer = csv.DictWriter(h, fieldnames=field_names)\n            writer.writeheader()\n            \n            for c in tqdm.tqdm(dev_cands):\n                data, ends = lstm._preprocess_data([c])\n                output.writerow(data[0])\n                label_output.writerow([1 if (c.Disease_cid, int(c.Gene_cid)) in hetnet_set else -1])\n                \n                row = {\n                "disease_id": c.Disease_cid,"disease_name":c[0].get_span(),\n                "disease_char_start":c[0].char_start, "disease_char_end": c[0].char_end, \n                "gene_id": c.Gene_cid, "gene_name":c[1].get_span(), \n                "gene_char_start":c[1].char_start, "gene_char_end":c[1].char_end, \n                "sentence": c.get_parent().text, "pubmed", c.get_parent().get_parent().name\n                }\n                \n                writer.writerow(row) ')
+get_ipython().run_cell_magic('time', '', 'field_names = [\n    "disease_id", "disease_char_start", \n    "disease_char_end", "gene_id", \n    "gene_char_start", "gene_char_end", \n    "sentence", "pubmed"\n]\n\nwith open(\'{}/dev_candidates_offset.csv\'.format(directory), \'wb\') as g:\n    with open(\'{}/dev_candidates_labels.csv\'.format(directory), \'wb\') as f:\n        with open(\'{}/dev_candidates_sentences.csv\'.format(directory), \'wb\') as h:\n            \n            output = csv.writer(g)\n            label_output = csv.writer(f)\n            writer = csv.DictWriter(h, fieldnames=field_names)\n            writer.writeheader()\n            \n            for c in tqdm.tqdm(dev_cands):\n                data, ends = lstm._preprocess_data([c])\n                output.writerow(data[0])\n                label_output.writerow([1 if (c.Disease_cid, int(c.Gene_cid)) in hetnet_set else -1])\n                \n                row = {\n                "disease_id": c.Disease_cid,"disease_name":c[0].get_span(),\n                "disease_char_start":c[0].char_start, "disease_char_end": c[0].char_end, \n                "gene_id": c.Gene_cid, "gene_name":c[1].get_span(), \n                "gene_char_start":c[1].char_start, "gene_char_end":c[1].char_end, \n                "sentence": c.get_parent().text, "pubmed", c.get_parent().get_parent().name\n                }\n                \n                writer.writerow(row) ')
 
 
 # ### Save the Test Candidates to an External File
@@ -241,5 +241,5 @@ hetnet_set = set(map(tuple,dev_cand_labels[dev_cand_labels["hetnet"] == 1][["dis
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'field_names = ["disease_id", "disease_char_start", "disease_char_end", "gene_id", "gene_char_start", "gene_char_end", "sentence", "pubmed"]\nwith open(\'{}/test_candidates_offset.csv\'.format(directory), \'wb\') as g:\n    with open(\'{}/test_candidates_labels.csv\'.format(directory), \'wb\') as f:\n        with open(\'{}/test_candidates_sentences.csv\'.format(directory), \'wb\') as h:\n            \n            output = csv.writer(g)\n            label_output = csv.writer(f)\n            writer = csv.DictWriter(h, fieldnames=field_names)\n            writer.writeheader()\n            \n            for c in tqdm.tqdm(test_cands):\n                data, ends = lstm._preprocess_data([c])\n                output.writerow(data[0])\n                label_output.writerow([1 if (c.Disease_cid, int(c.Gene_cid)) in hetnet_set else -1])\n                \n                row = {\n               "disease_id": c.Disease_cid,"disease_name":c[0].get_span(),\n                "disease_char_start":c[0].char_start, "disease_char_end": c[0].char_end, \n                "gene_id": c.Gene_cid, "gene_name":c[1].get_span(), \n                "gene_char_start":c[1].char_start, "gene_char_end":c[1].char_end, \n                "sentence": c.get_parent().text, "pubmed", c.get_parent().get_parent().name\n                }\n                \n                writer.writerow(row) ')
+get_ipython().run_cell_magic('time', '', 'field_names = ["disease_id", "disease_char_start", "disease_char_end", "gene_id", "gene_char_start", "gene_char_end", "sentence", "pubmed"]\nwith open(\'{}/test_candidates_offset.csv\'.format(directory), \'wb\') as g:\n    with open(\'{}/test_candidates_labels.csv\'.format(directory), \'wb\') as f:\n        with open(\'{}/test_candidates_sentences.csv\'.format(directory), \'wb\') as h:\n            \n            output = csv.writer(g)\n            label_output = csv.writer(f)\n            writer = csv.DictWriter(h, fieldnames=field_names)\n            writer.writeheader()\n            \n            for c in tqdm.tqdm(test_cands):\n                data, ends = lstm._preprocess_data([c])\n                output.writerow(data[0])\n                label_output.writerow([1 if (c.Disease_cid, int(c.Gene_cid)) in hetnet_set else -1])\n                \n                row = {\n               "disease_id": c.Disease_cid,"disease_name":c[0].get_span(),\n                "disease_char_start":c[0].char_start, "disease_char_end": c[0].char_end, \n                "gene_id": c.Gene_cid, "gene_name":c[1].get_span(), \n                "gene_char_start":c[1].char_start, "gene_char_end":c[1].char_end, \n                "sentence": c.get_parent().text, "pubmed", c.get_parent().get_parent().name\n                }\n                \n                writer.writerow(row) ')
 

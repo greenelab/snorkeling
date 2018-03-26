@@ -5,7 +5,7 @@
 
 # This notebook is design to predict DG relationships on the entity level. Here we are taking the input from the Bi-LSTM model, prior probability notebook and the summary statistics notebook and combinging it into a single dataset. From there we train a Ridge LR model and an elastic net LR model to make the final prediction.
 
-# In[7]:
+# In[1]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -31,20 +31,21 @@ from sklearn.preprocessing import StandardScaler
 import seaborn as sns
 
 
-# In[8]:
+# In[2]:
 
 
-candidate_df = pd.read_csv("data/disease_gene_summary_stats.csv")
+candidate_df = pd.read_csv("data/disease_gene_summary_stats_lstm_full_trained.csv")
 prior_df = pd.read_csv("data/observation-prior.csv")
 
 
-# In[9]:
+# In[3]:
 
 
+candidate_df["lstm_avg_marginal"] = pd.np.log(candidate_df["lstm_avg_marginal"])
 candidate_df.head(10)
 
 
-# In[10]:
+# In[4]:
 
 
 prior_df["logit_prior_perm"] = logit(prior_df["prior_perm"])
@@ -53,7 +54,7 @@ prior_df.head(10)
 
 # # Set up the Training and Testing Set
 
-# In[11]:
+# In[5]:
 
 
 train_df = pd.read_csv("stratified_data/train_set.csv")
@@ -61,7 +62,7 @@ dev_df = pd.read_csv("stratified_data/dev_set.csv")
 test_df = pd.read_csv("stratified_data/test_set.csv")
 
 
-# In[12]:
+# In[6]:
 
 
 # Gather the summary stats for each candidate
@@ -88,7 +89,7 @@ dev_set = pd.merge(dev_set, prior_df[["disease_id", "gene_id", "logit_prior_perm
 test_set = pd.merge(test_set, prior_df[["disease_id", "gene_id", "logit_prior_perm"]])
 
 
-# In[13]:
+# In[7]:
 
 
 non_features = [
@@ -109,7 +110,7 @@ X_test = test_set[[col for col in test_set.columns if col not in non_features]]
 Y_test = test_set["hetnet"]
 
 
-# In[14]:
+# In[8]:
 
 
 print(Y.value_counts())
@@ -120,7 +121,7 @@ print(Y_test.value_counts())
 print()
 
 
-# In[15]:
+# In[9]:
 
 
 train_Y = Y.append(Y_dev)
@@ -131,7 +132,7 @@ train_X = X.append(X_dev)
 
 # Here we use gridsearch to optimize both models using 10 fold cross validation. After exhausting the list of parameters, the best model is chosen and analyzed in the next chunk. 
 
-# In[16]:
+# In[10]:
 
 
 n_iter = 100
@@ -144,19 +145,19 @@ no_lstm_normalizer = StandardScaler()
 lstm_normalizer = StandardScaler()
 
 
-# In[17]:
+# In[11]:
 
 
 get_ipython().run_cell_magic('time', '', '\n# Train on data without LSTM input\nlstm_features = [\n    "lstm_avg_marginal"\n]\n\ntempX = train_X[[col for col in X.columns if col not in lstm_features]]\n\ntransformed_tempX = no_lstm_normalizer.fit_transform(tempX)\ntransformed_X = lstm_normalizer.fit_transform(train_X)')
 
 
-# In[18]:
+# In[12]:
 
 
 get_ipython().run_cell_magic('time', '', "\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_tempX, train_Y)\nfinal_models.append(final_model)")
 
 
-# In[19]:
+# In[13]:
 
 
 get_ipython().run_cell_magic('time', '', "\n# Train on data with LSTM input\nfinal_model = GridSearchCV(lr, lr_grid, cv=10, n_jobs=3, scoring='roc_auc', return_train_score=True)\nfinal_model.fit(transformed_X, train_Y)\nfinal_models.append(final_model)")
@@ -164,21 +165,21 @@ get_ipython().run_cell_magic('time', '', "\n# Train on data with LSTM input\nfin
 
 # ## Parameter Optimization
 
-# In[20]:
+# In[14]:
 
 
 no_lstm_result = pd.DataFrame(final_models[0].cv_results_)
 lstm_result = pd.DataFrame(final_models[1].cv_results_)
 
 
-# In[21]:
+# In[15]:
 
 
 # No LSTM
 plt.plot(no_lstm_result['param_C'], no_lstm_result['mean_test_score'])
 
 
-# In[22]:
+# In[16]:
 
 
 # LSTM
@@ -187,13 +188,13 @@ plt.plot(lstm_result['param_C'], lstm_result['mean_test_score'])
 
 # ## LR Weights
 
-# In[23]:
+# In[17]:
 
 
 list(zip(final_models[0].best_estimator_.coef_[0], [col for col in training_set.columns if col not in lstm_features+non_features]))
 
 
-# In[24]:
+# In[18]:
 
 
 list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.columns if col not in non_features]))
@@ -201,7 +202,7 @@ list(zip(final_models[1].best_estimator_.coef_[0], [col for col in training_set.
 
 # # AUROCS
 
-# In[25]:
+# In[19]:
 
 
 feature_rocs = []
@@ -216,7 +217,7 @@ plt.title("Training AUROC")
 plt.xlim([0.5,1])
 
 
-# In[26]:
+# In[20]:
 
 
 feature_rocs = []
@@ -231,7 +232,7 @@ plt.title("Testing AUROC")
 plt.xlim([0.5,1])
 
 
-# In[27]:
+# In[21]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -248,7 +249,7 @@ plt.title('Train ROC')
 plt.legend(loc="lower right")
 
 
-# In[28]:
+# In[22]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -267,7 +268,7 @@ plt.legend(loc="lower right")
 
 # # Corerlation Matrix
 
-# In[29]:
+# In[23]:
 
 
 feature_corr_mat = train_X.corr()
@@ -276,21 +277,21 @@ sns.heatmap(feature_corr_mat, cmap="RdBu", center=0)
 
 # # ML Performance
 
-# In[30]:
+# In[24]:
 
 
 transformed_tempX_test = no_lstm_normalizer.transform(X_test[[col for col in X.columns if col not in lstm_features]])
 transformed_X_test = lstm_normalizer.transform(X_test)
 
 
-# In[31]:
+# In[25]:
 
 
 colors = ["green","red"]
 labels = ["LR_NO_LSTM","LR_LSTM"]
 
 
-# In[32]:
+# In[26]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -314,7 +315,7 @@ plt.title('Train ROC')
 plt.legend(loc="lower right")
 
 
-# In[33]:
+# In[27]:
 
 
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
@@ -338,7 +339,7 @@ plt.title('Test ROC')
 plt.legend(loc="lower right")
 
 
-# In[34]:
+# In[28]:
 
 
 plt.figure()
