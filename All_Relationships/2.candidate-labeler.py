@@ -11,9 +11,10 @@
 
 # In[ ]:
 
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
+
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 from collections import defaultdict
 import csv
@@ -28,6 +29,7 @@ import tqdm
 
 
 # In[ ]:
+
 
 #Set up the environment
 username = "danich1"
@@ -44,20 +46,23 @@ session = SnorkelSession()
 
 # In[ ]:
 
+
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator
 from snorkel.features import get_span_feats
 from snorkel.models import candidate_subclass
-from snorkel.models import Candidate
+from snorkel.models import Candidate, GoldLabel
 from snorkel.viewer import SentenceNgramViewer
 
 
 # In[ ]:
+
 
 edge_type = "dg"
 debug = False
 
 
 # In[ ]:
+
 
 if edge_type == "dg":
     DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
@@ -81,19 +86,30 @@ else:
 
 # In[ ]:
 
-TRAIN = 0
-DEV = 1
+
+#dev_set = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/train_candidates_to_ids.csv")
+#dev_set.head(3)
 
 
 # In[ ]:
 
-candidates = session.query(DiseaseGene).filter(DiseaseGene.split==TRAIN).limit(100)
-sv = SentenceNgramViewer(candidates, session)
+
+#TRAIN = 0
+#DEV = 1
 
 
 # In[ ]:
 
-sv
+
+#candidates = session.query(DiseaseGene).filter(DiseaseGene.split==DEV).offset(300).limit(100)
+#candidates = session.query(DiseaseGene).filter(DiseaseGene.id.in_(dev_set["id"])).offset(400).limit(100)
+#sv = SentenceNgramViewer(candidates, session)
+
+
+# In[ ]:
+
+
+#sv
 
 
 # # Label Functions
@@ -102,8 +118,9 @@ sv
 
 # In[ ]:
 
+
 if edge_type == "dg":
-    from utils.disease_gene_lf import get_lfs
+    from utils.disease_gene_lf import get_lfs, LF_DEBUG
 elif edge_type == "gg":
     from utils.gene_gene_lf import *
 elif edge_type == "cg":
@@ -116,13 +133,20 @@ else:
 
 # In[ ]:
 
-candidates = session.query(DiseaseGene).filter(DiseaseGene.split==0).limit(1).all()
-LF_DEBUG(candidates[0])
+
+LFs = get_lfs()
+LFs
 
 
 # In[ ]:
 
-LFs = get_lfs()
+
+cand_index = 41
+candidates = session.query(DiseaseGene).filter(DiseaseGene.id.in_(dev_set["id"])).offset(0).limit(50).all()
+print("Disease: {}, Gene: {}".format(candidates[cand_index].Disease_cid, candidates[cand_index].Gene_cid))
+print(candidates[cand_index].get_parent().text)
+print(LFs[-3](candidates[cand_index]))
+#LF_DEBUG(candidates[5])
 
 
 # # Label The Candidates
@@ -131,17 +155,31 @@ LFs = get_lfs()
 
 # In[ ]:
 
+
+from snorkel.annotations import load_gold_labels
+L_gold_train = load_gold_labels(session, annotator_name='danich1', split=0)
+annotated_cands_train_ids = list(map(lambda x: L_gold_train.row_index[x], L_gold_train.nonzero()[0]))
+
+L_gold_dev = load_gold_labels(session, annotator_name='danich1', split=1)
+annotated_cands_dev_ids = list(map(lambda x: L_gold_dev.row_index[x], L_gold_dev.nonzero()[0]))
+
+
+# In[ ]:
+
+
 labeler = LabelAnnotator(lfs=LFs)
 
-cids = session.query(Candidate.id).filter(Candidate.split==0)
-get_ipython().magic(u'time L_train = labeler.apply(split=0, cids_query=cids, parallelism=5)')
+cids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_train_ids))
+get_ipython().run_line_magic('time', 'L_train = labeler.apply(split=0, cids_query=cids, parallelism=5)')
 
-cids = session.query(Candidate.id).filter(Candidate.split==1)
-get_ipython().magic(u'time L_dev = labeler.apply_existing(split=1, cids_query=cids, parallelism=5, clear=False)')
+cids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_dev_ids))
+get_ipython().run_line_magic('time', 'L_dev = labeler.apply_existing(split=1, cids_query=cids, parallelism=5, clear=False)')
 
-cids = session.query(Candidate.id).filter(Candidate.split==2)
-get_ipython().magic(u'time L_test = labeler.apply_existing(split=2, cids_query=cids, parallelism=5, clear=False)')
+#cids = session.query(Candidate.id).filter(Candidate.split==2)
+#%time L_test = labeler.apply_existing(split=2, cids_query=cids, parallelism=5, clear=False)
 
+
+# # DO NOT RUN BELOW
 
 # # Generate Candidate Features
 
@@ -149,7 +187,8 @@ get_ipython().magic(u'time L_test = labeler.apply_existing(split=2, cids_query=c
 
 # In[ ]:
 
-get_ipython().run_cell_magic(u'time', u'', u'featurizer = FeatureAnnotator()\nfeaturizer.apply(split=0, clear=False)\n\nF_dev = featurizer.apply_existing(split=1, parallelism=5, clear=False)\nF_test = featurizer.apply_existing(split=2, parallelism=5, clear=False)')
+
+get_ipython().run_cell_magic('time', '', 'featurizer = FeatureAnnotator()\nfeaturizer.apply(split=0, clear=False)\n\nF_dev = featurizer.apply_existing(split=1, parallelism=5, clear=False)\nF_test = featurizer.apply_existing(split=2, parallelism=5, clear=False)')
 
 
 # # Work Around for above code
@@ -158,7 +197,8 @@ get_ipython().run_cell_magic(u'time', u'', u'featurizer = FeatureAnnotator()\nfe
 
 # In[ ]:
 
-get_ipython().run_cell_magic(u'time', u'', u'\ngroup = 0\nchunksize = 1e5\nseen = set()\nfeature_key_hash = defaultdict(int)\nfeat_counter = 0\n\nwith open(\'feature_key.sql\', \'wb\') as f:\n    with open(\'feature.sql\', \'wb\') as g:\n        # Write the headers\n        f.write("COPY feature_key(\\"group\\", name, id) from stdin with CSV DELIMITER \'\t\' QUOTE \'\\"\';\\n")\n        g.write("COPY feature(value, candidate_id, key_id) from stdin with CSV DELIMITER \'\t\' QUOTE \'\\"\';\\n")\n        \n        # Set up the writers\n        feature_key_writer = csv.writer(f, delimiter=\'\\t\',  quoting=csv.QUOTE_NONNUMERIC)\n        feature_writer = csv.writer(g, delimiter=\'\\t\', quoting=csv.QUOTE_NONNUMERIC)\n        \n        # For each split get and generate features\n        for split in [0,1,2]:\n    \n            #reset pointer to cycle through database again\n            pointer = 0\n            \n            print(split)\n            candidate_query = session.query(Candidate).filter(Candidate.split==split).limit(chunksize)\n            \n            while True:\n                candidates = candidate_query.offset(pointer).all()\n                \n                if not candidates:\n                    break\n\n                for c in tqdm.tqdm(candidates):\n                    try:\n                        for name, value in get_span_feats(c):\n\n                            # If the training set, set the feature hash\n                            if split == 0:\n                                if name not in feature_key_hash:\n                                    feature_key_hash[name] = feat_counter\n                                    feat_counter = feat_counter + 1\n                                    feature_key_writer.writerow([group, name, feature_key_hash[name]])\n\n                            if name in feature_key_hash:\n                                # prevent duplicates from being written to the file\n                                if (c.id, name) not in seen:\n                                    feature_writer.writerow([value, c.id, feature_key_hash[name]])\n                                    seen.add((c.id, name))\n\n                        #To prevent memory overload\n                        seen = set()\n                    \n                    except Exception as e:\n                        print(e.message)\n                        print(c)\n                        print(c.get_parent().text)\n\n                # update pointer for database\n                pointer = pointer + chunksize')
+
+get_ipython().run_cell_magic('time', '', '\ngroup = 0\nchunksize = 1e5\nseen = set()\nfeature_key_hash = defaultdict(int)\nfeat_counter = 0\n\nwith open(\'feature_key.sql\', \'wb\') as f:\n    with open(\'feature.sql\', \'wb\') as g:\n        # Write the headers\n        f.write("COPY feature_key(\\"group\\", name, id) from stdin with CSV DELIMITER \'\t\' QUOTE \'\\"\';\\n")\n        g.write("COPY feature(value, candidate_id, key_id) from stdin with CSV DELIMITER \'\t\' QUOTE \'\\"\';\\n")\n        \n        # Set up the writers\n        feature_key_writer = csv.writer(f, delimiter=\'\\t\',  quoting=csv.QUOTE_NONNUMERIC)\n        feature_writer = csv.writer(g, delimiter=\'\\t\', quoting=csv.QUOTE_NONNUMERIC)\n        \n        # For each split get and generate features\n        for split in [0,1,2]:\n    \n            #reset pointer to cycle through database again\n            pointer = 0\n            \n            print(split)\n            candidate_query = session.query(Candidate).filter(Candidate.split==split).limit(chunksize)\n            \n            while True:\n                candidates = candidate_query.offset(pointer).all()\n                \n                if not candidates:\n                    break\n\n                for c in tqdm.tqdm(candidates):\n                    try:\n                        for name, value in get_span_feats(c):\n\n                            # If the training set, set the feature hash\n                            if split == 0:\n                                if name not in feature_key_hash:\n                                    feature_key_hash[name] = feat_counter\n                                    feat_counter = feat_counter + 1\n                                    feature_key_writer.writerow([group, name, feature_key_hash[name]])\n\n                            if name in feature_key_hash:\n                                # prevent duplicates from being written to the file\n                                if (c.id, name) not in seen:\n                                    feature_writer.writerow([value, c.id, feature_key_hash[name]])\n                                    seen.add((c.id, name))\n\n                        #To prevent memory overload\n                        seen = set()\n                    \n                    except Exception as e:\n                        print(e.message)\n                        print(c)\n                        print(c.get_parent().text)\n\n                # update pointer for database\n                pointer = pointer + chunksize')
 
 
 # # Generate Coverage Stats
@@ -167,10 +207,12 @@ get_ipython().run_cell_magic(u'time', u'', u'\ngroup = 0\nchunksize = 1e5\nseen 
 
 # In[ ]:
 
-print L_train.lf_stats(session, )
+
+print(L_train.lf_stats(session, ))
 
 
 # In[ ]:
 
-print L_dev.lf_stats(session, )
+
+print(L_dev.lf_stats(session, ))
 
