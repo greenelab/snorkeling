@@ -12,9 +12,9 @@
 # In[ ]:
 
 
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 from collections import Counter
 from collections import defaultdict
@@ -85,15 +85,31 @@ else:
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'labeler = LabelAnnotator(lfs=[])\n\nL_train = labeler.load_matrix(session,split=0)')
+from snorkel.annotations import load_gold_labels
+L_gold_train = load_gold_labels(session, annotator_name='danich1', split=0)
+annotated_cands_train_ids = list(map(lambda x: L_gold_train.row_index[x], L_gold_train.nonzero()[0]))
+
+L_gold_dev = load_gold_labels(session, annotator_name='danich1', split=1)
+annotated_cands_dev_ids = list(map(lambda x: L_gold_dev.row_index[x], L_gold_dev.nonzero()[0]))
 
 
 # In[ ]:
 
 
-print "Total Data Shape:"
-print L_train.shape
-print
+get_ipython().run_cell_magic('time', '', 'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have human labels\ncids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_train_ids))\nL_train = labeler.load_matrix(session,cids_query=cids)\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_dev_ids))\nL_dev = labeler.load_matrix(session,cids_query=cids)')
+
+
+# In[ ]:
+
+
+print("Total Data Shape:")
+print(L_train.shape)
+
+
+# In[ ]:
+
+
+L_train.get_candidate(session, 1)
 
 
 # # Train the Generative Model
@@ -106,13 +122,19 @@ print
 from snorkel.learning import GenerativeModel
 
 gen_model = GenerativeModel()
-get_ipython().magic(u'time gen_model.train(L_train, epochs=10, decay=0.95, step_size=0.1 / L_train.shape[0], reg_param=1e-6, threads=50, verbose=True)')
+get_ipython().run_line_magic('time', 'gen_model.train(L_train, epochs=30, decay=0.95, step_size=0.1 / L_train.shape[0], reg_param=1e-6, threads=50, verbose=True)')
 
 
 # In[ ]:
 
 
-get_ipython().magic(u'time train_marginals = gen_model.marginals(L_train)')
+gen_model.weights.lf_accuracy
+
+
+# In[ ]:
+
+
+get_ipython().run_line_magic('time', 'train_marginals = gen_model.marginals(L_train)')
 
 
 # In[ ]:
@@ -124,9 +146,66 @@ gen_model.learned_lf_stats()
 # In[ ]:
 
 
+print(len(train_marginals[train_marginals > 0.5]))
+
+
+# In[ ]:
+
+
 plt.hist(train_marginals, bins=20)
 plt.title("Training Marginals for Gibbs Sampler")
 plt.show()
+
+
+# In[ ]:
+
+
+tp, fp, tn, fn = gen_model.error_analysis(session, L_train, L_gold_train)
+
+
+# In[ ]:
+
+
+from snorkel.viewer import SentenceNgramViewer
+
+# NOTE: This if-then statement is only to avoid opening the viewer during automated testing of this notebook
+# You should ignore this!
+import os
+if 'CI' not in os.environ:
+    sv = SentenceNgramViewer(fn, session)
+else:
+    sv = None
+
+
+# In[ ]:
+
+
+sv
+
+
+# In[ ]:
+
+
+c = sv.get_selected() if sv else list(fp.union(fn))[0]
+c
+
+
+# In[ ]:
+
+
+c.labels
+
+
+# In[ ]:
+
+
+c.Gene_cid
+
+
+# In[ ]:
+
+
+L_train.lf_stats(session, L_gold_train[L_gold_train!=0].T, gen_model.learned_lf_stats()['Accuracy'])
 
 
 # # Save Training Marginals
@@ -136,5 +215,11 @@ plt.show()
 # In[ ]:
 
 
-get_ipython().magic(u'time save_marginals(session, L_train, train_marginals)')
+np.savetxt("vanilla_lstm/lstm_disease_gene_holdout/subsampled/train_marginals_subsampled.txt", train_marginals)
+
+
+# In[ ]:
+
+
+#%time save_marginals(session, L_train, train_marginals)
 

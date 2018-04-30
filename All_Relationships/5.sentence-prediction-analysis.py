@@ -17,6 +17,7 @@ get_ipython().run_line_magic('autoreload', '2')
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 import csv
+import glob
 import os
 
 from IPython.core.display import display, HTML
@@ -88,79 +89,68 @@ else:
 # In[6]:
 
 
-labeler = LabelAnnotator(lfs=[])
+from snorkel.annotations import load_gold_labels
+
+L_gold_dev = load_gold_labels(session, annotator_name='danich1', split=1)
+Y = L_gold_dev[L_gold_dev != 0].todense()
 
 
 # In[7]:
 
 
-get_ipython().run_cell_magic('time', '', 'L_test = labeler.load_matrix(session,split=2)')
+print(pd.Series(Y.tolist()[0]).value_counts())
 
 
 # In[8]:
 
 
-L_test.shape
+marginal_files = [
+    "vanilla_lstm/lstm_disease_gene_holdout/subsampled/lf_marginals/hand_LR_dev_marginals.csv",
+    "vanilla_lstm/lstm_disease_gene_holdout/subsampled/lf_marginals/all_LF_LR_dev_marginals.csv"
+]
+
+file_labels = [
+    "HUMAN_BW_LR",
+    "LF_BW_LR"
+]
+
+model_labels = [
+    "HUMAN_BW_LR",
+    "LF_BW_LR",
+]
+
+model_colors = [
+    "red",
+    "blue",
+]
 
 
 # In[9]:
 
 
-marginal_files = [
-    "stratified_data/lstm_disease_gene_holdout/LR_data/LR_test_marginals.csv",
-    "stratified_data/lstm_disease_gene_holdout/lstm_one_test_marginals.csv",
-    "stratified_data/lstm_disease_gene_holdout/lstm_ten_test_marginals.csv",
-    "stratified_data/lstm_disease_gene_holdout/full_data/lstm_test_full_marginals.csv",
-]
+model_marginals = pd.DataFrame(Y.T, columns=["True_Labels"])
+for marginal_label, marginal_file in zip(file_labels, marginal_files):
+    model_marginals[marginal_label] = pd.read_csv(marginal_file)
 
-file_labels = [
-    "LR_Marginals",
-    "RNN_1_Marginals",
-    "RNN_10_Marginals",
-    "RNN_100_Marginals"
-]
-
-model_labels = [
-    "LR", 
-    "RNN_1%", 
-    "RNN_10%", 
-    "RNN_100%"
-]
-
-model_colors = [
-    "red", 
-    "cyan", 
-    "green", 
-    "magenta"
-]
+model_marginals.head(10)
 
 
 # In[10]:
 
 
-model_marginals = pd.DataFrame(L_test.todense(), columns=["True_Labels"])
-for marginal_label, marginal_file in zip(file_labels, marginal_files):
-    model_marginals[marginal_label] = pd.read_csv(marginal_file)
-
-model_marginals.head(20)
-
-
-# In[11]:
-
-
-test_set = pd.read_csv("stratified_data/lstm_disease_gene_holdout/test_candidates_sentences.csv")
+#test_set = pd.read_csv("stratified_data/lstm_disease_gene_holdout/test_candidates_sentences.csv")
 
 
 # # Accuracy ROC
 
 # From the probabilities calculated above, we can create a [Receiver Operator Curve](http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html) (ROC) graph to measure the false positive rate and the true positive rate at each calculated threshold.
 
-# In[12]:
+# In[11]:
 
 
 marginal_labels = [col for col in model_marginals.columns if col != "True_Labels"]
-
-plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+plt.figure(figsize=(7,5))
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
 
 for marginal_label, model_label, model_color in zip(marginal_labels, model_labels, model_colors):
     fpr, tpr, _= roc_curve(model_marginals["True_Labels"], model_marginals[marginal_label])
@@ -177,15 +167,17 @@ plt.legend(loc="lower right")
 
 # This code produces a [Precision-Recall](http://scikit-learn.org/stable/auto_examples/model_selection/plot_precision_recall.html) graph, which shows the trade off between [precision and recall](https://en.wikipedia.org/wiki/Precision_and_recall) at each given probability threshold.
 
-# In[13]:
+# In[12]:
 
 
 marginal_labels = [col for col in model_marginals.columns if col != "True_Labels"]
+plt.figure(figsize=(7,5))
 
 for marginal_label, model_label, model_color in zip(marginal_labels, model_labels, model_colors):
     precision, recall, _ = precision_recall_curve(model_marginals["True_Labels"], model_marginals[marginal_label])
     model_precision = average_precision_score(model_marginals["True_Labels"], model_marginals[marginal_label])
-    plt.plot(recall, precision, color=model_color, label="{} curve (area = {:0.2f})".format(model_label, model_precision))
+    model_f1 = f1_score(model_marginals["True_Labels"], list(map(lambda x: 1 if x > 0.5 else -1, model_marginals[marginal_label])))
+    plt.plot(recall, precision, color=model_color, label="{} curve (F1 = {:0.2f})".format(model_label, model_f1))
 
 plt.ylabel('Precision')
 plt.xlabel('Recall')
@@ -195,9 +187,83 @@ plt.ylim([0, 1.05])
 plt.legend(loc="lower right")
 
 
-# ## LSTM Model Analysis
+# # LSTM BENCHMARKING
+
+# In[13]:
+
+
+import glob
+import os
+f, ax = plt.subplots(3,3, sharex='col', sharey='row', figsize=(12,8))
+color_map = {
+    "0.25":"blue",
+    "0.5":"green",
+    "0.75":"brown"
+}
+#Make graph learning rate by dimension
+index = 1
+for row, dimension in enumerate([100, 250,500]):
+    for col, lr in enumerate([0.0005, 0.001, 0.002]):
+        for diagnostics_file in glob.glob(r"vanilla_lstm/benchmark/no_dropout/lstm_{}_*_{}.tsv".format(lr, dimension)):
+            benchmark_label = os.path.splitext(os.path.basename(diagnostics_file))[0]
+            benchmark_label = re.search(r'_(\d\.\d\d?)_', benchmark_label).group(1)
+            
+            diagnostics_df = pd.read_table(diagnostics_file)
+            ax[col][row].plot(diagnostics_df["train_loss"], label="_no_legend_")
+            ax[col][row].plot(diagnostics_df["val_loss"], label="Keep: {}".format(benchmark_label), color=color_map[benchmark_label])
+        ax[col][row].set_title("Learn Rate: {}, Dim: {}".format(lr, dimension))
+        if col==0 and row == 0:
+            f.legend()
+        index += 1
+f.text(0.5, 0.04, 'Epochs', ha='center', va='center')
+f.text(0.06, 0.5, 'Log Loss', ha='center', va='center', rotation='vertical')
+f.suptitle("LSTM Benchmark", fontsize=14)
+#plt.xlim([0,105])
+#plt.ylim([0,0.3])
+#plt.xlabel("Epochs")
+#plt.ylabel("Log Loss")
+plt.show()
+
 
 # In[14]:
+
+
+import glob
+import os
+f, ax = plt.subplots(2,2, sharex='col', sharey='row', figsize=(12,8))
+color_map = {
+    "1":"red",
+    "0.25":"blue",
+    "0.5":"green",
+    "0.75":"brown"
+}
+legend_dict = {}
+#Make graph learning rate by dimension
+index = 1
+for row, dimension in enumerate([250,500]):
+    for col, lr in enumerate([0.001, 0.002]):
+        for diagnostics_file in glob.glob(r"vanilla_lstm/benchmark/dropout/lstm_{}_*_{}.tsv".format(lr, dimension)):
+            benchmark_label = os.path.splitext(os.path.basename(diagnostics_file))[0]
+            benchmark_label = re.search(r'_(\d\.?\d?\d?)_', benchmark_label).group(1)
+
+            diagnostics_df = pd.read_table(diagnostics_file)
+            ax[col][row].plot(diagnostics_df["train_loss"], color=color_map[benchmark_label], label='_nolegend_')
+            ax[col][row].plot(diagnostics_df["val_loss"], label="Keep: {}".format(benchmark_label), color=color_map[benchmark_label])
+        ax[col][row].set_title("Learn Rate: {}, Dim: {}".format(lr, dimension))
+        #ax[col][row].legend()
+        index += 1
+        if col == 0 and row == 0:
+            f.legend()
+        #ax[col][row].set_ylim([0.175,0.2])
+f.text(0.5, 0.04, 'Epochs', ha='center', va='center')
+f.text(0.06, 0.5, 'Log Loss', ha='center', va='center', rotation='vertical')
+f.suptitle("LSTM Benchmark", fontsize=14)
+plt.show()
+
+
+# ## LSTM Model Analysis
+
+# In[ ]:
 
 
 marginal_criteria = "RNN_100_Marginals"
@@ -205,14 +271,14 @@ model_predictions = model_marginals[marginal_criteria].apply(lambda x: 1 if x > 
 model_predictions.head(10)
 
 
-# In[15]:
+# In[ ]:
 
 
 condition = (model_predictions == 1)&(model_marginals["True_Labels"] == -1)
 model_marginals[condition].sort_values(marginal_criteria, ascending=False).head(10)
 
 
-# In[16]:
+# In[ ]:
 
 
 def insert(x, g_start, g_end, d_start, d_end, proba, d_cid, g_cid):
@@ -231,7 +297,7 @@ def insert(x, g_start, g_end, d_start, d_end, proba, d_cid, g_cid):
 
 # ## Look at the Sentences and the LSTM's predictions
 
-# In[17]:
+# In[ ]:
 
 
 html_string = ""
@@ -261,7 +327,7 @@ for cand_index, marginal in tqdm.tqdm(sorted_marginals[marginal_criteria].iterit
         html_string += "<div title=\"{}\">{}</div><br />".format(marginal, ''.join(letters))
 
 
-# In[18]:
+# In[ ]:
 
 
 with open("html/candidate_viewer.html", 'r') as f:
@@ -270,7 +336,7 @@ with open("html/candidate_viewer.html", 'r') as f:
 
 # # Write Results to CSV
 
-# In[19]:
+# In[ ]:
 
 
 model_marginals.to_csv("stratified_data/lstm_disease_gene_holdout/total_test_marginals.csv", index=False)
