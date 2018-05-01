@@ -61,19 +61,26 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-hetnet_kb = pd.read_csv("hetnet_dg_kb.csv")
+pair_df = pd.read_csv("disease-gene-pairs-association.csv")
+knowledge_base = set()
+for row in pair_df.itertuples():
+    if not row.sources or pd.isnull(row.sources):
+        continue
+    for source in row.sources.split('|'):
+        key = str(row.entrez_gene_id), row.doid_id, source
+        knowledge_base.add(key)
 
+def LF_HETNET_DISEASES(c):
+    return 1 if (c.Gene_cid, c.Disease_cid, "DISEASES") in knowledge_base else -1
 
-def LF_HETNETS(c):
-    """
-    This label function is used for labeling each passed candidate as either pos or neg.
-    Keyword Args:
-    c- the candidate object to be passed in.
-    """
-    if not hetnet_kb[(hetnet_kb["disease_id"] == str(c.Disease_cid)) & (hetnet_kb["gene_id"] == int(c.Gene_cid))].empty:
-        return 1
-    else:
-        return -1
+def LF_HETNET_DOAF(c):
+    return 1 if (c.Gene_cid, c.Disease_cid, "DOAF") in knowledge_base else -1
+
+def LF_HETNET_DisGeNET(c):
+    return 1 if (c.Gene_cid, c.Disease_cid, "DisGeNET") in knowledge_base else -1
+
+def LF_HETNET_GWAS(c):
+    return 1 if (c.Gene_cid, c.Disease_cid, "GWAS Catalog") in knowledge_base else -1
 
 
 # obtained from ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/ (ncbi's ftp server)
@@ -97,9 +104,9 @@ def LF_CHECK_GENE_TAG(c):
 
     for token in gene_name.split(" "):
         if gene_entry_df["Symbol"].values[0].lower() == token or token in gene_entry_df["Synonyms"].values[0].lower():
-            return 1
+            return 0
         elif token in gene_entry_df["description"].values[0].lower():
-            return 1
+            return 0
     return -1
 
 
@@ -125,7 +132,9 @@ def LF_CHECK_DISEASE_TAG(c):
 
     disease_id = sen.entity_cids[c[0].get_word_start()]
     disease_entry_df = disease_desc.query("doid_code == @disease_id")
-    result = disease_normalization_df[disease_normalization_df["subsumed_name"].str.contains(r'^{}'.format(disease_name.lower()))]
+    result = disease_normalization_df[
+        disease_normalization_df["subsumed_name"].str.contains(disease_name.lower(), regex=False)
+    ]
 
     # If no match then return -1
     if result.empty:
@@ -134,7 +143,7 @@ def LF_CHECK_DISEASE_TAG(c):
         # If it can be normalized return 1 else -1
         slim_id = result['slim_id'].values[0]
         if slim_id == disease_id:
-            return 1
+            return 0
         else:
             return -1
 
@@ -224,123 +233,22 @@ def LF_DG_DISTANCE(c):
 def LF_NO_VERB(c):
     return -1 if len([x for x in  nltk.pos_tag(word_tokenize(c.get_parent().text)) if "VB" in x[1]])== 0 else 0
 
-"""
-DISEASE or GENE INDICATORS
-"""
-
-disease_prefix_indicators = {"metastasis of", "human", "severe", "in {{A}}",
-                             "patients (presenting )?with", "primary", "diagnosis of",
-                             "individuals with", "pathogenesis of", "cases of",
-                             "positive (acute)?", "acute", "malignant", "de novo",
-                             "levels in", "using"
-                             }
-
-disease_suffix_indiciators = {
-                            "patients", "cell( lines|s)",
-                            "disease", "subjects",
-                            "inbreeding", "virus"
-                            }
-
-non_disease__indicators = {"enzymatic"}
-
-gene_prefix_indicators = {
-                        "mutations (in|of)", "recombinant",
-                        "translocation", "binding assays",
-                        "serum", "levels (of|in)", "variant( of|-like)",
-                        "association of", "plasma", "increased", "concentration of"
-                        }
-
-gene_suffix_indicators = {
-                        "(onco)?gene", "mRNA( transcript)?",
-                        "translocation", "activity", "level(s)?",
-                        "secretion", "immunoreactivity", "deficiency",
-                        "lipoprotein", "test", "release", "antigens",
-                        "antibodies"
-                        }
-
-non_gene_prefix_indicators = {"mixed leukocyte culture", "drugs"}
-non_gene_suffix_indicators = {
-    "cells", "lymphocytes",
-    "system", ", [\d]+",
-    "fibroblasts", "year(s)?",
-    "Mustela vison"
-}
-
-
-def LF_GENE_PREFIX(c):
-    """
-    This LF is designed to confirm that the entity labeld as gene
-    is really a gene. It looks for key phrases/words that will
-    suggest the possibility of the tagged entity being a gene
-    """
-    return 1 if re.search(ltp(gene_prefix_indicators), " ".join(get_left_tokens(c[1], window=5)), re.I) else 0
-
-
-def LF_GENE_PREFIX_COMPLIMENT(c):
-    """
-    This LF is designed to find indicators that specify if the tagged gene is not a gene
-    """
-    return -1 if re.search(ltp(non_gene_prefix_indicators), " ".join(get_left_tokens(c[1], window=5)), re.I) else 0
-
-
-def LF_GENE_SUFFIX(c):
-    """
-    This LF is designed to confirm that the entity labeld as gene
-    is really a gene. It looks for key phrases/words that will
-    suggest the possibility of the tagged entity being a gene
-    """
-    return 1 if re.search(ltp(gene_suffix_indicators), " ".join(get_right_tokens(c[1], window=5)), re.I) else 0
-
-
-def LF_GENE_SUFFIX_COMPLIMENT(c):
-    """
-    This LF is designed to find indicators that specify if the tagged gene is not a gene
-    """
-    return -1 if re.search(ltp(non_gene_suffix_indicators), " ".join(get_right_tokens(c[0], window=5)), re.I) else 0
-
-
-def LF_DISEASE_PREFIX(c):
-    """
-    This LF is designed to confirm that the entity labeld as gene
-    is really a disease. It looks for key phrases/words that will
-    suggest the possibility of the tagged entity being a disease.
-    """
-    return 1 if re.search(ltp(disease_prefix_indicators), " ".join(get_left_tokens(c[0], window=5)), re.I) else 0
-
-
-def LF_DISEASE_SUFFIX(c):
-    """
-    This LF is designed to confirm that the entity labeld as gene
-    is really a disease. It looks for key phrases/words that will
-    suggest the possibility of the tagged entity being a disease.
-    """
-    return 1 if re.search(ltp(disease_suffix_indiciators), " ".join(get_right_tokens(c[0], window=5)), re.I) else 0
-
-def LF_NOISE(c):
-    return -1
-
 
 """
 RETRUN LFs to Notebook
 """
 
-
-def get_lfs():
-    """
-    This helper function returns a list of each label function that
-    will be used for the labeling step.
-    """
-    return [
-            LF_HETNETS, LF_CHECK_GENE_TAG, LF_CHECK_DISEASE_TAG,
-            LF_IS_BIOMARKER,LF_ASSOCIATION,
-            LF_NO_ASSOCIATION,
-            LF_NO_CONCLUSION,
-            LF_DG_DISTANCE, LF_NO_VERB,
-            LF_NOISE
-            #LF_GENE_PREFIX,
-            #LF_GENE_PREFIX_COMPLIMENT,
-            #LF_GENE_SUFFIX, LF_GENE_SUFFIX_COMPLIMENT,
-            #LF_DISEASE_PREFIX,
-            #LF_DISEASE_SUFFIX
-
-            ]
+LFS = {
+    "LF_HETNET_DISEASES": LF_HETNET_DISEASES,
+    "LF_HETNET_DOAF": LF_HETNET_DOAF,
+    "LF_HETNET_DisGeNET": LF_HETNET_DisGeNET,
+    "LF_HETNET_GWAS": LF_HETNET_GWAS,
+    "LF_CHECK_GENE_TAG": LF_CHECK_GENE_TAG, 
+    #"LF_CHECK_DISEASE_TAG": LF_CHECK_DISEASE_TAG,
+    "LF_IS_BIOMARKER": LF_IS_BIOMARKER,
+    "LF_ASSOCIATION": LF_ASSOCIATION,
+    "LF_NO_ASSOCIATION": LF_NO_ASSOCIATION,
+    "LF_NO_CONCLUSION": LF_NO_CONCLUSION,
+    "LF_DG_DISTANCE": LF_DG_DISTANCE,
+    "LF_NO_VERB": LF_NO_VERB,
+}
