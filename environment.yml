@@ -15,7 +15,7 @@ dependencies:
 - neo4j-python-driver==1.3.1
 - nltk=3.2.4
 - numba=0.36.2
-- numpy=1.13.0
+- numpy=1.13.3
 - pandas=0.22.0
 - psycopg2=2.7.3.2
 - python=3.6.4
@@ -31,6 +31,7 @@ dependencies:
 - tensorflow==1.4.0
 - tqdm=4.19.5
 - tika=1.15
+- xlsxwriter=1.0.4
 - pip:
     - git+https://github.com/HazyResearch/numbskull@52192383b30f2835f5b1e17c6365e2f8c93d97da
     - hetio==0.2.6

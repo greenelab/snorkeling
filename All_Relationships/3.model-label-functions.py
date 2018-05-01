@@ -16,8 +16,7 @@ get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
 get_ipython().run_line_magic('matplotlib', 'inline')
 
-from collections import Counter
-from collections import defaultdict
+from collections import Counter, OrderedDict, defaultdict
 import os
 import tqdm
 
@@ -51,7 +50,7 @@ from snorkel import SnorkelSession
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator, save_marginals
 from snorkel.learning import GenerativeModel
 from snorkel.learning.utils import MentionScorer
-from snorkel.models import Candidate, FeatureKey, candidate_subclass
+from snorkel.models import Candidate, FeatureKey, candidate_subclass, Label
 from snorkel.utils import get_as_dict
 from tree_structs import corenlp_to_xmltree
 from treedlib import compile_relation_feature_generator
@@ -86,27 +85,45 @@ else:
 
 
 from snorkel.annotations import load_gold_labels
-L_gold_train = load_gold_labels(session, annotator_name='danich1', split=0)
-annotated_cands_train_ids = list(map(lambda x: L_gold_train.row_index[x], L_gold_train.nonzero()[0]))
+#L_gold_train = load_gold_labels(session, annotator_name='danich1', split=0)
+#annotated_cands_train_ids = list(map(lambda x: L_gold_train.row_index[x], L_gold_train.nonzero()[0]))
 
-L_gold_dev = load_gold_labels(session, annotator_name='danich1', split=1)
+sql = '''
+SELECT candidate_id FROM gold_label
+'''
+gold_cids = [x[0] for x in session.execute(sql)]
+cids = session.query(Candidate.id).filter(Candidate.id.in_(gold_cids))
+
+L_gold_dev = load_gold_labels(session, annotator_name='danich1', cids_query=cids)
 annotated_cands_dev_ids = list(map(lambda x: L_gold_dev.row_index[x], L_gold_dev.nonzero()[0]))
 
 
 # In[7]:
 
 
-get_ipython().run_cell_magic('time', '', 'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have human labels\n#cids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_train_ids))\nL_train = labeler.load_matrix(session, split=0) #cids_query=cids)\n\n#cids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_dev_ids))\n#L_dev = labeler.load_matrix(session,cids_query=cids)')
+L_gold_dev
 
 
 # In[8]:
+
+
+get_ipython().run_cell_magic('time', '', 'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have human labels\n#cids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_train_ids))\nL_train = labeler.load_matrix(session, split=0) #\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(gold_cids))\nL_dev = labeler.load_matrix(session,cids_query=cids)')
+
+
+# In[9]:
+
+
+type(L_train)
+
+
+# In[10]:
 
 
 print("Total Data Shape:")
 print(L_train.shape)
 
 
-# In[9]:
+# In[11]:
 
 
 L_train = L_train[np.unique(L_train.nonzero()[0]), :]
@@ -114,26 +131,29 @@ print("Total Data Shape:")
 print(L_train.shape)
 
 
+# In[12]:
+
+
+type(L_train)
+
+
 # # Train the Generative Model
 
 # Here is the first step of classification step of this project, where we train a gnerative model to discriminate the correct label each candidate will receive. Snorkel's generative model uses a Gibbs Sampling on a [factor graph](http://deepdive.stanford.edu/assets/factor_graph.pdf), to generate the probability of a potential candidate being a true candidate (label of 1).
 
-# In[10]:
+# In[13]:
 
 
-from snorkel.learning import GenerativeModel
-
-gen_model = GenerativeModel()
-get_ipython().run_line_magic('time', 'gen_model.train(L_train, epochs=30, decay=0.95, step_size=0.1 / L_train.shape[0], reg_param=1e-6, threads=50, verbose=True)')
+get_ipython().run_cell_magic('time', '', 'from snorkel.learning import GenerativeModel\n\ngen_model = GenerativeModel()\ngen_model.train(\n    L_train,\n    epochs=30,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n    verbose=True\n)')
 
 
-# In[11]:
+# In[14]:
 
 
 gen_model.weights.lf_accuracy
 
 
-# In[12]:
+# In[15]:
 
 
 from utils.disease_gene_lf import LFS
@@ -142,19 +162,19 @@ learned_stats_df.index = list(LFS)
 learned_stats_df
 
 
-# In[13]:
+# In[16]:
 
 
 get_ipython().run_line_magic('time', 'train_marginals = gen_model.marginals(L_train)')
 
 
-# In[14]:
+# In[17]:
 
 
 print(len(train_marginals[train_marginals > 0.5]))
 
 
-# In[15]:
+# In[18]:
 
 
 plt.hist(train_marginals, bins=20)
@@ -162,10 +182,25 @@ plt.title("Training Marginals for Gibbs Sampler")
 plt.show()
 
 
-# In[ ]:
+# In[19]:
 
 
-tp, fp, tn, fn = gen_model.error_analysis(session, L_train, L_gold_train)
+tp, fp, tn, fn = gen_model.error_analysis(session, L_dev, L_gold_dev)
+
+
+# In[20]:
+
+
+dev_marginals = gen_model.marginals(L_dev)
+
+
+# In[21]:
+
+
+fpr, tpr, threshold = roc_curve(L_gold_dev.todense(), dev_marginals)
+plt.plot([0,1], [0,1])
+plt.plot(fpr, tpr, label='AUC {:.2f}'.format(auc(fpr, tpr)))
+plt.legend()
 
 
 # In[ ]:
@@ -177,7 +212,7 @@ from snorkel.viewer import SentenceNgramViewer
 # You should ignore this!
 import os
 if 'CI' not in os.environ:
-    sv = SentenceNgramViewer(fn, session)
+    sv = SentenceNgramViewer(fp, session)
 else:
     sv = None
 
@@ -195,6 +230,47 @@ c = sv.get_selected() if sv else list(fp.union(fn))[0]
 c
 
 
+# In[22]:
+
+
+rows = list()
+for i in range(L_train.shape[0]):
+    row = OrderedDict()
+    candidate = L_train.get_candidate(session, i)
+    row['disease'] = candidate[0].get_span()
+    row['gene'] = candidate[1].get_span()
+    row['doid_id'] = candidate.Disease_cid
+    row['entrez_gene_id'] = candidate.Gene_cid
+    row['sentence'] = candidate.get_parent().text
+    row['label'] = train_marginals[i]
+    rows.append(row)
+sentence_df = pd.DataFrame(rows)
+
+sentence_df = pd.concat([
+    sentence_df,
+    pd.DataFrame(L_train.todense(), columns=list(LFS))
+], axis='columns')
+
+sentence_df.tail()
+
+
+# In[23]:
+
+
+writer = pd.ExcelWriter('data/sentence-labels.xlsx')
+sentence_df.to_excel(writer, sheet_name='sentences', index=False)
+if writer.engine == 'xlsxwriter':
+    for sheet in writer.sheets.values():
+        sheet.freeze_panes(1, 0)
+writer.close()
+
+
+# In[ ]:
+
+
+sentence_df
+
+
 # In[ ]:
 
 
@@ -204,13 +280,19 @@ c.labels
 # In[ ]:
 
 
-c.Gene_cid
+L_dev.get_row_index(c)
 
 
 # In[ ]:
 
 
-L_train.lf_stats(session, L_gold_train[L_gold_train!=0].T, gen_model.learned_lf_stats()['Accuracy'])
+dev_marginals[26]
+
+
+# In[ ]:
+
+
+L_dev.lf_stats(session, L_gold_dev[L_gold_dev!=0].T, gen_model.learned_lf_stats()['Accuracy'])
 
 
 # # Save Training Marginals

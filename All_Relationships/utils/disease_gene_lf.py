@@ -73,16 +73,24 @@ for row in pair_df.itertuples():
         knowledge_base.add(key)
 
 def LF_HETNET_DISEASES(c):
-    return 1 if (c.Gene_cid, c.Disease_cid, "DISEASES") in knowledge_base else -1
+    return 1 if (c.Gene_cid, c.Disease_cid, "DISEASES") in knowledge_base else 0
 
 def LF_HETNET_DOAF(c):
-    return 1 if (c.Gene_cid, c.Disease_cid, "DOAF") in knowledge_base else -1
+    return 1 if (c.Gene_cid, c.Disease_cid, "DOAF") in knowledge_base else 0
 
 def LF_HETNET_DisGeNET(c):
-    return 1 if (c.Gene_cid, c.Disease_cid, "DisGeNET") in knowledge_base else -1
+    return 1 if (c.Gene_cid, c.Disease_cid, "DisGeNET") in knowledge_base else 0
 
 def LF_HETNET_GWAS(c):
-    return 1 if (c.Gene_cid, c.Disease_cid, "GWAS Catalog") in knowledge_base else -1
+    return 1 if (c.Gene_cid, c.Disease_cid, "GWAS Catalog") in knowledge_base else 0
+
+def LF_HETNET_ABSENT(c):
+    return 0 if any([
+        LF_HETNET_DISEASES(c),
+        LF_HETNET_DOAF(c),
+        LF_HETNET_DisGeNET(c),
+        LF_HETNET_GWAS(c)
+    ]) else -1
 
 
 # obtained from ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/ (ncbi's ftp server)
@@ -245,6 +253,7 @@ LFS = {
     "LF_HETNET_DOAF": LF_HETNET_DOAF,
     "LF_HETNET_DisGeNET": LF_HETNET_DisGeNET,
     "LF_HETNET_GWAS": LF_HETNET_GWAS,
+    "LF_HETNET_ABSENT":LF_HETNET_ABSENT,
     "LF_CHECK_GENE_TAG": LF_CHECK_GENE_TAG, 
     #"LF_CHECK_DISEASE_TAG": LF_CHECK_DISEASE_TAG,
     "LF_IS_BIOMARKER": LF_IS_BIOMARKER,

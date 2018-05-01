@@ -9,7 +9,7 @@
 
 # Load all the imports and set up the database for database operations. Plus, set up the particular candidate type this notebook is going to work with. 
 
-# In[ ]:
+# In[1]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -28,7 +28,7 @@ import pandas as pd
 import tqdm
 
 
-# In[ ]:
+# In[2]:
 
 
 #Set up the environment
@@ -44,7 +44,7 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[ ]:
+# In[3]:
 
 
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator
@@ -54,14 +54,14 @@ from snorkel.models import Candidate, GoldLabel
 from snorkel.viewer import SentenceNgramViewer
 
 
-# In[ ]:
+# In[4]:
 
 
 edge_type = "dg"
 debug = False
 
 
-# In[ ]:
+# In[5]:
 
 
 if edge_type == "dg":
@@ -116,7 +116,7 @@ else:
 
 # Here is one of the fundamental part of this project. Below are the label functions that are used to give a candidate a label of 1,0 or -1 which corresponds to correct label, unknown label and incorrection label. The goal here is to develop functions that can label accurately label as many candidates as possible. This idea comes from the [data programming paradigm](https://papers.nips.cc/paper/6523-data-programming-creating-large-training-sets-quickly), where the goal is to be able to create labels that machine learning algorithms can use for accurate classification.  
 
-# In[ ]:
+# In[20]:
 
 
 if edge_type == "dg":
@@ -131,11 +131,44 @@ else:
     print("Please pick a valid edge type")
 
 
+# In[ ]:
+
+
+c = session.query(DiseaseGene).filter(DiseaseGene.id.in_(target_cids)).all()
+c
+
+
+# In[ ]:
+
+
+try:
+    for i, cand in enumerate(c):
+        print(LFS['LF_CHECK_DISEASE_TAG'](cand))
+except:
+    print(i)
+
+
+# In[ ]:
+
+
+import nltk
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+
+disease_desc = pd.read_table("https://raw.githubusercontent.com/dhimmel/disease-ontology/052ffcc960f5897a0575f5feff904ca84b7d2c1d/data/xrefs-prop-slim.tsv")
+disease_normalization_df = pd.read_table("https://raw.githubusercontent.com/dhimmel/disease-ontology/052ffcc960f5897a0575f5feff904ca84b7d2c1d/data/slim-terms-prop.tsv")
+wordnet_lemmatizer = WordNetLemmatizer()
+
+disease_name = re.sub("\) ?", "", c[152][0].get_span())
+disease_name = [wordnet_lemmatizer.lemmatize(word) for word in disease_name.split(" ")]
+nltk.pos_tag(disease_name)
+
+
 # # Label The Candidates
 
 # Label each candidate based on the provided labels above. This code runs with realtive ease, but optimization is definitely needed when the number of label functions increases linearly.
 
-# In[ ]:
+# In[12]:
 
 
 from snorkel.annotations import load_gold_labels
@@ -146,25 +179,35 @@ L_gold_dev = load_gold_labels(session, annotator_name='danich1', split=1)
 annotated_cands_dev_ids = list(map(lambda x: L_gold_dev.row_index[x], L_gold_dev.nonzero()[0]))
 
 
-# In[ ]:
+# In[7]:
 
 
 sql = '''
 SELECT id from candidate
 WHERE split = 0 and type='disease_gene'
 ORDER BY RANDOM()
-LIMIT 1000;
+LIMIT 10000;
 '''
 target_cids = [x[0] for x in session.execute(sql)]
 
 
-# In[ ]:
+# In[8]:
 
 
 target_cids
 
 
-# In[ ]:
+# In[17]:
+
+
+sql = '''
+SELECT candidate_id FROM gold_label
+'''
+gold_cids = [x[0] for x in session.execute(sql)]
+gold_cids
+
+
+# In[21]:
 
 
 from  sqlalchemy.sql.expression import func
@@ -173,14 +216,26 @@ labeler = LabelAnnotator(lfs=list(LFS.values()))
 cids = session.query(DiseaseGene.id).filter(DiseaseGene.id.in_(target_cids))
 get_ipython().run_line_magic('time', 'L_train = labeler.apply(split=0, cids_query=cids, parallelism=5)')
 
-#cids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_dev_ids))
-#%time L_dev = labeler.apply_existing(split=1, cids_query=cids, parallelism=5, clear=False)
+cids = session.query(Candidate.id).filter(Candidate.id.in_(gold_cids))
+get_ipython().run_line_magic('time', 'L_dev = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
 
 #cids = session.query(Candidate.id).filter(Candidate.split==2)
 #%time L_test = labeler.apply_existing(split=2, cids_query=cids, parallelism=5, clear=False)
 
 
-# In[ ]:
+# In[19]:
+
+
+L_dev.shape
+
+
+# In[10]:
+
+
+np.savetxt('data/labeled_candidates.txt', target_cids)
+
+
+# In[11]:
 
 
 L_train.lf_stats(session)
