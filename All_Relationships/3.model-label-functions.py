@@ -9,7 +9,7 @@
 
 # Import the necessary modules and set up the database for database operations.
 
-# In[ ]:
+# In[1]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -28,7 +28,7 @@ import seaborn as sns
 from sklearn.metrics import average_precision_score, precision_recall_curve, roc_curve, auc
 
 
-# In[ ]:
+# In[2]:
 
 
 #Set up the environment
@@ -44,7 +44,7 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[ ]:
+# In[3]:
 
 
 from snorkel import SnorkelSession
@@ -57,13 +57,13 @@ from tree_structs import corenlp_to_xmltree
 from treedlib import compile_relation_feature_generator
 
 
-# In[ ]:
+# In[4]:
 
 
 edge_type = "dg"
 
 
-# In[ ]:
+# In[5]:
 
 
 if edge_type == "dg":
@@ -82,7 +82,7 @@ else:
 
 # This code will load the label matrix that was generated in the previous notebook ([Notebook 2](2.data-labeler.ipynb)). **Disclaimer**: this block might break, which means that the snorkel code is still using its old code. The problem with the old code is that sqlalchemy will attempt to load all the labels into memory. Doesn't sound bad if you keep the amount of labels small, but doesn't scale when the amount of labels increases exponentially. Good news is that there is a pull request to fix this issue. [Check it out here!](https://github.com/HazyResearch/snorkel/pull/789)
 
-# In[ ]:
+# In[6]:
 
 
 from snorkel.annotations import load_gold_labels
@@ -93,30 +93,32 @@ L_gold_dev = load_gold_labels(session, annotator_name='danich1', split=1)
 annotated_cands_dev_ids = list(map(lambda x: L_gold_dev.row_index[x], L_gold_dev.nonzero()[0]))
 
 
-# In[ ]:
+# In[7]:
 
 
-get_ipython().run_cell_magic('time', '', 'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have human labels\ncids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_train_ids))\nL_train = labeler.load_matrix(session,cids_query=cids)\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_dev_ids))\nL_dev = labeler.load_matrix(session,cids_query=cids)')
+get_ipython().run_cell_magic('time', '', 'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have human labels\n#cids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_train_ids))\nL_train = labeler.load_matrix(session, split=0) #cids_query=cids)\n\n#cids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_dev_ids))\n#L_dev = labeler.load_matrix(session,cids_query=cids)')
 
 
-# In[ ]:
+# In[8]:
 
 
 print("Total Data Shape:")
 print(L_train.shape)
 
 
-# In[ ]:
+# In[9]:
 
 
-L_train.get_candidate(session, 1)
+L_train = L_train[np.unique(L_train.nonzero()[0]), :]
+print("Total Data Shape:")
+print(L_train.shape)
 
 
 # # Train the Generative Model
 
 # Here is the first step of classification step of this project, where we train a gnerative model to discriminate the correct label each candidate will receive. Snorkel's generative model uses a Gibbs Sampling on a [factor graph](http://deepdive.stanford.edu/assets/factor_graph.pdf), to generate the probability of a potential candidate being a true candidate (label of 1).
 
-# In[ ]:
+# In[10]:
 
 
 from snorkel.learning import GenerativeModel
@@ -125,31 +127,34 @@ gen_model = GenerativeModel()
 get_ipython().run_line_magic('time', 'gen_model.train(L_train, epochs=30, decay=0.95, step_size=0.1 / L_train.shape[0], reg_param=1e-6, threads=50, verbose=True)')
 
 
-# In[ ]:
+# In[11]:
 
 
 gen_model.weights.lf_accuracy
 
 
-# In[ ]:
+# In[12]:
+
+
+from utils.disease_gene_lf import LFS
+learned_stats_df = gen_model.learned_lf_stats()
+learned_stats_df.index = list(LFS)
+learned_stats_df
+
+
+# In[13]:
 
 
 get_ipython().run_line_magic('time', 'train_marginals = gen_model.marginals(L_train)')
 
 
-# In[ ]:
-
-
-gen_model.learned_lf_stats()
-
-
-# In[ ]:
+# In[14]:
 
 
 print(len(train_marginals[train_marginals > 0.5]))
 
 
-# In[ ]:
+# In[15]:
 
 
 plt.hist(train_marginals, bins=20)

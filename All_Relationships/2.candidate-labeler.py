@@ -120,7 +120,7 @@ else:
 
 
 if edge_type == "dg":
-    from utils.disease_gene_lf import get_lfs, LF_DEBUG
+    from utils.disease_gene_lf import LFS
 elif edge_type == "gg":
     from utils.gene_gene_lf import *
 elif edge_type == "cg":
@@ -129,24 +129,6 @@ elif edge_type == "cd":
     from utils.compound_disease_lf import *
 else:
     print("Please pick a valid edge type")
-
-
-# In[ ]:
-
-
-LFs = get_lfs()
-LFs
-
-
-# In[ ]:
-
-
-cand_index = 41
-candidates = session.query(DiseaseGene).filter(DiseaseGene.id.in_(dev_set["id"])).offset(0).limit(50).all()
-print("Disease: {}, Gene: {}".format(candidates[cand_index].Disease_cid, candidates[cand_index].Gene_cid))
-print(candidates[cand_index].get_parent().text)
-print(LFs[-3](candidates[cand_index]))
-#LF_DEBUG(candidates[5])
 
 
 # # Label The Candidates
@@ -167,16 +149,41 @@ annotated_cands_dev_ids = list(map(lambda x: L_gold_dev.row_index[x], L_gold_dev
 # In[ ]:
 
 
-labeler = LabelAnnotator(lfs=LFs)
+sql = '''
+SELECT id from candidate
+WHERE split = 0 and type='disease_gene'
+ORDER BY RANDOM()
+LIMIT 1000;
+'''
+target_cids = [x[0] for x in session.execute(sql)]
 
-cids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_train_ids))
+
+# In[ ]:
+
+
+target_cids
+
+
+# In[ ]:
+
+
+from  sqlalchemy.sql.expression import func
+labeler = LabelAnnotator(lfs=list(LFS.values()))
+
+cids = session.query(DiseaseGene.id).filter(DiseaseGene.id.in_(target_cids))
 get_ipython().run_line_magic('time', 'L_train = labeler.apply(split=0, cids_query=cids, parallelism=5)')
 
-cids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_dev_ids))
-get_ipython().run_line_magic('time', 'L_dev = labeler.apply_existing(split=1, cids_query=cids, parallelism=5, clear=False)')
+#cids = session.query(Candidate.id).filter(Candidate.id.in_(annotated_cands_dev_ids))
+#%time L_dev = labeler.apply_existing(split=1, cids_query=cids, parallelism=5, clear=False)
 
 #cids = session.query(Candidate.id).filter(Candidate.split==2)
 #%time L_test = labeler.apply_existing(split=2, cids_query=cids, parallelism=5, clear=False)
+
+
+# In[ ]:
+
+
+L_train.lf_stats(session)
 
 
 # # DO NOT RUN BELOW
