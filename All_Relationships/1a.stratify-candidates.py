@@ -186,7 +186,7 @@ dg_map_df.split.value_counts()
 # In[16]:
 
 
-dg_map_df.to_csv("disease-gene-pairs-association.csv", index=False, float_format='%.5g')
+dg_map_df.to_csv("data/disease-gene-pairs-association.csv.xz", index=False, float_format='%.5g', compression='xz')
 
 
 # In[17]:

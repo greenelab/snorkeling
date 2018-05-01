@@ -12,6 +12,7 @@ from snorkel.lf_helpers import (
     rule_regex_search_before_B,
 )
 import re
+import pathlib
 import pandas as pd
 import nltk
 from nltk.stem import WordNetLemmatizer
@@ -61,7 +62,8 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-pair_df = pd.read_csv("disease-gene-pairs-association.csv")
+path = pathlib.Path(__file__).joinpath('../../data/disease-gene-pairs-association.csv.xz').resolve()
+pair_df = pd.read_csv(path, dtype={"sources": str})
 knowledge_base = set()
 for row in pair_df.itertuples():
     if not row.sources or pd.isnull(row.sources):
@@ -121,14 +123,14 @@ def LF_CHECK_DISEASE_TAG(c):
     c- the candidate object to be passed in.
     """
     sen = c[0].get_parent()
-    disease_name = re.sub("\)", "", c[0].get_span())
+    disease_name = re.sub("\) ?", "", c[0].get_span())
 
     # If abbreviation skip since no means of easy resolution
     if len(disease_name) <=5 and disease_name.isupper():
         return 0
     
     disease_name = [wordnet_lemmatizer.lemmatize(word) for word in disease_name.split(" ")]
-    disease_name = " ".join(list(map(lambda x: x[0], filter(lambda x: x[1] == 'NN', nltk.pos_tag(disease_name)))))
+    disease_name = " ".join(list(map(lambda x: x[0], filter(lambda x: 'NN' in x[1], nltk.pos_tag(disease_name)))))
 
     disease_id = sen.entity_cids[c[0].get_word_start()]
     disease_entry_df = disease_desc.query("doid_code == @disease_id")
