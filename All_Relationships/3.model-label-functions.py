@@ -81,7 +81,7 @@ else:
 
 # This code will load the label matrix that was generated in the previous notebook ([Notebook 2](2.data-labeler.ipynb)). **Disclaimer**: this block might break, which means that the snorkel code is still using its old code. The problem with the old code is that sqlalchemy will attempt to load all the labels into memory. Doesn't sound bad if you keep the amount of labels small, but doesn't scale when the amount of labels increases exponentially. Good news is that there is a pull request to fix this issue. [Check it out here!](https://github.com/HazyResearch/snorkel/pull/789)
 
-# In[ ]:
+# In[6]:
 
 
 from snorkel.annotations import load_gold_labels
@@ -98,40 +98,40 @@ L_gold_dev = load_gold_labels(session, annotator_name='danich1', cids_query=cids
 annotated_cands_dev_ids = list(map(lambda x: L_gold_dev.row_index[x], L_gold_dev.nonzero()[0]))
 
 
-# In[ ]:
+# In[7]:
 
 
 L_gold_dev
 
 
-# In[16]:
+# In[8]:
 
 
 train_candidate_ids = np.loadtxt('data/labeled_candidates.txt').astype(int).tolist()
 train_candidate_ids
 
 
-# In[10]:
+# In[9]:
 
 
 dev_candidate_ids = np.loadtxt('data/labeled_dev_candidates.txt').astype(int).tolist()
 dev_candidate_ids
 
 
-# In[11]:
+# In[10]:
 
 
 get_ipython().run_cell_magic('time', '', 'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have human labels\ncids = session.query(Candidate.id).filter(Candidate.id.in_(train_candidate_ids))\nL_train = labeler.load_matrix(session, split=0) #\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(dev_candidate_ids))\nL_dev = labeler.load_matrix(session,cids_query=cids)')
 
 
-# In[12]:
+# In[11]:
 
 
 print("Total Data Shape:")
 print(L_train.shape)
 
 
-# In[13]:
+# In[12]:
 
 
 L_train = L_train[np.unique(L_train.nonzero()[0]), :]
@@ -139,7 +139,7 @@ print("Total Data Shape:")
 print(L_train.shape)
 
 
-# In[14]:
+# In[13]:
 
 
 L_dev.shape
@@ -149,19 +149,19 @@ L_dev.shape
 
 # Here is the first step of classification step of this project, where we train a gnerative model to discriminate the correct label each candidate will receive. Snorkel's generative model uses a Gibbs Sampling on a [factor graph](http://deepdive.stanford.edu/assets/factor_graph.pdf), to generate the probability of a potential candidate being a true candidate (label of 1).
 
-# In[17]:
+# In[14]:
 
 
 get_ipython().run_cell_magic('time', '', 'from snorkel.learning import GenerativeModel\n\ngen_model = GenerativeModel()\ngen_model.train(\n    L_train,\n    epochs=30,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n    verbose=True\n)')
 
 
-# In[18]:
+# In[15]:
 
 
 gen_model.weights.lf_accuracy
 
 
-# In[19]:
+# In[16]:
 
 
 from utils.disease_gene_lf import LFS
@@ -170,7 +170,7 @@ learned_stats_df.index = list(LFS)
 learned_stats_df
 
 
-# In[20]:
+# In[17]:
 
 
 get_ipython().run_line_magic('time', 'train_marginals = gen_model.marginals(L_train)')
@@ -192,7 +192,7 @@ plt.show()
 
 # ## ROC of Generative Model
 
-# In[21]:
+# In[18]:
 
 
 dev_marginals = gen_model.marginals(L_dev)
@@ -256,14 +256,14 @@ c.labels
 
 # ## Generate Excel File of Train Data
 
-# In[22]:
+# In[ ]:
 
 
 pair_df = pd.read_csv("data/disease-gene-pairs-association.csv.xz", compression='xz')
 pair_df.head(2)
 
 
-# In[23]:
+# In[ ]:
 
 
 rows = list()
@@ -283,7 +283,7 @@ sentence_df['entrez_gene_id'] = sentence_df.entrez_gene_id.astype(int)
 sentence_df.head(2)
 
 
-# In[24]:
+# In[ ]:
 
 
 sentence_df = pd.merge(
@@ -295,7 +295,7 @@ sentence_df = pd.merge(
 sentence_df.head(2)
 
 
-# In[25]:
+# In[ ]:
 
 
 sentence_df = pd.concat([
@@ -306,7 +306,13 @@ sentence_df = pd.concat([
 sentence_df.tail()
 
 
-# In[26]:
+# In[ ]:
+
+
+sentence_df = sentence_df.sample(frac=1, random_state=100)
+
+
+# In[ ]:
 
 
 writer = pd.ExcelWriter('data/sentence-labels-dev.xlsx')
