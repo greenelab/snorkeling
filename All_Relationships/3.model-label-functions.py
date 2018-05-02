@@ -9,7 +9,7 @@
 
 # Import the necessary modules and set up the database for database operations.
 
-# In[1]:
+# In[25]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -27,7 +27,7 @@ import seaborn as sns
 from sklearn.metrics import average_precision_score, precision_recall_curve, roc_curve, auc
 
 
-# In[2]:
+# In[26]:
 
 
 #Set up the environment
@@ -43,7 +43,7 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[3]:
+# In[27]:
 
 
 from snorkel import SnorkelSession
@@ -56,13 +56,13 @@ from tree_structs import corenlp_to_xmltree
 from treedlib import compile_relation_feature_generator
 
 
-# In[4]:
+# In[28]:
 
 
 edge_type = "dg"
 
 
-# In[5]:
+# In[29]:
 
 
 if edge_type == "dg":
@@ -81,7 +81,7 @@ else:
 
 # This code will load the label matrix that was generated in the previous notebook ([Notebook 2](2.data-labeler.ipynb)). **Disclaimer**: this block might break, which means that the snorkel code is still using its old code. The problem with the old code is that sqlalchemy will attempt to load all the labels into memory. Doesn't sound bad if you keep the amount of labels small, but doesn't scale when the amount of labels increases exponentially. Good news is that there is a pull request to fix this issue. [Check it out here!](https://github.com/HazyResearch/snorkel/pull/789)
 
-# In[6]:
+# In[30]:
 
 
 from snorkel.annotations import load_gold_labels
@@ -98,40 +98,40 @@ L_gold_dev = load_gold_labels(session, annotator_name='danich1', cids_query=cids
 annotated_cands_dev_ids = list(map(lambda x: L_gold_dev.row_index[x], L_gold_dev.nonzero()[0]))
 
 
-# In[7]:
+# In[31]:
 
 
 L_gold_dev
 
 
-# In[8]:
+# In[32]:
 
 
 train_candidate_ids = np.loadtxt('data/labeled_candidates.txt').astype(int).tolist()
 train_candidate_ids
 
 
-# In[9]:
+# In[33]:
 
 
 dev_candidate_ids = np.loadtxt('data/labeled_dev_candidates.txt').astype(int).tolist()
 dev_candidate_ids
 
 
-# In[10]:
+# In[34]:
 
 
 get_ipython().run_cell_magic('time', '', 'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have human labels\ncids = session.query(Candidate.id).filter(Candidate.id.in_(train_candidate_ids))\nL_train = labeler.load_matrix(session, split=0) #\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(dev_candidate_ids))\nL_dev = labeler.load_matrix(session,cids_query=cids)')
 
 
-# In[11]:
+# In[35]:
 
 
 print("Total Data Shape:")
 print(L_train.shape)
 
 
-# In[12]:
+# In[36]:
 
 
 L_train = L_train[np.unique(L_train.nonzero()[0]), :]
@@ -139,7 +139,7 @@ print("Total Data Shape:")
 print(L_train.shape)
 
 
-# In[13]:
+# In[37]:
 
 
 L_dev.shape
@@ -149,19 +149,19 @@ L_dev.shape
 
 # Here is the first step of classification step of this project, where we train a gnerative model to discriminate the correct label each candidate will receive. Snorkel's generative model uses a Gibbs Sampling on a [factor graph](http://deepdive.stanford.edu/assets/factor_graph.pdf), to generate the probability of a potential candidate being a true candidate (label of 1).
 
-# In[14]:
+# In[38]:
 
 
 get_ipython().run_cell_magic('time', '', 'from snorkel.learning import GenerativeModel\n\ngen_model = GenerativeModel()\ngen_model.train(\n    L_train,\n    epochs=30,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n    verbose=True\n)')
 
 
-# In[15]:
+# In[39]:
 
 
 gen_model.weights.lf_accuracy
 
 
-# In[16]:
+# In[40]:
 
 
 from utils.disease_gene_lf import LFS
@@ -170,7 +170,7 @@ learned_stats_df.index = list(LFS)
 learned_stats_df
 
 
-# In[17]:
+# In[41]:
 
 
 get_ipython().run_line_magic('time', 'train_marginals = gen_model.marginals(L_train)')
@@ -192,7 +192,7 @@ plt.show()
 
 # ## ROC of Generative Model
 
-# In[18]:
+# In[42]:
 
 
 dev_marginals = gen_model.marginals(L_dev)
@@ -256,14 +256,14 @@ c.labels
 
 # ## Generate Excel File of Train Data
 
-# In[ ]:
+# In[43]:
 
 
 pair_df = pd.read_csv("data/disease-gene-pairs-association.csv.xz", compression='xz')
 pair_df.head(2)
 
 
-# In[ ]:
+# In[44]:
 
 
 rows = list()
@@ -283,7 +283,7 @@ sentence_df['entrez_gene_id'] = sentence_df.entrez_gene_id.astype(int)
 sentence_df.head(2)
 
 
-# In[ ]:
+# In[45]:
 
 
 sentence_df = pd.merge(
@@ -295,7 +295,7 @@ sentence_df = pd.merge(
 sentence_df.head(2)
 
 
-# In[ ]:
+# In[46]:
 
 
 sentence_df = pd.concat([
@@ -306,19 +306,13 @@ sentence_df = pd.concat([
 sentence_df.tail()
 
 
-# In[ ]:
-
-
-sentence_df = sentence_df.sample(frac=1, random_state=100)
-
-
-# In[ ]:
+# In[47]:
 
 
 writer = pd.ExcelWriter('data/sentence-labels-dev.xlsx')
 (sentence_df
- .sort_values("label", ascending=False)
- .to_excel(writer, sheet_name='sentences', index=False)
+    .sample(frac=1, random_state=100)
+    .to_excel(writer, sheet_name='sentences', index=False)
 )
 if writer.engine == 'xlsxwriter':
     for sheet in writer.sheets.values():
