@@ -31,6 +31,7 @@ dependencies:
 - tensorflow==1.4.0
 - tqdm=4.19.5
 - tika=1.15
+- xlrd=1.1.0
 - xlsxwriter=1.0.4
 - pip:
     - git+https://github.com/HazyResearch/numbskull@52192383b30f2835f5b1e17c6365e2f8c93d97da
