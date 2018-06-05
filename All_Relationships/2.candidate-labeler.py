@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# # Label The Candidates! Extract The Features!
+# # Label The Candidates!
 
 # This notebook corresponds to labeling and genearting features for each extracted candidate from the [previous notebook](1.data-loader.ipynb).
 
@@ -9,7 +9,7 @@
 
 # Load all the imports and set up the database for database operations. Plus, set up the particular candidate type this notebook is going to work with. 
 
-# In[1]:
+# In[ ]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -28,7 +28,7 @@ import pandas as pd
 import tqdm
 
 
-# In[2]:
+# In[ ]:
 
 
 #Set up the environment
@@ -44,24 +44,25 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[3]:
+# In[ ]:
 
 
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator
 from snorkel.features import get_span_feats
+from snorkel.lf_helpers import *
 from snorkel.models import candidate_subclass
 from snorkel.models import Candidate, GoldLabel
 from snorkel.viewer import SentenceNgramViewer
 
 
-# In[4]:
+# In[ ]:
 
 
 edge_type = "dg"
 debug = False
 
 
-# In[5]:
+# In[ ]:
 
 
 if edge_type == "dg":
@@ -80,47 +81,53 @@ else:
     print("Please pick a valid edge type")
 
 
-# # Look at potential Candidates
+# # Develop Label Functions
+
+# ## Look at potential Candidates
 
 # Use this to look at loaded candidates from a given set. The constants represent the index to retrieve the appropiate set. Ideally, here is where one can look at a subset of the candidate and develop label functions for candidate labeling.
 
 # In[ ]:
 
 
-#dev_set = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/train_candidates_to_ids.csv")
-#dev_set.head(3)
+train_candidate_df = pd.read_excel("data/sentence-labels.xlsx")
+train_candidate_df.head(2)
 
 
 # In[ ]:
 
 
-#TRAIN = 0
-#DEV = 1
+train_candidate_ids = list(map(int, train_candidate_df.candidate_id.values))[10:60]
 
 
 # In[ ]:
 
 
-#candidates = session.query(DiseaseGene).filter(DiseaseGene.split==DEV).offset(300).limit(100)
-#candidates = session.query(DiseaseGene).filter(DiseaseGene.id.in_(dev_set["id"])).offset(400).limit(100)
-#sv = SentenceNgramViewer(candidates, session)
+candidates = session.query(DiseaseGene).filter(DiseaseGene.id.in_(train_candidate_ids)).limit(100)
+sv = SentenceNgramViewer(candidates, session)
 
 
 # In[ ]:
 
 
-#sv
+sv
+
+
+# In[ ]:
+
+
+c = sv.get_selected()
 
 
 # # Label Functions
 
 # Here is one of the fundamental part of this project. Below are the label functions that are used to give a candidate a label of 1,0 or -1 which corresponds to correct label, unknown label and incorrection label. The goal here is to develop functions that can label accurately label as many candidates as possible. This idea comes from the [data programming paradigm](https://papers.nips.cc/paper/6523-data-programming-creating-large-training-sets-quickly), where the goal is to be able to create labels that machine learning algorithms can use for accurate classification.  
 
-# In[9]:
+# In[ ]:
 
 
 if edge_type == "dg":
-    from utils.disease_gene_lf import LFS
+    from utils.disease_gene_lf import LFS, LF_DEBUG
 elif edge_type == "gg":
     from utils.gene_gene_lf import *
 elif edge_type == "cg":
@@ -135,7 +142,7 @@ else:
 
 # Label each candidate based on the provided labels above. This code runs with realtive ease, but optimization is definitely needed when the number of label functions increases linearly.
 
-# In[10]:
+# In[ ]:
 
 
 from  sqlalchemy.sql.expression import func
@@ -165,13 +172,6 @@ target_cids
 # In[ ]:
 
 
-cids = session.query(DiseaseGene.id).filter(DiseaseGene.id.in_(target_cids))
-get_ipython().run_line_magic('time', 'L_train = labeler.apply(split=0, cids_query=cids, parallelism=5)')
-
-
-# In[ ]:
-
-
 np.savetxt('data/labeled_candidates.txt', target_cids)
 
 
@@ -187,7 +187,7 @@ gold_cids = [x[0] for x in session.execute(sql)]
 gold_cids
 
 
-# In[11]:
+# In[ ]:
 
 
 sql = '''
@@ -200,53 +200,53 @@ gold_cids = [x[0] for x in session.execute(sql)]
 gold_cids
 
 
-# In[12]:
+# In[ ]:
+
+
+np.savetxt('data/labeled_dev_candidates.txt', gold_cids)
+
+
+# # Quickly Relabel Candidates
+
+# Use this block here to re-label candidates that have already been labled from the above process.
+
+# In[ ]:
+
+
+target_cids = np.loadtxt('data/labeled_candidates.txt').astype(int).tolist()
+
+
+# In[ ]:
+
+
+cids = session.query(DiseaseGene.id).filter(DiseaseGene.id.in_(target_cids))
+get_ipython().run_line_magic('time', 'L_train = labeler.apply(split=0, cids_query=cids, parallelism=5)')
+
+
+# In[ ]:
+
+
+dev_df = pd.read_excel("data/sentence-labels-dev-hand-labeled.xlsx")
+dev_df = dev_df[dev_df.curated_dsh.notnull()]
+gold_cids = list(map(int, dev_df.candidate_id.values))
+len(gold_cids)
+
+
+# In[ ]:
 
 
 cids = session.query(Candidate.id).filter(Candidate.id.in_(gold_cids))
 get_ipython().run_line_magic('time', 'L_dev = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
 
 
-# In[13]:
-
-
-np.savetxt('data/labeled_dev_candidates.txt', gold_cids)
-
-
-# # DO NOT RUN BELOW
-
-# # Generate Candidate Features
-
-# In conjunction with each candidate label, generate candidate features that will be used by some machine learning algorithms (notebook 4). This step is broken as insert takes an **incredibly** long time to run. Had to do roundabout way to load the features. **Do not run this block** and refer to the code block below. Gonna need to debug this part, when I get time.
-
 # In[ ]:
 
 
-get_ipython().run_cell_magic('time', '', 'featurizer = FeatureAnnotator()\nfeaturizer.apply(split=0, clear=False)\n\nF_dev = featurizer.apply_existing(split=1, parallelism=5, clear=False)\nF_test = featurizer.apply_existing(split=2, parallelism=5, clear=False)')
-
-
-# # Work Around for above code
-
-# As mentioned above this code is the workaround for the broken featurizer. The intuition behind this section is to write all the generated features to a sql text file. Exploting the psql's COPY command, the time taken for inserting features drops to ~30 minutues (compared to 1 week+).
-
-# In[ ]:
-
-
-get_ipython().run_cell_magic('time', '', '\ngroup = 0\nchunksize = 1e5\nseen = set()\nfeature_key_hash = defaultdict(int)\nfeat_counter = 0\n\nwith open(\'feature_key.sql\', \'wb\') as f:\n    with open(\'feature.sql\', \'wb\') as g:\n        # Write the headers\n        f.write("COPY feature_key(\\"group\\", name, id) from stdin with CSV DELIMITER \'\t\' QUOTE \'\\"\';\\n")\n        g.write("COPY feature(value, candidate_id, key_id) from stdin with CSV DELIMITER \'\t\' QUOTE \'\\"\';\\n")\n        \n        # Set up the writers\n        feature_key_writer = csv.writer(f, delimiter=\'\\t\',  quoting=csv.QUOTE_NONNUMERIC)\n        feature_writer = csv.writer(g, delimiter=\'\\t\', quoting=csv.QUOTE_NONNUMERIC)\n        \n        # For each split get and generate features\n        for split in [0,1,2]:\n    \n            #reset pointer to cycle through database again\n            pointer = 0\n            \n            print(split)\n            candidate_query = session.query(Candidate).filter(Candidate.split==split).limit(chunksize)\n            \n            while True:\n                candidates = candidate_query.offset(pointer).all()\n                \n                if not candidates:\n                    break\n\n                for c in tqdm.tqdm(candidates):\n                    try:\n                        for name, value in get_span_feats(c):\n\n                            # If the training set, set the feature hash\n                            if split == 0:\n                                if name not in feature_key_hash:\n                                    feature_key_hash[name] = feat_counter\n                                    feat_counter = feat_counter + 1\n                                    feature_key_writer.writerow([group, name, feature_key_hash[name]])\n\n                            if name in feature_key_hash:\n                                # prevent duplicates from being written to the file\n                                if (c.id, name) not in seen:\n                                    feature_writer.writerow([value, c.id, feature_key_hash[name]])\n                                    seen.add((c.id, name))\n\n                        #To prevent memory overload\n                        seen = set()\n                    \n                    except Exception as e:\n                        print(e.message)\n                        print(c)\n                        print(c.get_parent().text)\n\n                # update pointer for database\n                pointer = pointer + chunksize')
-
-
-# # Generate Coverage Stats
-
-# Before throwing our labels at a machine learning algorithm take a look at some quick stats. The code below will show the coverage and conflicts of each label function. Furthermore, this code will show the dimension of each label matrix.
-
-# In[ ]:
-
-
-print(L_train.lf_stats(session, ))
-
-
-# In[ ]:
-
-
-print(L_dev.lf_stats(session, ))
+sql = '''
+SELECT candidate_id FROM gold_label
+INNER JOIN Candidate ON Candidate.id=gold_label.candidate_id
+WHERE Candidate.split=0;
+'''
+cids = session.query(Candidate.id).filter(Candidate.id.in_([x[0] for x in session.execute(sql)]))
+get_ipython().run_line_magic('time', 'L_train_hand_labeled = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
 
