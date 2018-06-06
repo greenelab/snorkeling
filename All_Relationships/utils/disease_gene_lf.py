@@ -283,7 +283,7 @@ def LF_DG_DISTANCE_SHORT(c):
     This LF is designed to make sure that the disease mention
     and the gene mention aren't right next to each other.
     """
-    return -1 if len(get_text_between(c).split(" ")) < 5 else 0
+    return -1 if len(get_text_between(c).split(" ")) <=2 else 0
 
 def LF_DG_DISTANCE_LONG(c):
     return -1 if len(get_text_between(c).split(" ")) > 50 else 0

@@ -49,7 +49,6 @@ session = SnorkelSession()
 
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator
 from snorkel.features import get_span_feats
-from snorkel.lf_helpers import *
 from snorkel.models import candidate_subclass
 from snorkel.models import Candidate, GoldLabel
 from snorkel.viewer import SentenceNgramViewer
