@@ -259,27 +259,101 @@ _ = indep_gen_model.error_analysis(session, L_dev, dev_data_df.curated_dsh.apply
 tp, fp, tn, fn = gen_model.error_analysis(session, L_dev, dev_data_df.curated_dsh.apply(lambda x: -1 if x==0 else x).values)
 
 
-# # F1 Score of Train Hand Labeled Set
-
-# Looking at the small hand labeled training set we can see a pretty big spike in performance. In terms of f1 score the DA model has about a 0.3 increase in performance comapred to the CI model. 
-
 # In[25]:
 
 
-_ = indep_gen_model.error_analysis(session, L_train_labeled, L_train_labeled_gold)
+L_dev_ci_marginals = indep_gen_model.marginals(L_dev)
+L_dev_da_marginals = gen_model.marginals(L_dev)
 
 
 # In[26]:
 
 
+dev_data_labels = dev_data_df.curated_dsh.replace({0:-1})
+
+
+# In[27]:
+
+
+for marginal, model_label in zip([L_dev_ci_marginals, L_dev_da_marginals], ["CI Gen Model (AUC {:.2f})", "DA Gen Model (AUC {:.2f})"]):
+    precision, recall, threshold = precision_recall_curve(dev_data_labels, marginal)
+    area = auc(recall, precision)
+    plt.plot(recall, precision, label=model_label.format(area))
+plt.title("Precision Recall Curve of Generative Models")
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.legend()
+
+
+# In[28]:
+
+
+plt.plot([0,1], [0,1], linestyle='--', color='grey')
+for marginal, model_label in zip([L_dev_ci_marginals, L_dev_da_marginals], ["CI Gen Model (AUC {:.2f})", "DA Gen Model (AUC {:.2f})"]):
+    tpr, fpr, threshold = roc_curve(dev_data_labels, marginal)
+    area = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label=model_label.format(area))
+plt.title("ROC Curve of Generative Models")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.legend()
+
+
+# # F1 Score of Train Hand Labeled Set
+
+# Looking at the small hand labeled training set we can see a pretty big spike in performance. In terms of f1 score the DA model has about a 0.3 increase in performance comapred to the CI model. 
+
+# In[29]:
+
+
+_ = indep_gen_model.error_analysis(session, L_train_labeled, L_train_labeled_gold)
+
+
+# In[30]:
+
+
 tp, fp, tn, fn = gen_model.error_analysis(session, L_train_labeled, L_train_labeled_gold)
+
+
+# In[31]:
+
+
+L_train_ci_marginals = indep_gen_model.marginals(L_train_labeled)
+L_train_da_marginals = gen_model.marginals(L_train_labeled)
+
+
+# In[32]:
+
+
+for marginal, model_label in zip([L_train_ci_marginals, L_train_da_marginals], ["CI Gen Model (AUC {:.2f})", "DA Gen Model (AUC {:.2f})"]):
+    precision, recall, threshold = precision_recall_curve(L_train_labeled_gold.data, marginal)
+    area = auc(recall, precision)
+    plt.plot(recall, precision, label=model_label.format(area))
+plt.title("Precision Recall Curve of Generative Models")
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.legend()
+
+
+# In[33]:
+
+
+plt.plot([0,1], [0,1], linestyle='--', color='grey')
+for marginal, model_label in zip([L_train_ci_marginals, L_train_da_marginals], ["CI Gen Model (AUC {:.2f})", "DA Gen Model (AUC {:.2f})"]):
+    tpr, fpr, threshold = roc_curve(L_train_labeled_gold.data, marginal)
+    area = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label=model_label.format(area))
+plt.title("ROC Curve of Generative Models")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.legend()
 
 
 # ## Individual Candidate Error Analysis
 
 # Depending on which block of code is executed, the following block of code below will show which candidate sentence was incorrectly labeled. Right now the false negatives (fn) are being shown below but this could change to incorporate false positives (fp) as well.
 
-# In[27]:
+# In[34]:
 
 
 from snorkel.viewer import SentenceNgramViewer
@@ -293,26 +367,26 @@ else:
     sv = None
 
 
-# In[28]:
+# In[35]:
 
 
 sv
 
 
-# In[29]:
+# In[36]:
 
 
 c = sv.get_selected() if sv else list(fp.union(fn))[0]
 c
 
 
-# In[30]:
+# In[37]:
 
 
 c.labels
 
 
-# In[31]:
+# In[38]:
 
 
 c.id
@@ -322,7 +396,7 @@ c.id
 
 # Lastly we write out the generative model's output into a file. Reason for this will be used in the [next notebook](4.sentence-level-prediction.ipynb), where we aim to use a noise aware discriminator model to correct for the generative models' errors.
 
-# In[32]:
+# In[ ]:
 
 
 def make_sentence_df(lf_matrix, marginals, pair_df):
@@ -353,21 +427,21 @@ def make_sentence_df(lf_matrix, marginals, pair_df):
     return sentence_df
 
 
-# In[33]:
+# In[ ]:
 
 
 pair_df = pd.read_csv("data/disease-gene-pairs-association.csv.xz", compression='xz')
 pair_df.head(2)
 
 
-# In[34]:
+# In[ ]:
 
 
 train_sentence_df = make_sentence_df(L_train, train_marginals, pair_df)
 train_sentence_df.head(2)
 
 
-# In[35]:
+# In[ ]:
 
 
 writer = pd.ExcelWriter('data/sentence-labels.xlsx')
