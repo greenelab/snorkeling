@@ -1,3 +1,6 @@
 [submodule "snorkel"]
 	path = snorkel
 	url = https://github.com/HazyResearch/snorkel
+[submodule "iclr2017"]
+	path = iclr2017
+	url = https://github.com/mchen24/iclr2017
