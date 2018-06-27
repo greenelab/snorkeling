@@ -1,6 +1,7 @@
 name: snorkeling
 channels:
   - conda-forge
+  - pytorch
 dependencies:
 - backports.lzma==0.0.8
 - beautifulsoup4=4.6.0
@@ -16,9 +17,10 @@ dependencies:
 - nltk=3.2.4
 - numba=0.36.2
 - numpy=1.13.3
-- pandas=0.22.0
+- pandas=0.23.0
 - psycopg2=2.7.3.2
 - python=3.6.4
+- pytorch=0.4
 - py4j=0.10.6
 - requests=2.18.4
 - seaborn=0.8.1
@@ -34,6 +36,8 @@ dependencies:
 - xlrd=1.1.0
 - xlsxwriter=1.0.4
 - pip:
-    - git+https://github.com/HazyResearch/numbskull@52192383b30f2835f5b1e17c6365e2f8c93d97da
+    - git+https://github.com/HazyResearch/snorkel@master
+    - git+https://github.com/HazyResearch/numbskull@master
+    - git+https://github.com/HazyResearch/treedlib@master
     - hetio==0.2.6
     - spacy==1.10.0
