@@ -22,12 +22,15 @@ import os
 
 import numpy as np
 import pandas as pd
-import tqdm
+import pickle
+
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
 from sklearn.dummy import DummyClassifier
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
+
+import tqdm
 
 
 # In[ ]:
@@ -296,6 +299,48 @@ with open("data/doc2vec/train_data_500k.txt", "w") as f:
         offset += 50000
 
 
+# ## Embed Full Training and Dev Sets
+
+# In[ ]:
+
+
+offset = 0
+limit = 50000
+with open("data/doc2vec/full_train_set.txt", "w") as f:
+    with open("data/doc2vec/full_train_dg_map.txt", "w") as g:
+        while True:
+            train_cands = session.query(Candidate).filter(Candidate.split==0).offset(offset).limit(limit).all()
+
+            if len(train_cands) == 0:
+                break
+
+            for cand in tqdm.tqdm(train_cands):
+                g.write("{}\t{}\n".format(cand.Disease_cid, cand.Gene_cid))
+                f.write(cand.get_parent().text + "\n")
+
+            offset += limit
+
+
+# In[ ]:
+
+
+offset = 0
+limit = 50000
+with open("data/doc2vec/full_dev_set.txt", "w") as f:
+    with open("data/doc2vec/full_dev_dg_map.txt", "w") as g:
+        while True:
+            train_cands = session.query(Candidate).filter(Candidate.split==1).offset(offset).limit(limit).all()
+
+            if len(train_cands) == 0:
+                break
+
+            for cand in train_cands:
+                g.write("{}\t{}\n".format(cand.Disease_cid, cand.Gene_cid))
+                f.write(cand.get_parent().text + "\n")
+
+            offset += limit
+
+
 # ### Run Doc2Vec
 
 # When runnning doc2vec, make sure the first cell has finished running before starting the second. Subprocess creates a new process so both programs would be running simultaneously. As a result everything will slow down significantly. The submodule might not be compiled. If that is the case run this command: 
@@ -308,8 +353,9 @@ with open("data/doc2vec/train_data_500k.txt", "w") as f:
 
 command = [
     '../iclr2017/doc2vecc',
-    '-train', 'data/doc2vec/train_data_500k.txt',
-    '-output', 'data/doc2vec/doc_vectors/train_doc_vectors_500k.txt',
+    '-train', 'data/doc2vec/training_data/train_data_500k.txt',
+    '-word', 'data/doc2vec/word_vectors/full_train_word_vectors.txt',
+    '-output', 'data/doc2vec/full_train_doc_vectors.txt',
     '-cbow', '1',
     '-size', '500',
     '-negative', '5',
@@ -317,8 +363,8 @@ command = [
     '-threads', '5',
     '-binary', '0',
     '-iter', '30',
-    '-test', 'data/doc2vec/train_data.txt',
-    '-save-vocab', 'data/doc2vec/train_data_vocab_500k.txt'
+    '-test', 'data/doc2vec/full_train_set.txt',
+    '-save-vocab', 'data/doc2vec/vocab/train_data_vocab_500k.txt'
 ]
 subprocess.Popen(command)
 
@@ -328,8 +374,9 @@ subprocess.Popen(command)
 
 command = [
     '../iclr2017/doc2vecc',
-    '-train', 'data/doc2vec/train_data_500k.txt',
-    '-output', 'data/doc2vec/doc_vectors/dev_doc_vectors_non_labeled_500k.txt',
+    '-train', 'data/doc2vec/training_data/train_data_500k.txt',
+    '-word', 'data/doc2vec/word_vectors/full_dev_word_vectors.txt',
+    '-output', 'data/doc2vec/full_dev_doc_vectors.txt',
     '-cbow', '1',
     '-size', '500',
     '-negative', '5',
@@ -337,8 +384,8 @@ command = [
     '-threads', '5',
     '-binary', '0',
     '-iter', '30',
-    '-test', 'data/doc2vec/dev_data_non_labeled.txt',
-    '-read-vocab', 'data/doc2vec/train_data_vocab_500k.txt'
+    '-test', 'data/doc2vec/full_dev_set.txt',
+    '-read-vocab', 'data/doc2vec/vocab/train_data_vocab_500k.txt'
 ]
 subprocess.Popen(command)
 
@@ -350,28 +397,31 @@ subprocess.Popen(command)
 # In[ ]:
 
 
-doc2vec_X = np.loadtxt("data/doc2vec/doc_vectors/train_doc_vectors.txt")
-doc2vec_X = doc2vec_X[:-1, :]
-doc2vec_dev_X = np.loadtxt("data/doc2vec/doc_vectors/dev_doc_vectors.txt")
-doc2vec_dev_X = doc2vec_dev_X[:-1, :]
+doc2vec_X = pd.read_table("data/doc2vec/doc_vectors/train_doc_vectors_50k.txt.xz", sep=" ", header=None)
+doc2vec_X = doc2vec_X.head(doc2vec_X.shape[0]-1).drop(doc2vec_X.shape[1]-1, axis='columns').values
+
+doc2vec_dev_X = pd.read_table("data/doc2vec/doc_vectors/dev_doc_vectors_50k.txt.xz", sep=" ", header=None)
+doc2vec_dev_X = doc2vec_dev_X.head(doc2vec_dev_X.shape[0]-1).drop(doc2vec_dev_X.shape[1]-1, axis='columns').values
 
 
 # In[ ]:
 
 
-doc2vec_X_500k = np.loadtxt("data/doc2vec/doc_vectors/train_doc_vectors_500k.txt")
-doc2vec_X_500k = doc2vec_X_500k[:-1,:]
-doc2vec_dev_X_500k = np.loadtxt("data/doc2vec/doc_vectors/dev_doc_vectors_500k.txt")
-doc2vec_dev_X_500k = doc2vec_dev_X_500k[:-1, :]
+doc2vec_X_500k = pd.read_table("data/doc2vec/doc_vectors/train_doc_vectors_500k.txt.xz", sep=" ", header=None)
+doc2vec_X_500k = doc2vec_X_500k.head(doc2vec_X_500k.shape[0]-1).drop(doc2vec_X_500k.shape[1]-1, axis='columns').values
+
+doc2vec_dev_X_500k = pd.read_table("data/doc2vec/doc_vectors/dev_doc_vectors_500k.txt.xz", sep=" ", header=None)
+doc2vec_dev_X_500k = doc2vec_dev_X_500k.head(doc2vec_dev_X_500k.shape[0]-1).drop(doc2vec_dev_X_500k.shape[1]-1, axis='columns').values
 
 
 # In[ ]:
 
 
-doc2vec_X_all = np.loadtxt("data/doc2vec/doc_vectors/train_doc_vectors_all.txt")
-doc2vec_X_all= doc2vec_X_all[:-1,:]
-doc2vec_dev_X_all = np.loadtxt("data/doc2vec/doc_vectors/dev_doc_vectors_all.txt")
-doc2vec_dev_X_all = doc2vec_dev_X_all[:-1, :]
+doc2vec_X_all = pd.read_table("data/doc2vec/doc_vectors/train_doc_vectors_full_pubmed.txt.xz", sep=" ", header=None)
+doc2vec_X_all= doc2vec_X_all.head(doc2vec_X_all.shape[0]-1).drop(doc2vec_X_all.shape[1]-1, axis='columns').values
+
+doc2vec_dev_X_all = pd.read_table("data/doc2vec/doc_vectors/dev_doc_vectors_full_pubmed.txt.xz", sep=" ", header=None)
+doc2vec_dev_X_all = doc2vec_dev_X_all.head(doc2vec_dev_X_all.shape[0]-1).drop(doc2vec_dev_X_all.shape[1]-1, axis='columns').values
 
 
 # In[ ]:
@@ -462,4 +512,136 @@ marginals_df.head(2)
 
 
 marginals_df.to_csv('data/disc_model_marginals.tsv', index=False, sep='\t')
+
+
+# ## Save Best Model
+
+# In[ ]:
+
+
+pickle.dump(final_models[2], open("data/best_model.sav", "wb"))
+
+
+# ## Get Top 100 and Bottom 100
+
+# In[ ]:
+
+
+data_file="data/doc2vec/doc_vectors/dev_doc_vectors_non_labeled_500k.txt.xz"
+doc2vec_dev_X_500k_unlabeled = pd.read_table(data_file, sep=" ", header=None)
+doc2vec_dev_X_500k_unlabeled = (
+    doc2vec_dev_X_500k_unlabeled
+    .head(doc2vec_dev_X_500k_unlabeled.shape[0]-1)
+    .drop(doc2vec_dev_X_500k_unlabeled.shape[1]-1, axis='columns')
+    .values
+)
+
+
+# In[ ]:
+
+
+with open("data/doc2vec/dev_data_non_labled.txt", "r") as f:
+    data = [line.strip() for line in f]
+
+
+# In[ ]:
+
+
+dev_sentences_non_labeled_df = pd.read_excel("data/sentence-labels-dev.xlsx")
+dev_sentences_non_labeled_df = dev_sentences_non_labeled_df.query("curated_dsh.isnull()")
+dev_sentences_non_labeled_df.head(2)
+
+
+# In[ ]:
+
+
+unlabeled_df = pd.DataFrame(
+    list(zip(data, final_models[2].predict_proba(doc2vec_dev_X_500k_unlabeled)[:,1])),
+    columns=['sentence','marginals'])
+unlabeled_df.head(2)
+
+
+# In[ ]:
+
+
+unlabeled_df = unlabeled_df.merge(dev_sentences_non_labeled_df, on="sentence")
+
+
+# In[ ]:
+
+
+writer = pd.ExcelWriter('data/100_sentences_list_A.xlsx')
+(unlabeled_df
+     .sort_values("marginals", ascending=False)
+     .head(100)[["disease", "gene", "sentence"]]
+     .to_excel(writer, sheet_name='sentences', index=False)
+)
+if writer.engine == 'xlsxwriter':
+    for sheet in writer.sheets.values():
+        sheet.freeze_panes(1, 0)
+writer.close()
+
+
+# In[ ]:
+
+
+writer = pd.ExcelWriter('data/100_sentences_list_B.xlsx')
+(unlabeled_df
+     .sort_values("marginals", ascending=True)
+     .head(100)[["disease", "gene", "sentence"]]
+     .to_excel(writer, sheet_name='sentences', index=False)
+)
+if writer.engine == 'xlsxwriter':
+    for sheet in writer.sheets.values():
+        sheet.freeze_panes(1, 0)
+writer.close()
+
+
+# ## Use Best Model to Classify All Sentences
+
+# In[ ]:
+
+
+train_X = pd.read_table("data/doc2vec/full_train_doc_vectors.txt", sep=" ", header=None)
+train_X = train_X.head(train_X.shape[0]-1).drop(train_X.shape[1]-1, axis='columns').values
+
+dev_X = pd.read_table("data/doc2vec/full_dev_doc_vectors.txt", sep=" ", header=None)
+dev_X = dev_X.head(dev_X.shape[0]-1).drop(dev_X.shape[1]-1, axis='columns').values
+
+
+# In[ ]:
+
+
+train_dg_map_df = pd.read_table("data/doc2vec/full_train_dg_map.txt", names=["disease_id", "gene_id"])
+train_dg_map_df.head(2)
+
+
+# In[ ]:
+
+
+dev_dg_map_df = pd.read_table("data/doc2vec/full_dev_dg_map.txt", names=["disease_id", "gene_id"])
+dev_dg_map_df.head(2)
+
+
+# In[ ]:
+
+
+best_model = final_models[2].best_estimator_
+train_dg_map_df['marginals'] = best_model.predict_proba(train_X)[:,1]
+train_dg_map_df.head(2)
+
+
+# In[ ]:
+
+
+best_model = pickle.load(open("data/best_model.sav", "rb"))
+dev_dg_map_df['marginals'] = best_model.predict_proba(dev_X)[:,1]
+dev_dg_map_df.head(2)
+
+
+# In[ ]:
+
+
+train_dg_map_df.to_csv("data/training_set_marginals.tsv", sep="\t", index=False)
+dev_dg_map_df.to_csv("data/dev_set_marginals.tsv", sep="\t", index=False)
 
