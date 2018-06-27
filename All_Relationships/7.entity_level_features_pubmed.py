@@ -8,9 +8,9 @@
 # In[1]:
 
 
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().magic(u'load_ext autoreload')
+get_ipython().magic(u'autoreload 2')
+get_ipython().magic(u'matplotlib inline')
 
 from collections import defaultdict
 import csv
@@ -19,14 +19,15 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import tqdm
-from scipy.stats import fisher_exact
-import scipy
-from sqlalchemy import and_
-from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.metrics import roc_curve, auc, confusion_matrix
-from sklearn.model_selection import RandomizedSearchCV
+
 import seaborn as sns
+import scipy
+from scipy.stats import fisher_exact
+from scipy.special import logit
+
+from sqlalchemy import and_
+
+import tqdm
 
 
 # In[2]:
@@ -49,7 +50,6 @@ session = SnorkelSession()
 
 
 from snorkel.models import Candidate, candidate_subclass
-from snorkel.learning.disc_models.rnn import reRNN
 
 
 # In[4]:
@@ -65,7 +65,7 @@ DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 # In[ ]:
 
 
-get_ipython().run_cell_magic('time', '', 'pair_to_pmids = defaultdict(set)\npair_to_sentences = defaultdict(set)\noffset = 0\nchunk_size = 1e5\n\nwhile True:\n    cands = session.query(DiseaseGene).limit(chunk_size).offset(offset).all()\n    \n    if not cands:\n        break\n        \n    for candidate in cands:\n        pair = candidate.Disease_cid, candidate.Gene_cid\n        pair_to_sentences[pair].add(candidate[0].get_parent().id)\n        pair_to_pmids[pair].add(candidate[0].get_parent().document_id)\n\n    offset+= chunk_size')
+get_ipython().run_cell_magic(u'time', u'', u'pair_to_pmids = defaultdict(set)\npair_to_sentences = defaultdict(set)\noffset = 0\nchunk_size = 1e5\n\nwhile True:\n    cands = session.query(DiseaseGene).limit(chunk_size).offset(offset).all()\n    \n    if not cands:\n        break\n        \n    for candidate in cands:\n        pair = candidate.Disease_cid, candidate.Gene_cid\n        pair_to_sentences[pair].add(candidate[0].get_parent().id)\n        pair_to_pmids[pair].add(candidate[0].get_parent().document_id)\n\n    offset+= chunk_size')
 
 
 # In[ ]:
@@ -166,90 +166,73 @@ candidate_df.sort_values("nlog10_p_value", ascending=False).head(1000)
 
 # In this section we incorporate the marginal probabilites that are calculated from the bi-directional LSTM used in the [previous notebook](4.sentence-level-prediction.ipynb). For each sentence we grouped them by their disease-gene mention and report their marginal probabilites in different quantiles (0, 0.2, 0.4, 0.6, 0.8). Lastly we took the average of each sentence marginal to generate the "avg_marginal" column.
 
-# In[5]:
+# In[13]:
 
 
 candidate_df = pd.read_csv("data/disease_gene_summary_stats.csv")
 candidate_df = candidate_df[[column for column in candidate_df.columns if "lstm" not in column]]
 candidate_df = candidate_df.drop(["disease_name", "gene_name"], axis=1)
+candidate_df.head(2)
 
 
 # In[6]:
 
 
-train_marginals_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/fully_trained/one_hundred_percent_22/lstm_train_marginals_trained.csv")
-dev_marginals_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/fully_trained/one_hundred_percent_22/lstm_dev_marginals_trained.csv")
-test_marginals_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/fully_trained/one_hundred_percent_22/lstm_test_marginals_trained.csv")
+train_marginals_df = pd.read_table("data/training_set_marginals.tsv")
+train_marginals_df.head(2)
 
 
 # In[7]:
 
 
-train_sentences_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/train_candidates_sentences.csv")
-dev_sentences_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/dev_candidates_sentences.csv")
-test_sentences_df = pd.read_csv("vanilla_lstm/lstm_disease_gene_holdout/test_candidates_sentences.csv")
+dev_marginals_df = pd.read_table("data/dev_set_marginals.tsv")
+dev_marginals_df.head(2)
 
 
 # In[8]:
 
 
-train_sentences_df["marginals"] = train_marginals_df["RNN_marginals"].values
-dev_sentences_df["marginals"] = dev_marginals_df["RNN_marginals"].values
-test_sentences_df["marginals"] = test_marginals_df["RNN_marginals"].values
+candidate_marginals_df=(train_marginals_df
+ .append(dev_marginals_df)
+ .groupby(["disease_id", "gene_id"], as_index=False).mean()
+)
+candidate_marginals_df.head(2)
 
 
 # In[9]:
 
 
-candidate_marginals = (
-    train_sentences_df[["disease_id", "gene_id", "marginals"]]
-    .append(dev_sentences_df[["disease_id", "gene_id", "marginals"]])
-    .append(test_sentences_df[["disease_id", "gene_id", "marginals"]])
-    )
+dg_map = pd.read_csv("data/disease-gene-pairs-association.csv.xz")
+dg_map.head(3)
 
 
 # In[10]:
 
 
-dg_map = pd.read_csv("dg_map.csv").rename(
-    columns={"disease_ontology":"disease_id"},index=str)
+prior_df = pd.read_csv("data/observation-prior.csv")
+prior_df['logit_prior_perm'] = prior_df.prior_perm.apply(logit)
+prior_df.head(2)
 
 
-# In[11]:
+# In[14]:
 
 
-quantile_list = [0,0.2,0.4,0.6,0.8]
-quantile_data = []
-avg_marginals = []
-group = candidate_marginals.groupby(["disease_id", "gene_id"])
-
-for i, cand in tqdm.tqdm(candidate_df[["disease_id", "gene_id"]].iterrows()):
-    dg_series = group.get_group((cand["disease_id"], cand["gene_id"]))
-    avg_marginals.append(dg_series["marginals"].mean())
-    quantile_data.append(list(map(lambda x: dg_series["marginals"].quantile(x), quantile_list)))
-
-# Save the evidence into a dataframe
-candidate_df = pd.concat(
-    [
-        candidate_df,
-        pd.DataFrame(
-            quantile_data,
-            index=candidate_df.index,
-            columns=list(map(lambda x: 'lstm_marginal_{:.0f}_quantile'.format(x*100), quantile_list))
-        )
-    ], axis=1
+candidate_df = (candidate_df
+ .merge(candidate_marginals_df)
+ .merge(dg_map[["doid_id", "entrez_gene_id","split"]], 
+        left_on=["disease_id", "gene_id"], 
+        right_on=["doid_id", "entrez_gene_id"]
+       )
+ .drop(["doid_id", "entrez_gene_id"], axis='columns')
+ .merge(prior_df[["disease_id", "gene_id", "logit_prior_perm"]], on=["disease_id", "gene_id"])
 )
-candidate_df = pd.merge(candidate_df, 
-                        dg_map[["disease_id", "disease_name", "gene_id", "gene_name"]],
-                        on=["disease_id", "gene_id"], how="inner"
-                       ).drop_duplicates(["disease_id", "gene_id"])
-candidate_df["lstm_avg_marginal"] = avg_marginals
+candidate_df.head(2)
 
 
 # ## Save the data to a file
 
-# In[12]:
+# In[15]:
 
 
-candidate_df.to_csv("data/disease_gene_summary_stats_lstm_full_trained.csv", index=False)
+candidate_df.to_csv("data/disease_gene_association_features.tsv", sep="\t", index=False)
 
