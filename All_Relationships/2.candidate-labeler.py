@@ -12,9 +12,9 @@
 # In[ ]:
 
 
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().magic(u'load_ext autoreload')
+get_ipython().magic(u'autoreload 2')
+get_ipython().magic(u'matplotlib inline')
 
 from collections import defaultdict
 import csv
@@ -219,7 +219,7 @@ target_cids = np.loadtxt('data/labeled_candidates.txt').astype(int).tolist()
 
 
 cids = session.query(DiseaseGene.id).filter(DiseaseGene.id.in_(target_cids))
-get_ipython().run_line_magic('time', 'L_train = labeler.apply(split=0, cids_query=cids, parallelism=5)')
+get_ipython().magic(u'time L_train = labeler.apply(split=0, cids_query=cids, parallelism=5)')
 
 
 # In[ ]:
@@ -235,7 +235,7 @@ len(gold_cids)
 
 
 cids = session.query(Candidate.id).filter(Candidate.id.in_(gold_cids))
-get_ipython().run_line_magic('time', 'L_dev = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
+get_ipython().magic(u'time L_dev = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
 
 
 # In[ ]:
@@ -247,5 +247,5 @@ INNER JOIN Candidate ON Candidate.id=gold_label.candidate_id
 WHERE Candidate.split=0;
 '''
 cids = session.query(Candidate.id).filter(Candidate.id.in_([x[0] for x in session.execute(sql)]))
-get_ipython().run_line_magic('time', 'L_train_hand_labeled = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
+get_ipython().magic(u'time L_train_hand_labeled = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
 

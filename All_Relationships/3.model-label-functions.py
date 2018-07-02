@@ -46,13 +46,6 @@ session = SnorkelSession()
 # In[3]:
 
 
-import sys
-sys.path.append('/home/danich1/Documents/snorkeling/snorkel/treedlib/treedlib')
-
-
-# In[4]:
-
-
 from snorkel import SnorkelSession
 from snorkel.annotations import load_gold_labels
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator, save_marginals
@@ -64,13 +57,13 @@ from snorkel.utils import get_as_dict
 from utils.disease_gene_lf import LFS
 
 
-# In[5]:
+# In[4]:
 
 
 edge_type = "dg"
 
 
-# In[6]:
+# In[5]:
 
 
 if edge_type == "dg":
@@ -95,29 +88,30 @@ else:
 # |L_dev|10,000|Randomly sampled from our 700,000 dev set. Only 200 have been hand labeled|
 # |L_train_labeled|919|Have been hand labled from training set and is separate from (L_train).|
 
-# In[7]:
+# In[6]:
 
 
 train_candidate_ids = np.loadtxt('data/labeled_candidates.txt').astype(int).tolist()
 train_candidate_ids[0:10]
 
 
-# In[8]:
+# In[7]:
 
 
 dev_data_df = pd.read_excel("data/sentence-labels-dev-hand-labeled.xlsx")
 dev_data_df = dev_data_df[dev_data_df.curated_dsh.notnull()]
+dev_data_df = dev_data_df.sort_values("candidate_id")
 dev_candidate_ids = list(map(int, dev_data_df.candidate_id.values))
 print("Total Hand Labeled Dev Sentences: {}".format(len(dev_candidate_ids)))
 
 
-# In[9]:
+# In[8]:
 
 
 get_ipython().run_cell_magic(u'time', u'', u'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have labels\ncids = session.query(Candidate.id).filter(Candidate.id.in_(train_candidate_ids))\nL_train = labeler.load_matrix(session, cids_query=cids)\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(dev_candidate_ids))\nL_dev = labeler.load_matrix(session,cids_query=cids)')
 
 
-# In[10]:
+# In[9]:
 
 
 sql = '''
@@ -130,7 +124,7 @@ L_train_labeled = labeler.load_matrix(session, cids_query=cids)
 L_train_labeled_gold = load_gold_labels(session, annotator_name='danich1', cids_query=cids)
 
 
-# In[11]:
+# In[10]:
 
 
 print("Total Number of Hand Labeled Candidates: {}\n".format(L_train_labeled_gold.shape[0]))
@@ -138,7 +132,7 @@ print("Distribution of Labels:")
 print(pd.DataFrame(L_train_labeled_gold.toarray(), columns=["labels"])["labels"].value_counts())
 
 
-# In[12]:
+# In[11]:
 
 
 print("Total Size of Train Data: {}".format(L_train.shape[0]))
@@ -151,13 +145,13 @@ print("Total Number of Label Functions: {}".format(L_train.shape[1]))
 # 
 # The following code below trains two different generative models. One model follows the assumption that each label function is independent of each other, while the other model assumes there are dependancies between each function (e.g. $L_{1}$ correlates with $L_{2}$).
 
+# In[12]:
+
+
+get_ipython().run_cell_magic(u'time', u'', u'#Conditionally independent Generative Model\nindep_gen_model = GenerativeModel()\nindep_gen_model.train(\n    L_train,\n    epochs=40,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n)')
+
+
 # In[13]:
-
-
-get_ipython().run_cell_magic(u'time', u'', u'#Conditionally independent Generative Model\nindep_gen_model = GenerativeModel()\nindep_gen_model.train(\n    L_train,\n    epochs=30,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n)')
-
-
-# In[14]:
 
 
 # select the dependancies from the label matrix
@@ -166,7 +160,7 @@ deps = ds.select(L_train, threshold=0.1)
 len(deps)
 
 
-# In[15]:
+# In[14]:
 
 
 get_ipython().run_cell_magic(u'time', u'', u'# Model each label function and the underlying correlation structure\ngen_model = GenerativeModel(lf_propensity=True)\ngen_model.train(\n    L_train,\n    epochs=30,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n    deps=deps\n)')
@@ -176,7 +170,7 @@ get_ipython().run_cell_magic(u'time', u'', u'# Model each label function and the
 
 # Now that both models have been trained, the next step is to generate some statistics about each model. The two histograms below show a difference between both models' output. The conditionally independent model (CI) predicts more negative candidates compared to the dependancy aware model (DA).
 
-# In[16]:
+# In[15]:
 
 
 # Generate Statistics of Generative Model
@@ -184,13 +178,13 @@ indep_learned_stats_df = indep_gen_model.learned_lf_stats()
 learned_stats_df = gen_model.learned_lf_stats()
 
 
-# In[17]:
+# In[16]:
 
 
 get_ipython().run_cell_magic(u'time', u'', u'train_marginals_indep = indep_gen_model.marginals(L_train)\ntrain_marginals = gen_model.marginals(L_train)')
 
 
-# In[18]:
+# In[17]:
 
 
 plt.hist(train_marginals_indep, bins=20)
@@ -200,7 +194,7 @@ plt.xlabel("Probability of Positive Class")
 plt.show()
 
 
-# In[19]:
+# In[18]:
 
 
 plt.hist(train_marginals, bins=20)
@@ -214,23 +208,23 @@ plt.show()
 
 # Taking a closer look into the training set predictions, we can see how each label function individually performed. The two dataframes below contain the follwoing information: number of candidate sentences a label function has labeled (coverage), number of candidate sentences a label function agreed with another label function (overlaps), number of candidates a label function disagreed with another label function (conflicts), and lastly, the accuracy each label function has after training the generative model (Learned Acc).
 
-# In[20]:
+# In[19]:
 
 
 indep_results_df = L_train.lf_stats(session, est_accs=indep_learned_stats_df['Accuracy'])
 indep_results_df.head(2)
 
 
-# In[21]:
+# In[20]:
 
 
 results_df = L_train.lf_stats(session, est_accs=learned_stats_df['Accuracy'])
 results_df.head(2)
 
 
-# The following bar charts below depict the weights the generative model assigns to each label function. The conditional independent model relies heavily on two negative functions, while the dependancy aware model has similar characteristics. Both LF_HETNET_ABSENT AND LF_NO_CONCLUIONS have the highest weight while the distribution of positive functions between both models differs. 
+# The following bar charts below depict the weights the generative model assigns to each label function. The conditional independent model relies heavily on LF_HETNET_ABSENT and LF_NO_CONCLUSION, while the dependancy aware model relies more on the database-backed label functions. Ultimately, the DA model emphasizes more postive labels compared to the CI model. 
 
-# In[22]:
+# In[21]:
 
 
 test_df = pd.concat([
@@ -241,7 +235,7 @@ test_df = test_df.reset_index()
 test_df.head(2)
 
 
-# In[23]:
+# In[22]:
 
 
 fig, ax = plt.subplots(figsize=(9,7))
@@ -252,32 +246,32 @@ sns.barplot(ax=ax,y="index", x="Learned Acc.", hue="model", data=test_df, palett
 
 # Moving from the training set, we now can look at how well these models can predict our small dev set. Looking at the chart below, the conditionally independent model doesn't perform well compared to the dependency aware model. In terms of f1 score there is about a .2 difference, which provides evidence towards the dependency model performing better.
 
-# In[24]:
+# In[23]:
 
 
 _ = indep_gen_model.error_analysis(session, L_dev, dev_data_df.curated_dsh.apply(lambda x: -1 if x==0 else x).values)
 
 
-# In[25]:
+# In[24]:
 
 
 tp, fp, tn, fn = gen_model.error_analysis(session, L_dev, dev_data_df.curated_dsh.apply(lambda x: -1 if x==0 else x).values)
 
 
-# In[26]:
+# In[25]:
 
 
 L_dev_ci_marginals = indep_gen_model.marginals(L_dev)
 L_dev_da_marginals = gen_model.marginals(L_dev)
 
 
-# In[27]:
+# In[26]:
 
 
 dev_data_labels = dev_data_df.curated_dsh.replace({0:-1})
 
 
-# In[28]:
+# In[27]:
 
 
 positive_class = dev_data_df.curated_dsh.values.sum()/dev_data_df.shape[0]
@@ -294,12 +288,12 @@ plt.ylabel("Precision")
 plt.legend()
 
 
-# In[29]:
+# In[28]:
 
 
 plt.plot([0,1], [0,1], linestyle='--', color='grey')
 for marginal, model_label in zip([L_dev_ci_marginals, L_dev_da_marginals], ["CI Gen Model (AUC {:.2f})", "DA Gen Model (AUC {:.2f})"]):
-    tpr, fpr, threshold = roc_curve(dev_data_labels, marginal)
+    fpr, tpr, threshold = roc_curve(dev_data_labels, marginal)
     area = auc(fpr, tpr)
     plt.plot(fpr, tpr, label=model_label.format(area))
 plt.title("ROC Curve of Generative Models")
@@ -308,9 +302,15 @@ plt.ylabel("True Positive Rate")
 plt.legend()
 
 
+# In[29]:
+
+
+L_dev.lf_stats(session, dev_data_labels, test_df.query("model=='DA'")["Learned Acc."])
+
+
 # # F1 Score of Train Hand Labeled Set
 
-# Looking at the small hand labeled training set we can see a pretty big spike in performance. In terms of f1 score the DA model has about a 0.3 increase in performance comapred to the CI model. 
+# Looking at the small hand labeled training set we can see a pretty big spike in performance. In terms of f1 score the DA model has about a 0.25 increase in performance comapred to the CI model. 
 
 # In[30]:
 
@@ -359,13 +359,19 @@ plt.legend()
 
 plt.plot([0,1], [0,1], linestyle='--', color='grey')
 for marginal, model_label in zip([L_train_ci_marginals, L_train_da_marginals], ["CI Gen Model (AUC {:.2f})", "DA Gen Model (AUC {:.2f})"]):
-    tpr, fpr, threshold = roc_curve(L_train_labeled_gold.data, marginal)
+    fpr, tpr, threshold = roc_curve(L_train_labeled_gold.data, marginal)
     area = auc(fpr, tpr)
     plt.plot(fpr, tpr, label=model_label.format(area))
 plt.title("ROC Curve of Generative Models")
 plt.xlabel("False Positive Rate")
 plt.ylabel("True Positive Rate")
 plt.legend()
+
+
+# In[36]:
+
+
+L_train_labeled.lf_stats(session, L_train_labeled_gold.data, test_df.query("model=='DA'")["Learned Acc."])
 
 
 # ## Individual Candidate Error Analysis
@@ -409,6 +415,12 @@ c.labels
 
 
 c.id
+
+
+# In[ ]:
+
+
+L_train_hand_labeled
 
 
 # ## Generate Excel File of Train Data
