@@ -93,6 +93,7 @@ else:
 
 dev_sentence_df = pd.read_excel("data/sentence-labels-dev.xlsx")
 dev_sentence_df = dev_sentence_df[dev_sentence_df.curated_dsh.notnull()]
+dev_sentence_df = dev_sentence_df.sort_values("candidate_id")
 dev_sentence_df.head(2)
 
 
