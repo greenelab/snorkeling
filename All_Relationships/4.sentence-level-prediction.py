@@ -9,7 +9,7 @@
 
 # Set up the database for data extraction and load the Candidate subclass for the algorithms below
 
-# In[ ]:
+# In[1]:
 
 
 get_ipython().magic(u'load_ext autoreload')
@@ -30,7 +30,7 @@ from sklearn.dummy import DummyClassifier
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 
 
-# In[ ]:
+# In[2]:
 
 
 #Set up the environment
@@ -46,14 +46,7 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[ ]:
-
-
-import sys
-sys.path.append('/home/danich1/Documents/snorkeling/snorkel/treedlib/treedlib')
-
-
-# In[ ]:
+# In[3]:
 
 
 from snorkel.annotations import LabelAnnotator, load_marginals
@@ -62,13 +55,13 @@ from snorkel.learning.pytorch import LSTM
 from snorkel.models import Candidate, FeatureKey, candidate_subclass
 
 
-# In[ ]:
+# In[4]:
 
 
 edge_type = "dg"
 
 
-# In[ ]:
+# In[5]:
 
 
 if edge_type == "dg":
@@ -87,112 +80,20 @@ else:
 
 # Here we load the sentences from the training and development set respectively. Both come from excel files that are on the repository as we speak.
 
-# In[ ]:
+# In[6]:
 
 
-train_sentences_df = pd.read_excel("data/sentence-labels.xlsx")
+train_sentences_df = pd.read_excel("data/sentence-labels_test.xlsx")
 train_sentences_df.head(2)
 
 
-# In[ ]:
+# In[7]:
 
 
 dev_sentences_df = pd.read_excel("data/sentence-labels-dev.xlsx")
 dev_sentences_df = dev_sentences_df[dev_sentences_df.curated_dsh.notnull()]
+dev_sentences_df = dev_sentences_df.sort_values("candidate_id")
 dev_sentences_df.head(2)
-
-
-# ## Train a LSTM Disc Model
-
-# This block of code trains an LSTM. An LSTM is a special type of recurrent nerual network that retains a memory of past values over period of time. ([more explaination here](http://colah.github.io/posts/2015-08-Understanding-LSTMs/)). Snorkel is in the process of switching to pytorch, which will allow the following code to run on a cpu with no memory issues at all.
-
-# In[ ]:
-
-
-train_candidate_ids = train_sentences_df.candidate_id.astype(int).tolist()
-dev_candidate_ids = dev_sentences_df.candidate_id.astype(int).tolist()
-
-
-# In[ ]:
-
-
-train_cands = (
-    session
-    .query(Candidate)
-    .filter(Candidate.id.in_(train_candidate_ids))
-    .all() 
-)
-
-dev_cands = (
-    session
-    .query(Candidate)
-    .filter(Candidate.id.in_(dev_candidate_ids))
-    .all() 
-)
-
-
-# In[ ]:
-
-
-train_kwargs = {
-    'lr':            0.01,
-    'embedding_dim': 500,
-    'hidden_dim':    500,
-    'n_epochs':      10,
-    'dropout':       0.10,
-    'seed':          1701,
-    'batch_size':    500
-}
-
-lstm = LSTM(n_threads=None)
-
-
-# In[ ]:
-
-
-get_ipython().magic(u'time lstm.train(train_cands, train_sentences_df.head(100).label.values, **train_kwargs)')
-
-
-# In[ ]:
-
-
-dev_marginals = lstm.marginals(dev_cands)
-
-
-# # GPU RUN
-
-# In order to use the gpu, all the data and code is exported to files in order to run it on the University of Pennsylvania's cluster.
-
-# In[ ]:
-
-
-X = lstm._preprocess_data(train_cands, extend=True)
-dev_X = lstm._preprocess_data(dev_cands, extend=False)
-
-
-# In[ ]:
-
-
-train_sentences_df['data_str'] = [",".join(map(str,x)) for x in X]
-train_sentences_df[["candidate_id", "data_str", "label"]].to_csv("data/lstm/train_data.tsv", sep="\t", index=False)
-
-
-# In[ ]:
-
-
-dev_sentences_df['data_str'] = [",".join(map(str,x)) for x in dev_X]
-dev_sentences_df[["candidate_id", "data_str", "curated_dsh"]].to_csv("data/lstm/dev_data.tsv", sep="\t", index=False)
-
-
-# In[ ]:
-
-
-(
-    pd.DataFrame
-    .from_dict(lstm.word_dict.d, orient='index')
-    .reset_index()
-    .rename(index=str, columns={'index':'key', 0:'ix'})
-).to_csv("data/lstm/train_word_dict.tsv", sep="\t", index=False)
 
 
 # # Doc2VecC
@@ -347,7 +248,7 @@ subprocess.Popen(command)
 
 # Here we train an SLR. To find the optimal hyperparameter settings this code uses a [random search](http://scikit-learn.org/stable/modules/grid_search.html) instead of iterating over all possible combinations of parameters. After the final model has been found, it is saved in the checkpoints folder to be loaded in the [next notebook](5.data-analysis.ipynb). Furthermore, the weights for the final model are output into a text file to be analyzed as well.
 
-# In[ ]:
+# In[8]:
 
 
 doc2vec_X = np.loadtxt("data/doc2vec/doc_vectors/train_doc_vectors.txt")
@@ -356,7 +257,7 @@ doc2vec_dev_X = np.loadtxt("data/doc2vec/doc_vectors/dev_doc_vectors.txt")
 doc2vec_dev_X = doc2vec_dev_X[:-1, :]
 
 
-# In[ ]:
+# In[9]:
 
 
 doc2vec_X_500k = np.loadtxt("data/doc2vec/doc_vectors/train_doc_vectors_500k.txt")
@@ -365,7 +266,7 @@ doc2vec_dev_X_500k = np.loadtxt("data/doc2vec/doc_vectors/dev_doc_vectors_500k.t
 doc2vec_dev_X_500k = doc2vec_dev_X_500k[:-1, :]
 
 
-# In[ ]:
+# In[10]:
 
 
 doc2vec_X_all = np.loadtxt("data/doc2vec/doc_vectors/train_doc_vectors_all.txt")
@@ -374,7 +275,7 @@ doc2vec_dev_X_all = np.loadtxt("data/doc2vec/doc_vectors/dev_doc_vectors_all.txt
 doc2vec_dev_X_all = doc2vec_dev_X_all[:-1, :]
 
 
-# In[ ]:
+# In[11]:
 
 
 vectorizer = CountVectorizer()
@@ -384,7 +285,7 @@ X = vectorizer.fit_transform(
 dev_X = vectorizer.transform(dev_sentences_df.sentence.values)
 
 
-# In[ ]:
+# In[12]:
 
 
 data = [
@@ -414,19 +315,19 @@ lr_grids = [
 final_models = []
 
 
-# In[ ]:
+# In[13]:
 
 
 lr_model = LogisticRegression()
 
 
-# In[ ]:
+# In[14]:
 
 
 get_ipython().run_cell_magic(u'time', u'', u"for train_data, grid, y_labels in zip(data, lr_grids, labels):\n    fit_model = GridSearchCV(lr_model, \n                         grid, cv=10, n_jobs=3, \n                         verbose=1, scoring='roc_auc', return_train_score=True)\n    fit_model.fit(train_data, y_labels)\n    final_models.append(fit_model)")
 
 
-# In[ ]:
+# In[15]:
 
 
 import matplotlib.pyplot as plt
@@ -439,7 +340,7 @@ plt.ylabel("Mean Test Score")
 plt.title("BOW Training CV (10-fold)")
 
 
-# In[ ]:
+# In[16]:
 
 
 lr_marginals = []
@@ -447,7 +348,7 @@ for model, test_data in zip(final_models, [dev_X, doc2vec_dev_X, doc2vec_dev_X_5
     lr_marginals.append(model.best_estimator_.predict_proba(test_data)[:,1])
 
 
-# In[ ]:
+# In[17]:
 
 
 marginals_df = (
@@ -458,8 +359,140 @@ marginals_df = (
 marginals_df.head(2)
 
 
-# In[ ]:
+# In[18]:
 
 
 marginals_df.to_csv('data/disc_model_marginals.tsv', index=False, sep='\t')
+
+
+# ## Save Best Model
+
+# In[19]:
+
+
+pickle.dump(final_models[2], open("data/best_model.sav", "wb"))
+
+
+# ## Get Top 100 and Bottom 100
+
+# In[ ]:
+
+
+data_file="data/doc2vec/doc_vectors/dev_doc_vectors_non_labeled_500k.txt.xz"
+doc2vec_dev_X_500k_unlabeled = pd.read_table(data_file, sep=" ", header=None)
+doc2vec_dev_X_500k_unlabeled = (
+    doc2vec_dev_X_500k_unlabeled
+    .head(doc2vec_dev_X_500k_unlabeled.shape[0]-1)
+    .drop(doc2vec_dev_X_500k_unlabeled.shape[1]-1, axis='columns')
+    .values
+)
+
+
+# In[ ]:
+
+
+with open("data/doc2vec/dev_data_non_labled.txt", "r") as f:
+    data = [line.strip() for line in f]
+
+
+# In[ ]:
+
+
+dev_sentences_non_labeled_df = pd.read_excel("data/sentence-labels-dev.xlsx")
+dev_sentences_non_labeled_df = dev_sentences_non_labeled_df.query("curated_dsh.isnull()")
+dev_sentences_non_labeled_df.head(2)
+
+
+# In[ ]:
+
+
+unlabeled_df = pd.DataFrame(
+    list(zip(data, final_models[2].predict_proba(doc2vec_dev_X_500k_unlabeled)[:,1])),
+    columns=['sentence','marginals'])
+unlabeled_df.head(2)
+
+
+# In[ ]:
+
+
+unlabeled_df = unlabeled_df.merge(dev_sentences_non_labeled_df, on="sentence")
+
+
+# In[ ]:
+
+
+writer = pd.ExcelWriter('data/100_sentences_list_A.xlsx')
+(unlabeled_df
+     .sort_values("marginals", ascending=False)
+     .head(100)[["disease", "gene", "sentence"]]
+     .to_excel(writer, sheet_name='sentences', index=False)
+)
+if writer.engine == 'xlsxwriter':
+    for sheet in writer.sheets.values():
+        sheet.freeze_panes(1, 0)
+writer.close()
+
+
+# In[ ]:
+
+
+writer = pd.ExcelWriter('data/100_sentences_list_B.xlsx')
+(unlabeled_df
+     .sort_values("marginals", ascending=True)
+     .head(100)[["disease", "gene", "sentence"]]
+     .to_excel(writer, sheet_name='sentences', index=False)
+)
+if writer.engine == 'xlsxwriter':
+    for sheet in writer.sheets.values():
+        sheet.freeze_panes(1, 0)
+writer.close()
+
+
+# ## Use Best Model to Classify All Sentences
+
+# In[ ]:
+
+
+train_X = pd.read_table("data/doc2vec/full_train_doc_vectors.txt", sep=" ", header=None)
+train_X = train_X.head(train_X.shape[0]-1).drop(train_X.shape[1]-1, axis='columns').values
+
+dev_X = pd.read_table("data/doc2vec/full_dev_doc_vectors.txt", sep=" ", header=None)
+dev_X = dev_X.head(dev_X.shape[0]-1).drop(dev_X.shape[1]-1, axis='columns').values
+
+
+# In[ ]:
+
+
+train_dg_map_df = pd.read_table("data/doc2vec/full_train_dg_map.txt", names=["disease_id", "gene_id"])
+train_dg_map_df.head(2)
+
+
+# In[ ]:
+
+
+dev_dg_map_df = pd.read_table("data/doc2vec/full_dev_dg_map.txt", names=["disease_id", "gene_id"])
+dev_dg_map_df.head(2)
+
+
+# In[ ]:
+
+
+best_model = final_models[2].best_estimator_
+train_dg_map_df['marginals'] = best_model.predict_proba(train_X)[:,1]
+train_dg_map_df.head(2)
+
+
+# In[ ]:
+
+
+best_model = pickle.load(open("data/best_model.sav", "rb"))
+dev_dg_map_df['marginals'] = best_model.predict_proba(dev_X)[:,1]
+dev_dg_map_df.head(2)
+
+
+# In[ ]:
+
+
+train_dg_map_df.to_csv("data/training_set_marginals.tsv", sep="\t", index=False)
+dev_dg_map_df.to_csv("data/dev_set_marginals.tsv", sep="\t", index=False)
 
