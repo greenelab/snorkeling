@@ -18,7 +18,7 @@ get_ipython().magic(u'matplotlib inline')
 
 from collections import Counter, OrderedDict, defaultdict
 import os
-import tqdm
+from tqdm import tqdm_notebook
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -148,7 +148,7 @@ print("Total Number of Label Functions: {}".format(L_train.shape[1]))
 # In[12]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'#Conditionally independent Generative Model\nindep_gen_model = GenerativeModel()\nindep_gen_model.train(\n    L_train,\n    epochs=40,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n)')
+get_ipython().run_cell_magic(u'time', u'', u'#Conditionally independent Generative Model\nindep_gen_model = GenerativeModel()\nindep_gen_model.train(\n    L_train,\n    epochs=10,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n)')
 
 
 # In[13]:
@@ -163,7 +163,7 @@ len(deps)
 # In[14]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'# Model each label function and the underlying correlation structure\ngen_model = GenerativeModel(lf_propensity=True)\ngen_model.train(\n    L_train,\n    epochs=30,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n    deps=deps\n)')
+get_ipython().run_cell_magic(u'time', u'', u'# Model each label function and the underlying correlation structure\ngen_model = GenerativeModel(lf_propensity=True)\ngen_model.train(\n    L_train,\n    epochs=10,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n    deps=deps\n)')
 
 
 # # Generative Model Statistics
@@ -219,7 +219,7 @@ indep_results_df.head(2)
 
 
 results_df = L_train.lf_stats(session, est_accs=learned_stats_df['Accuracy'])
-results_df.head(2)
+results_df
 
 
 # The following bar charts below depict the weights the generative model assigns to each label function. The conditional independent model relies heavily on LF_HETNET_ABSENT and LF_NO_CONCLUSION, while the dependancy aware model relies more on the database-backed label functions. Ultimately, the DA model emphasizes more postive labels compared to the CI model. 
@@ -308,37 +308,89 @@ plt.legend()
 L_dev.lf_stats(session, dev_data_labels, test_df.query("model=='DA'")["Learned Acc."])
 
 
-# # F1 Score of Train Hand Labeled Set
-
-# Looking at the small hand labeled training set we can see a pretty big spike in performance. In terms of f1 score the DA model has about a 0.25 increase in performance comapred to the CI model. 
+# ## Comparison Between The Amount of Label Functions
 
 # In[30]:
 
 
-_ = indep_gen_model.error_analysis(session, L_train_labeled, L_train_labeled_gold)
+gen_model_history_df = pd.read_csv("data/gen_model_marginals_history.csv")
 
 
 # In[31]:
 
 
+gen_model_history_df['lfs_26'] = L_dev_ci_marginals
+gen_model_history_df.head(2)
+
+
+# In[33]:
+
+
+positive_class = dev_data_df.curated_dsh.values.sum()/dev_data_df.shape[0]
+plt.plot([0,1], [positive_class, positive_class], color='grey', 
+         linestyle='--', label='Baseline (AUC = {:0.2f})'.format(positive_class))
+
+for marginal, model_label in zip(gen_model_history_df.columns, ["17 LFs (AUC {:.2f})", "26 LFs (AUC {:.2f})"]):
+    precision, recall, threshold = precision_recall_curve(dev_data_labels, gen_model_history_df[marginal])
+    area = auc(recall, precision)
+    plt.plot(recall, precision, label=model_label.format(area))
+plt.title("Precision Recall Curve of Generative Models")
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.legend()
+
+
+# In[34]:
+
+
+plt.plot([0,1], [0,1], linestyle='--', color='grey')
+for marginal, model_label in zip(gen_model_history_df.columns, ["17 LFs (AUC {:.2f})", "26 LFs (AUC {:.2f})"]):
+    fpr, tpr, threshold = roc_curve(dev_data_labels, gen_model_history_df[marginal])
+    area = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label=model_label.format(area))
+plt.title("ROC Curve of Generative Models")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.legend()
+
+
+# In[35]:
+
+
+gen_model_history_df.to_csv("gen_model_marginals_history.csv", index=False)
+
+
+# # F1 Score of Train Hand Labeled Set
+
+# Looking at the small hand labeled training set we can see a pretty big spike in performance. In terms of f1 score the DA model has about a 0.25 increase in performance comapred to the CI model. 
+
+# In[36]:
+
+
+tp, fp, tn, fn = indep_gen_model.error_analysis(session, L_train_labeled, L_train_labeled_gold)
+
+
+# In[37]:
+
+
 tp, fp, tn, fn = gen_model.error_analysis(session, L_train_labeled, L_train_labeled_gold)
 
 
-# In[32]:
+# In[38]:
 
 
 L_train_ci_marginals = indep_gen_model.marginals(L_train_labeled)
 L_train_da_marginals = gen_model.marginals(L_train_labeled)
 
 
-# In[33]:
+# In[39]:
 
 
 positive_class = sum(list(map(lambda x: 0 if x == -1 else x, L_train_labeled_gold.toarray()[:,0])))
 positive_class = positive_class/L_train_labeled_gold.shape[0]
 
 
-# In[34]:
+# In[40]:
 
 
 plt.plot([0,1], [positive_class, positive_class], color='grey', 
@@ -354,7 +406,7 @@ plt.ylabel("Precision")
 plt.legend()
 
 
-# In[35]:
+# In[41]:
 
 
 plt.plot([0,1], [0,1], linestyle='--', color='grey')
@@ -368,7 +420,7 @@ plt.ylabel("True Positive Rate")
 plt.legend()
 
 
-# In[36]:
+# In[42]:
 
 
 L_train_labeled.lf_stats(session, L_train_labeled_gold.data, test_df.query("model=='DA'")["Learned Acc."])
@@ -387,7 +439,7 @@ from snorkel.viewer import SentenceNgramViewer
 # You should ignore this!
 import os
 if 'CI' not in os.environ:
-    sv = SentenceNgramViewer(fn, session)
+    sv = SentenceNgramViewer(fp, session)
 else:
     sv = None
 
@@ -414,13 +466,7 @@ c.labels
 # In[ ]:
 
 
-c.id
-
-
-# In[ ]:
-
-
-L_train_hand_labeled
+L_train_ci_marginals[L_train_labeled.get_row_index(c)]
 
 
 # ## Generate Excel File of Train Data
@@ -432,7 +478,7 @@ L_train_hand_labeled
 
 def make_sentence_df(lf_matrix, marginals, pair_df):
     rows = list()
-    for i in tqdm.tqdm(range(lf_matrix.shape[0])):
+    for i in tqdm_notebook(range(lf_matrix.shape[0])):
         row = OrderedDict()
         candidate = lf_matrix.get_candidate(session, i)
         row['candidate_id'] = candidate.id
@@ -468,7 +514,7 @@ pair_df.head(2)
 # In[ ]:
 
 
-train_sentence_df = make_sentence_df(L_train, train_marginals, pair_df)
+train_sentence_df = make_sentence_df(L_train, train_marginals_indep, pair_df)
 train_sentence_df.head(2)
 
 
