@@ -11,6 +11,8 @@ from snorkel.lf_helpers import (
     rule_regex_search_before_A,
     rule_regex_search_before_B,
 )
+import numpy as np
+import random
 import re
 import pathlib
 import pandas as pd
@@ -18,6 +20,8 @@ import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
+
+random.seed(100)
 
 """
 Debugging to understand how LFs work
@@ -173,49 +177,82 @@ SENTENCE PATTERN MATCHING
 """
 
 biomarker_indicators = {
-    "useful marker of", "useful in predicting","modulates the expression of", "expressed in" 
-    "prognostic marker", "tissue marker", "tumor marker", "high level(s)? of", 
-    "high concentrations of", "cytoplamsic concentration of",
-    "have fewer", "quantification of", "evaluation of", "overproduced and hypersecreted by",
-    "assess the presensece of", "stained postively for", "elevated levels of",
-    "overproduced", "prognostic factor", "characterized by a marked increase of",
-    "plasma levels of", "had elevated", "were detected", "was positive for"
+    "useful marker of", "useful in predicting","modulates the expression of", "expressed in",
+    "prognostic marker", "tissue marker", "tumor marker", "level(s)? (of|in)", 
+    "high concentrations of", "(cytoplamsic )?concentration of",
+    "have fewer", "quantification of", "evaluation of", "hypersecreted by",
+    "assess the presensece of", "stained postively for", "overproduced", 
+    "prognostic factor", "characterized by a marked",
+    "plasma levels of", "had elevated", "were detected", "exaggerated response to", 
+    "serum", "expressed on", "overexpression of"
     }
 
 direct_association = {
-    "prognostic significance of", "prognostic indicator for", "prognostic cyosolic factor",
-    "prognostic parameter for", "prognostic information for", "involved in",
     "association with", "association between", "associated with", "associated between", 
-    "is an important independent variable", "stimulated by", "high risk for", "higher risk of", "high risk for", "high risk of",
-    "predictor of" "predictor of prognosis in", "correlation with", "correlation between", "correlated with",
-    "correlated between", "significant ultradian variation", "significantly reduced",
-    "showed that", "elevated risk for", "found in", "involved in","central role in",
-    "inhibited by", "greater for", "indicative of" , "significantly reduced", "increased production of",
-    "control the extent of", "secreted by"
+    "stimulated by", "correlat(ed|es|ion)? between", "correlat(ed|es|ion)? with",
+    "significant ultradian variation", "showed (that|loss)", "found in", "involved in","central role in",
+    "inhibited by", "greater for", "indicative of","increased production of",
+    "control the extent of", "secreted by", "detected in", "positive for", "to be mediated", 
+    "was produced by", "stimulates", "precipitated by", "affects", "counteract cholinergic deficits", 
+    "mediator of", "candidate gene", "categorized", "positive correlation", 
+    "regulated by", "important role in", "significant amounts of", "to contain"
     }
+
+positive_direction = {
+    r"\bhigh\b", "elevate(d|s)?", "(significant(ly)?)? increase(d|s)?", "greated for",
+    "greater in", "higher", "prevent their degeneration"
+}
+
+negative_direction = {
+    r"\blow\b", "reduce(d|s)?", "(significant(ly)?)? decrease(d|s)?", "inhibited by", "not higher",
+    "unresponsive"
+}
+
+diagnosis_indicators = {
+    "prognostic significance of", "prognostic indicator for", "prognostic cyosolic factor",
+    "prognostic parameter for", "prognostic information for", "predict(or|ive) of",
+    "predictor of prognosis in", "indicative of", "diagnosis of", "was positive for",
+    "detection of", "determined by", "diagnositic sensitivity", "dianostic specificity",
+    "prognostic factor", "variable for the identification", "potential therapeutic agent",
+    "prognostic parameter for", "identification of"
+}
 
 no_direct_association = {
     "not significant", "not significantly", "no association", "not associated",
     "no correlation between" "no correlation in", "no correlation with", "not correlated with",
      "not detected in", "not been observed", "not appear to be related to", "neither", 
-     "provide evidence against"
+     "provide evidence against", "not a constant", "not predictive", "nor were they correlated with"
     }
+
+weak_association = {
+    "not necessarily indicate", "the possibility", "low correlation", "may be.* important", "might facillitate"
+}
 
 negative_indication =  {
     "failed", "poorly"
 }
 
 method_indication = {
-    "investigated the effect of", "investigated in", "was assessed by", "assessed", 
+    "investigated (the effect of|in)", "was assessed by", "assessed", 
     "compared with", "compared to", "were analyzed", "evaluated in", "examination of", "examined in",
-    "quantified in" "quantification by", "we review", "was measured" "we studied", 
-    "we measured", "derived from", "Regulation of", "are discussed", "to measure", "to study",
+    "quantified in" "quantification by", "we review", "was measured", "we(re)? studied", 
+    "we measured", "derived from", "Regulation of", "(are|is) discussed", "to measure", "to study",
     "to explore", "detection of", "authors summarize", "responsiveness of",
-    "used alone", "effect (of|on)", "blunting of", "measurement of", 
-    "detection of", "occurence of", "response of", "stimulation by", 
+    "used alone", "blunting of", "measurement of", "detection of", "occurence of", 
     "our objective was", "to test the hypothesis", "studied in", "were reviewed",
-    "randomized study", "this report considers"
+    "randomized study", "this report considers", "was administered", "determinations of",
+    "we examine", "we evaluated", "to establish", "were selected", "authors determmined",
+    "we investigated", "to assess", "analyses were done", "useful tool for the study of", r"^The effect of",
     }
+
+title_indication = {
+    "Effect of", "Evaluation of", 
+    "Clincal value of", "Extraction of",
+    "Responsiveness of", "The potential for",
+    "as defined by immunohistochemistry", "Comparison between",
+    "Characterization of", "A case of", "Occurrence of",
+    "Inborn", "Episodic", "Detection of", "Immunostaining of"
+}
 
 def LF_IS_BIOMARKER(c):
     """
@@ -235,12 +272,22 @@ def LF_ASSOCIATION(c):
     This LF is designed to test if there is a key phrase that suggests
     a d-g pair is an association.
     """
-    if re.search(ltp(direct_association), get_text_between(c), flags=re.I):
+    if re.search(r'(?<!not )(?<!no )' + ltp(direct_association), get_text_between(c), flags=re.I):
         return 1
-    elif re.search(ltp(direct_association) + r".*({{B}}|{{A}})", get_tagged_text(c), flags=re.I):
+    elif re.search(r'(?<!not )(?<!no )' + ltp(direct_association) + r".*({{B}}|{{A}})", get_tagged_text(c), flags=re.I):
         return 1
-    elif re.search(r"({{B}}|{{A}}).*" + ltp(direct_association), get_tagged_text(c), flags=re.I):
+    elif re.search(r"({{B}}|{{A}}).*(?<!not )(?<!no )" + ltp(direct_association), get_tagged_text(c), flags=re.I):
         return 1
+    else:
+        return 0
+
+def LF_WEAK_ASSOCIATION(c):
+    if re.search(ltp(weak_association), get_text_between(c), flags=re.I):
+        return -1
+    elif re.search(ltp(weak_association) + r".*({{B}}|{{A}})", get_tagged_text(c), flags=re.I):
+        return -1
+    elif re.search(r"({{B}}|{{A}}).*" + ltp(weak_association), get_tagged_text(c), flags=re.I):
+        return -1
     else:
         return 0
 
@@ -264,38 +311,78 @@ def LF_METHOD_DESC(c):
     else:
         return 0
 
+def LF_TITLE(c):
+    if re.search(r'^'+ltp(title_indication), get_tagged_text(c), flags=re.I):
+        return -1
+    elif re.search(ltp(title_indication)+r'$', get_tagged_text(c), flags=re.I):
+        return -1
+    else:
+        return 0
+
+def LF_POSITIVE_DIRECTION(c):
+    return 1 if any([rule_regex_search_btw_AB(c, r'.*'+ltp(positive_direction)+r'.*', 1), rule_regex_search_btw_BA(c, r'.*'+ltp(positive_direction)+r'.*', 1)]) or \
+        re.search(r'({{A}}|{{B}}).*({{A}}|{{B}}).*' + ltp(positive_direction), get_tagged_text(c)) else 0
+
+def LF_NEGATIVE_DIRECTION(c):
+    return 1 if any([rule_regex_search_btw_AB(c, r'.*'+ltp(negative_direction)+r'.*', 1), rule_regex_search_btw_BA(c, r'.*'+ltp(negative_direction)+r'.*', 1)]) or  \
+        re.search(r'({{A}}|{{B}}).*({{A}}|{{B}}).*' + ltp(positive_direction), get_tagged_text(c)) else 0
+
+def LF_DIAGNOSIS(c):
+    return 1 if any([rule_regex_search_btw_AB(c, r'.*'+ltp(diagnosis_indicators) + r".*", 1), rule_regex_search_btw_BA(c, r'.*'+ltp(diagnosis_indicators) + r".*", 1)]) or  \
+        re.search(r'({{A}}|{{B}}).*({{A}}|{{B}}).*' + ltp(diagnosis_indicators), get_tagged_text(c)) else 0
+
+def LF_RISK(c):
+    return 1 if re.search(r"risk (of|for)", get_tagged_text(c), flags=re.I) else 0
+
+def LF_PATIENT_WITH(c):
+    return 1 if re.search(r"patient(s)? with {{A}}", get_tagged_text(c), flags=re.I) else 0
+
+def LF_PURPOSE(c):
+    return -1 if "PURPOSE:" in get_tagged_text(c) else 0
+
+def LF_CONCLUSION_TITLE(c):
+    return 1 if "CONCLUSION" in get_tagged_text(c) or "concluded" in get_tagged_text(c) else 0
+
 def LF_NO_CONCLUSION(c):
-    return 0 if any([
-        LF_ASSOCIATION(c),
-        LF_IS_BIOMARKER(c),
-        LF_NO_ASSOCIATION(c)
-    ]) else -1
+    positive_num = np.sum([LF_ASSOCIATION(c), LF_IS_BIOMARKER(c),LF_NO_ASSOCIATION(c),  
+            LF_POSITIVE_DIRECTION(c), LF_NEGATIVE_DIRECTION(c), LF_DIAGNOSIS(c),
+            np.abs(LF_WEAK_ASSOCIATION(c)), np.abs(LF_NO_ASSOCIATION(c))])
+    negative_num = np.abs(np.sum(LF_METHOD_DESC(c), LF_TITLE(c)))
+    if positive_num - negative_num >= 1:
+        return 0
+    return -1
 
 def LF_CONCLUSION(c):
-    return 1 if any([
-        LF_ASSOCIATION(c),
-        LF_IS_BIOMARKER(c),
-        LF_NO_ASSOCIATION(c)
-    ]) else 0
+    if LF_NO_ASSOCIATION(c) or LF_WEAK_ASSOCIATION(c):
+        return -1
+    elif not LF_NO_CONCLUSION(c):
+        return 1
+    else:
+        return 0
 
 def LF_DG_DISTANCE_SHORT(c):
     """
     This LF is designed to make sure that the disease mention
     and the gene mention aren't right next to each other.
     """
-    return -1 if len(get_text_between(c).split(" ")) <=2 else 0
+    return -1 if len(list(get_between_tokens(c))) <= 2 else 0
 
 def LF_DG_DISTANCE_LONG(c):
-    return -1 if len(get_text_between(c).split(" ")) > 50 else 0
+    return -1 if len(list(get_between_tokens(c))) > 25 else 0
 
 def LF_DG_ALLOWED_DISTANCE(c):
     return 0 if any([
         LF_DG_DISTANCE_LONG(c),
         LF_DG_DISTANCE_SHORT(c)
-        ]) else 1
+        ]) else 1 if random.random() < 0.65 else 0
 
 def LF_NO_VERB(c):
-    return -1 if len([x for x in  nltk.pos_tag(word_tokenize(c.get_parent().text)) if "VB" in x[1]])== 0 else 0
+    # Work on adding preprocessing steps
+    if len([x for x in  nltk.pos_tag(word_tokenize(c.get_parent().text)) if "VB" in x[1]]) == 0:
+        if "correlates with" in c.get_parent().text:
+            return 0
+        return -1
+    return 0
 
 
 """
@@ -312,8 +399,17 @@ LFS = {
     "LF_CHECK_DISEASE_TAG": LF_CHECK_DISEASE_TAG,
     "LF_IS_BIOMARKER": LF_IS_BIOMARKER,
     "LF_ASSOCIATION": LF_ASSOCIATION,
+    "LF_WEAK_ASSOCIATION": LF_WEAK_ASSOCIATION,
     "LF_NO_ASSOCIATION": LF_NO_ASSOCIATION,
     "LF_METHOD_DESC": LF_METHOD_DESC,
+    "LF_TITLE": LF_TITLE,
+    "LF_POSITIVE_DIRECTION": LF_POSITIVE_DIRECTION,
+    "LF_NEGATIVE_DIRECTION": LF_NEGATIVE_DIRECTION,
+    "LF_DIAGNOSIS": LF_DIAGNOSIS,
+    "LF_RISK": LF_RISK,
+    "LF_PATIENT_WITH":LF_PATIENT_WITH,
+    "LF_PURPOSE":LF_PURPOSE,
+    "LF_CONCLUSION_TITLE":LF_CONCLUSION_TITLE,
     "LF_NO_CONCLUSION": LF_NO_CONCLUSION,
     "LF_CONCLUSION": LF_CONCLUSION,
     "LF_DG_DISTANCE_SHORT": LF_DG_DISTANCE_SHORT,
