@@ -9,7 +9,7 @@
 
 # Set up the database for data extraction and load the Candidate subclass for the algorithms below
 
-# In[1]:
+# In[ ]:
 
 
 get_ipython().magic(u'load_ext autoreload')
@@ -30,7 +30,7 @@ from sklearn.dummy import DummyClassifier
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 
 
-# In[2]:
+# In[ ]:
 
 
 #Set up the environment
@@ -46,7 +46,7 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[3]:
+# In[ ]:
 
 
 from snorkel.annotations import LabelAnnotator, load_marginals
@@ -55,13 +55,13 @@ from snorkel.learning.pytorch import LSTM
 from snorkel.models import Candidate, FeatureKey, candidate_subclass
 
 
-# In[4]:
+# In[ ]:
 
 
 edge_type = "dg"
 
 
-# In[5]:
+# In[ ]:
 
 
 if edge_type == "dg":
@@ -80,14 +80,14 @@ else:
 
 # Here we load the sentences from the training and development set respectively. Both come from excel files that are on the repository as we speak.
 
-# In[6]:
+# In[ ]:
 
 
-train_sentences_df = pd.read_excel("data/sentence-labels_test.xlsx")
+train_sentences_df = pd.read_excel("data/sentence-labels-17lfs.xlsx")
 train_sentences_df.head(2)
 
 
-# In[7]:
+# In[ ]:
 
 
 dev_sentences_df = pd.read_excel("data/sentence-labels-dev.xlsx")
@@ -209,8 +209,9 @@ with open("data/doc2vec/train_data_500k.txt", "w") as f:
 
 command = [
     '../iclr2017/doc2vecc',
-    '-train', 'data/doc2vec/train_data_500k.txt',
-    '-output', 'data/doc2vec/doc_vectors/train_doc_vectors_500k.txt',
+    '-train', 'data/doc2vec/training_data/train_data_full_pubmed.txt',
+    '-word', 'data/doc2vec/word_vectors/full_train_word_vectors.txt',
+    '-output', 'data/doc2vec/doc_vectors/full_train_doc_vectors.txt',
     '-cbow', '1',
     '-size', '500',
     '-negative', '5',
@@ -218,8 +219,8 @@ command = [
     '-threads', '5',
     '-binary', '0',
     '-iter', '30',
-    '-test', 'data/doc2vec/train_data.txt',
-    '-save-vocab', 'data/doc2vec/train_data_vocab_500k.txt'
+    '-test', 'data/doc2vec/full_train_set.txt',
+    '-read-vocab', 'data/doc2vec/vocab/train_data_vocab_full_pubmed.txt'
 ]
 subprocess.Popen(command)
 
@@ -229,8 +230,9 @@ subprocess.Popen(command)
 
 command = [
     '../iclr2017/doc2vecc',
-    '-train', 'data/doc2vec/train_data_500k.txt',
-    '-output', 'data/doc2vec/doc_vectors/dev_doc_vectors_non_labeled_500k.txt',
+    '-train', 'data/doc2vec/training_data/train_data_full_pubmed.txt',
+    '-word', 'data/doc2vec/word_vectors/full_dev_word_vectors.txt',
+    '-output', 'data/doc2vec/doc_vectors/full_dev_doc_vectors.txt',
     '-cbow', '1',
     '-size', '500',
     '-negative', '5',
@@ -238,8 +240,8 @@ command = [
     '-threads', '5',
     '-binary', '0',
     '-iter', '30',
-    '-test', 'data/doc2vec/dev_data_non_labeled.txt',
-    '-read-vocab', 'data/doc2vec/train_data_vocab_500k.txt'
+    '-test', 'data/doc2vec/full_dev_set.txt',
+    '-read-vocab', 'data/doc2vec/vocab/train_data_vocab_full_pubmed.txt'
 ]
 subprocess.Popen(command)
 
@@ -248,34 +250,40 @@ subprocess.Popen(command)
 
 # Here we train an SLR. To find the optimal hyperparameter settings this code uses a [random search](http://scikit-learn.org/stable/modules/grid_search.html) instead of iterating over all possible combinations of parameters. After the final model has been found, it is saved in the checkpoints folder to be loaded in the [next notebook](5.data-analysis.ipynb). Furthermore, the weights for the final model are output into a text file to be analyzed as well.
 
-# In[8]:
+# In[ ]:
 
 
-doc2vec_X = np.loadtxt("data/doc2vec/doc_vectors/train_doc_vectors.txt")
-doc2vec_X = doc2vec_X[:-1, :]
-doc2vec_dev_X = np.loadtxt("data/doc2vec/doc_vectors/dev_doc_vectors.txt")
-doc2vec_dev_X = doc2vec_dev_X[:-1, :]
+doc2vec_X = pd.read_table("data/doc2vec/doc_vectors/train_doc_vectors_50k.txt.xz", 
+                          compression='xz', header=None, sep=" ")
+doc2vec_X = doc2vec_X.values[:-1, :-1]
+doc2vec_dev_X = pd.read_table("data/doc2vec/doc_vectors/dev_doc_vectors_50k.txt.xz",
+                              compression='xz', header=None, sep=" ")
+doc2vec_dev_X = doc2vec_dev_X.values[:-1, :-1]
 
 
-# In[9]:
+# In[ ]:
 
 
-doc2vec_X_500k = np.loadtxt("data/doc2vec/doc_vectors/train_doc_vectors_500k.txt")
-doc2vec_X_500k = doc2vec_X_500k[:-1,:]
-doc2vec_dev_X_500k = np.loadtxt("data/doc2vec/doc_vectors/dev_doc_vectors_500k.txt")
-doc2vec_dev_X_500k = doc2vec_dev_X_500k[:-1, :]
+doc2vec_X_500k = pd.read_table("data/doc2vec/doc_vectors/train_doc_vectors_500k.txt.xz", 
+                          compression='xz', header=None, sep=" ")
+doc2vec_X_500k = doc2vec_X_500k.values[:-1, :-1]
+doc2vec_dev_X_500k = pd.read_table("data/doc2vec/doc_vectors/dev_doc_vectors_500k.txt.xz",
+                              compression='xz', header=None, sep=" ")
+doc2vec_dev_X_500k = doc2vec_dev_X_500k.values[:-1, :-1]
 
 
-# In[10]:
+# In[ ]:
 
 
-doc2vec_X_all = np.loadtxt("data/doc2vec/doc_vectors/train_doc_vectors_all.txt")
-doc2vec_X_all= doc2vec_X_all[:-1,:]
-doc2vec_dev_X_all = np.loadtxt("data/doc2vec/doc_vectors/dev_doc_vectors_all.txt")
-doc2vec_dev_X_all = doc2vec_dev_X_all[:-1, :]
+doc2vec_X_all = pd.read_table("data/doc2vec/doc_vectors/train_doc_vectors_full_pubmed.txt.xz",
+                             compression='xz', header=None, sep=" ")
+doc2vec_X_all= doc2vec_X_all.values[:-1,:-1]
+doc2vec_dev_X_all = pd.read_table("data/doc2vec/doc_vectors/dev_doc_vectors_full_pubmed.txt.xz",
+                              compression='xz', header=None, sep=" ")
+doc2vec_dev_X_all = doc2vec_dev_X_all.values[:-1, :-1]
 
 
-# In[11]:
+# In[ ]:
 
 
 vectorizer = CountVectorizer()
@@ -285,7 +293,7 @@ X = vectorizer.fit_transform(
 dev_X = vectorizer.transform(dev_sentences_df.sentence.values)
 
 
-# In[12]:
+# In[ ]:
 
 
 data = [
@@ -315,19 +323,19 @@ lr_grids = [
 final_models = []
 
 
-# In[13]:
+# In[ ]:
 
 
 lr_model = LogisticRegression()
 
 
-# In[14]:
+# In[ ]:
 
 
 get_ipython().run_cell_magic(u'time', u'', u"for train_data, grid, y_labels in zip(data, lr_grids, labels):\n    fit_model = GridSearchCV(lr_model, \n                         grid, cv=10, n_jobs=3, \n                         verbose=1, scoring='roc_auc', return_train_score=True)\n    fit_model.fit(train_data, y_labels)\n    final_models.append(fit_model)")
 
 
-# In[15]:
+# In[ ]:
 
 
 import matplotlib.pyplot as plt
@@ -340,7 +348,7 @@ plt.ylabel("Mean Test Score")
 plt.title("BOW Training CV (10-fold)")
 
 
-# In[16]:
+# In[ ]:
 
 
 lr_marginals = []
@@ -348,7 +356,7 @@ for model, test_data in zip(final_models, [dev_X, doc2vec_dev_X, doc2vec_dev_X_5
     lr_marginals.append(model.best_estimator_.predict_proba(test_data)[:,1])
 
 
-# In[17]:
+# In[ ]:
 
 
 marginals_df = (
@@ -359,7 +367,107 @@ marginals_df = (
 marginals_df.head(2)
 
 
-# In[18]:
+# In[ ]:
+
+
+marginals_df.to_csv('data/disc_model_marginals-17lfs.tsv', index=False, sep='\t')
+
+
+# # LSTM
+
+# In[ ]:
+
+
+train_sentences_df = pd.read_excel("data/sentence-labels.xlsx")
+train_sentences_df.head(2)
+
+
+# In[ ]:
+
+
+dev_sentences_df = pd.read_excel("data/sentence-labels-dev.xlsx")
+dev_sentences_df = dev_sentences_df[dev_sentences_df.curated_dsh.notnull()]
+dev_sentences_df = dev_sentences_df.sort_values("candidate_id")
+dev_sentences_df.head(2)
+
+
+# In[ ]:
+
+
+sql = '''
+SELECT candidate_id FROM gold_label
+INNER JOIN Candidate ON Candidate.id=gold_label.candidate_id
+WHERE Candidate.split=0;
+'''
+cids = session.query(Candidate.id).filter(Candidate.id.in_([x[0] for x in session.execute(sql)]))
+L_train_labeled_gold = load_gold_labels(session, annotator_name='danich1', cids_query=cids)
+
+
+# In[ ]:
+
+
+train_candidate_ids = train_sentences_df.candidate_id.astype(int).tolist()
+dev_candidate_ids = (
+    dev_sentences_df[dev_sentences_df.curated_dsh.notnull()]
+    .candidate_id
+    .astype(int)
+    .tolist()
+)
+
+
+# In[ ]:
+
+
+train_cands = (
+    session
+    .query(Candidate)
+    .filter(Candidate.id.in_(train_candidate_ids))
+    .all() 
+)
+
+train_label_cands = (
+    session
+    .query(Candidate)
+    .filter(Candidate.id.in_(cids))
+    .all()
+)
+
+dev_cands = (
+    session
+    .query(Candidate)
+    .filter(Candidate.id.in_(dev_candidate_ids))
+    .all() 
+)
+
+
+# In[ ]:
+
+
+from snorkel.learning.pytorch import LSTM
+
+train_kwargs = {
+    'lr':            0.01,
+    'embedding_dim': 250,
+    'hidden_dim':    250,
+    'n_epochs':      20,
+    'dropout':       0.10,
+    'seed':          1701
+}
+
+lstm = LSTM(n_threads=None)
+lstm.train(train_cands, train_sentences_df.label.values, X_dev=train_label_cands, 
+           Y_dev=L_train_labeled_gold, **train_kwargs)
+
+
+# In[ ]:
+
+
+marginals = lstm.marginals(dev_cands)
+marginals_df["LSTM"] = marginals
+marginals_df.head(2)
+
+
+# In[ ]:
 
 
 marginals_df.to_csv('data/disc_model_marginals.tsv', index=False, sep='\t')
@@ -367,7 +475,7 @@ marginals_df.to_csv('data/disc_model_marginals.tsv', index=False, sep='\t')
 
 # ## Save Best Model
 
-# In[19]:
+# In[ ]:
 
 
 pickle.dump(final_models[2], open("data/best_model.sav", "wb"))
@@ -453,10 +561,10 @@ writer.close()
 # In[ ]:
 
 
-train_X = pd.read_table("data/doc2vec/full_train_doc_vectors.txt", sep=" ", header=None)
+train_X = pd.read_table("data/doc2vec/doc_vectors/full_train_doc_vectors.txt", sep=" ", header=None)
 train_X = train_X.head(train_X.shape[0]-1).drop(train_X.shape[1]-1, axis='columns').values
 
-dev_X = pd.read_table("data/doc2vec/full_dev_doc_vectors.txt", sep=" ", header=None)
+dev_X = pd.read_table("data/doc2vec/doc_vectors/full_dev_doc_vectors.txt", sep=" ", header=None)
 dev_X = dev_X.head(dev_X.shape[0]-1).drop(dev_X.shape[1]-1, axis='columns').values
 
 
@@ -477,7 +585,12 @@ dev_dg_map_df.head(2)
 # In[ ]:
 
 
-best_model = final_models[2].best_estimator_
+best_model = pickle.load(open("data/best_model.sav", "rb"))
+
+
+# In[ ]:
+
+
 train_dg_map_df['marginals'] = best_model.predict_proba(train_X)[:,1]
 train_dg_map_df.head(2)
 
@@ -485,7 +598,6 @@ train_dg_map_df.head(2)
 # In[ ]:
 
 
-best_model = pickle.load(open("data/best_model.sav", "rb"))
 dev_dg_map_df['marginals'] = best_model.predict_proba(dev_X)[:,1]
 dev_dg_map_df.head(2)
 

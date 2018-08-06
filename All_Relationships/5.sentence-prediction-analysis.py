@@ -51,25 +51,18 @@ session = SnorkelSession()
 # In[3]:
 
 
-import sys
-sys.path.append('/home/danich1/Documents/snorkeling/snorkel/treedlib/treedlib')
-
-
-# In[4]:
-
-
 from snorkel.annotations import FeatureAnnotator, LabelAnnotator, load_marginals
 from snorkel.models import Candidate, candidate_subclass
 from snorkel.viewer import SentenceNgramViewer
 
 
-# In[5]:
+# In[4]:
 
 
 edge_type = "dg"
 
 
-# In[6]:
+# In[5]:
 
 
 if edge_type == "dg":
@@ -88,7 +81,7 @@ else:
 
 # Here is where we load the test dataset in conjunction with the previously trained disc models. Each algorithm will output a probability of a candidate being a true candidate.
 
-# In[7]:
+# In[6]:
 
 
 dev_sentence_df = pd.read_excel("data/sentence-labels-dev.xlsx")
@@ -97,14 +90,14 @@ dev_sentence_df = dev_sentence_df.sort_values("candidate_id")
 dev_sentence_df.head(2)
 
 
-# In[8]:
+# In[7]:
 
 
 marginals_df = pd.read_table('data/disc_model_marginals.tsv')
 marginals_df.head(2)
 
 
-# In[9]:
+# In[8]:
 
 
 dev_sentence_df.curated_dsh.value_counts()
@@ -114,13 +107,13 @@ dev_sentence_df.curated_dsh.value_counts()
 
 # From the probabilities calculated above, we can create a [Receiver Operator Curve](http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html) (ROC) graph to measure the false positive rate and the true positive rate at each calculated threshold.
 
-# In[10]:
+# In[9]:
 
 
 model_aucs = {}
 
 
-# In[11]:
+# In[10]:
 
 
 plt.figure(figsize=(7,5))
@@ -142,7 +135,7 @@ plt.legend(loc="lower right")
 
 # This block of code calculates the p-value for each ROC curve above. Each AUC is equivalent to the Mann-Whitney U statistic (aka Willcoxon Rank Sum Test). Calulating this statistic is easy and the equation can be found [here](https://www.quora.com/How-is-statistical-significance-determined-for-ROC-curves-and-AUC-values). Since more than 20 data points were used to generate the above ROC curves, normal approximation canm used to calculate the p-values. The equaltions for the normal approximation can be found [here](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test). Looking at the bottom dataframe, one can see there isn't strong evidence that the generated ROCs are greater than 0.50.
 
-# In[12]:
+# In[11]:
 
 
 class_dist_df = dev_sentence_df.curated_dsh.value_counts()
@@ -153,7 +146,7 @@ sigma_u = np.sqrt((n1 * n2 * (n1+n2+1))/12)
 print("mu: {:f}, sigma: {:f}".format(mu, sigma_u))
 
 
-# In[13]:
+# In[12]:
 
 
 model_auc_df = pd.DataFrame.from_dict(model_aucs, orient='index')
@@ -161,7 +154,7 @@ model_auc_df = model_auc_df.rename(index=str, columns={0:'auroc'})
 model_auc_df.head(2)
 
 
-# In[14]:
+# In[13]:
 
 
 model_auc_df['u'] = model_auc_df.auroc.apply(lambda x: x*n1*n2)
@@ -169,7 +162,7 @@ model_auc_df['z_u'] = model_auc_df.u.apply(lambda z_u: (z_u- mu)/sigma_u)
 model_auc_df.head(2)
 
 
-# In[15]:
+# In[14]:
 
 
 model_auc_df['p_value'] = model_auc_df.z_u.apply(lambda z_u: norm.sf(z_u, loc=0, scale=1))
@@ -180,7 +173,7 @@ model_auc_df
 
 # This code produces a [Precision-Recall](http://scikit-learn.org/stable/auto_examples/model_selection/plot_precision_recall.html) graph, which shows the trade off between [precision and recall](https://en.wikipedia.org/wiki/Precision_and_recall) at each given probability threshold.
 
-# In[16]:
+# In[15]:
 
 
 plt.figure(figsize=(7,5))
@@ -202,10 +195,58 @@ plt.ylim([0, 1.05])
 plt.legend(loc="lower right")
 
 
-# # Write Results to CSV
+# # Old vs New
 
-# In[ ]:
+# In[16]:
 
 
-model_marginals.to_csv("stratified_data/lstm_disease_gene_holdout/total_test_marginals.csv", index=False)
+marginals_17_df = pd.read_table('data/disc_model_marginals-17lfs.tsv')
+marginals_26_df = pd.read_table('data/disc_model_marginals.tsv')
+
+
+# In[17]:
+
+
+plt.figure(figsize=(7,5))
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label="Random")
+
+fpr, tpr, _= roc_curve(dev_sentence_df.curated_dsh.values, marginals_17_df['Doc2Vec All'])
+model_auc = auc(fpr, tpr)
+model_aucs[model] = model_auc
+plt.plot(fpr, tpr, label="{} (AUC = {:0.2f})".format('17 LFS', model_auc))
+
+fpr, tpr, _= roc_curve(dev_sentence_df.curated_dsh.values, marginals_26_df['LSTM'])
+model_auc = auc(fpr, tpr)
+model_aucs[model] = model_auc
+plt.plot(fpr, tpr, label="{} (AUC = {:0.2f})".format('26 LFS', model_auc))
+
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Accuracy ROC')
+plt.legend(loc="lower right")
+
+
+# In[18]:
+
+
+plt.figure(figsize=(7,5))
+
+positive_class = dev_sentence_df.curated_dsh.values.sum()/dev_sentence_df.shape[0]
+plt.plot([0,1], [positive_class, positive_class], color='grey', 
+         linestyle='--', label='Baseline (AUC = {:0.2f})'.format(positive_class))
+
+precision, recall, _ = precision_recall_curve(dev_sentence_df.curated_dsh.values, marginals_17_df['Doc2Vec All'])
+model_auc = auc(recall, precision)
+plt.plot(recall, precision, label="{} curve (AUC = {:0.2f})".format('17 LFS', model_auc))
+
+precision, recall, _ = precision_recall_curve(dev_sentence_df.curated_dsh.values, marginals_26_df['LSTM'])
+model_auc = auc(recall, precision)
+plt.plot(recall, precision, label="{} curve (AUC = {:0.2f})".format('26 LFS', model_auc))
+
+plt.ylabel('Precision')
+plt.xlabel('Recall')
+plt.title('Precision vs Recall')
+plt.xlim([0, 1.01])
+plt.ylim([0, 1.05])
+plt.legend(loc="lower right")
 
