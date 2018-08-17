@@ -57,7 +57,7 @@ from snorkel.viewer import SentenceNgramViewer
 # In[ ]:
 
 
-edge_type = "cg"
+edge_type = "dg"
 debug = False
 
 
@@ -89,7 +89,7 @@ else:
 # In[ ]:
 
 
-train_candidate_df = pd.read_excel("data/compound_gene/compound_binds_gene/sentence-labels.xlsx")
+train_candidate_df = pd.read_excel("data/disease_gene/disease_associates_gene/sentence_labels_26lfs_50k.xlsx")
 train_candidate_df.head(2)
 
 
@@ -102,7 +102,7 @@ train_candidate_ids = list(map(int, train_candidate_df.candidate_id.values))[1:1
 # In[ ]:
 
 
-candidates = session.query(CompoundGene).filter(CompoundGene.id.in_(train_candidate_ids)).limit(100)
+candidates = session.query(DiseaseGene).filter(DiseaseGene.id.in_(train_candidate_ids)).limit(100)
 sv = SentenceNgramViewer(candidates, session)
 
 
