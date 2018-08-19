@@ -12,9 +12,9 @@
 # In[ ]:
 
 
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 from collections import defaultdict
 import csv
@@ -89,14 +89,14 @@ else:
 # In[ ]:
 
 
-train_candidate_df = pd.read_excel("data/sentence-labels.xlsx")
+train_candidate_df = pd.read_excel("data/disease_gene/disease_associates_gene/sentence_labels_26lfs_50k.xlsx")
 train_candidate_df.head(2)
 
 
 # In[ ]:
 
 
-train_candidate_ids = list(map(int, train_candidate_df.candidate_id.values))[10:60]
+train_candidate_ids = list(map(int, train_candidate_df.candidate_id.values))[1:100]
 
 
 # In[ ]:
@@ -116,6 +116,7 @@ sv
 
 
 c = sv.get_selected()
+c
 
 
 # # Label Functions
@@ -155,23 +156,24 @@ labeler = LabelAnnotator(lfs=list(LFS.values()))
 
 sql = '''
 SELECT id from candidate
-WHERE split = 0 and type='disease_gene'
+WHERE split = 0 and type='disease_gene' and id not in {}
 ORDER BY RANDOM()
-LIMIT 50000;
+LIMIT 200000;
 '''
+sql = sql.format("(" + ",".join(map(str,train_candidate_df.candidate_id.values)) + ")")
 target_cids = [x[0] for x in session.execute(sql)]
 
 
 # In[ ]:
 
 
-target_cids
+any(train_candidate_df.candidate_id.isin(target_cids))
 
 
 # In[ ]:
 
 
-np.savetxt('data/labeled_candidates.txt', target_cids)
+np.savetxt('data/disease_gene/labeled_candidates.txt', list(train_candidate_df.candidate_id.values) + target_cids)
 
 
 # ### Dev Set
@@ -212,14 +214,14 @@ np.savetxt('data/labeled_dev_candidates.txt', gold_cids)
 # In[ ]:
 
 
-target_cids = np.loadtxt('data/labeled_candidates.txt').astype(int).tolist()
+target_cids = np.loadtxt('data/disease_gene/labeled_candidates.txt').astype(int).tolist()
 
 
 # In[ ]:
 
 
 cids = session.query(DiseaseGene.id).filter(DiseaseGene.id.in_(target_cids))
-get_ipython().magic(u'time L_train = labeler.apply(split=0, cids_query=cids, parallelism=5)')
+get_ipython().run_line_magic('time', 'L_train = labeler.apply(split=0, cids_query=cids, parallelism=5)')
 
 
 # In[ ]:
@@ -235,7 +237,7 @@ len(gold_cids)
 
 
 cids = session.query(Candidate.id).filter(Candidate.id.in_(gold_cids))
-get_ipython().magic(u'time L_dev = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
+get_ipython().run_line_magic('time', 'L_dev = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
 
 
 # In[ ]:
@@ -247,5 +249,5 @@ INNER JOIN Candidate ON Candidate.id=gold_label.candidate_id
 WHERE Candidate.split=0;
 '''
 cids = session.query(Candidate.id).filter(Candidate.id.in_([x[0] for x in session.execute(sql)]))
-get_ipython().magic(u'time L_train_hand_labeled = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
+get_ipython().run_line_magic('time', 'L_train_hand_labeled = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
 
