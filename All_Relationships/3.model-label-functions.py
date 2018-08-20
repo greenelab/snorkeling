@@ -12,9 +12,9 @@
 # In[1]:
 
 
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 from collections import Counter, OrderedDict, defaultdict
 import os
@@ -91,14 +91,15 @@ else:
 # In[6]:
 
 
-train_candidate_ids = np.loadtxt('data/labeled_candidates.txt').astype(int).tolist()
+train_data_df = pd.read_excel("data/disease_gene/sentence_labels_26lfs_250k.xlsx")
+train_candidate_ids = list(map(int, train_data_df.candidate_id.values))
 train_candidate_ids[0:10]
 
 
 # In[7]:
 
 
-dev_data_df = pd.read_excel("data/sentence-labels-dev-hand-labeled.xlsx")
+dev_data_df = pd.read_excel("data/disease_gene/sentence_labels_dev.xlsx")
 dev_data_df = dev_data_df[dev_data_df.curated_dsh.notnull()]
 dev_data_df = dev_data_df.sort_values("candidate_id")
 dev_candidate_ids = list(map(int, dev_data_df.candidate_id.values))
@@ -108,7 +109,7 @@ print("Total Hand Labeled Dev Sentences: {}".format(len(dev_candidate_ids)))
 # In[8]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have labels\ncids = session.query(Candidate.id).filter(Candidate.id.in_(train_candidate_ids))\nL_train = labeler.load_matrix(session, cids_query=cids)\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(dev_candidate_ids))\nL_dev = labeler.load_matrix(session,cids_query=cids)')
+get_ipython().run_cell_magic('time', '', 'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have labels\ncids = session.query(Candidate.id).filter(Candidate.id.in_(train_candidate_ids))\nL_train = labeler.load_matrix(session, cids_query=cids)\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(dev_candidate_ids))\nL_dev = labeler.load_matrix(session,cids_query=cids)')
 
 
 # In[9]:
@@ -148,7 +149,7 @@ print("Total Number of Label Functions: {}".format(L_train.shape[1]))
 # In[12]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'#Conditionally independent Generative Model\nindep_gen_model = GenerativeModel()\nindep_gen_model.train(\n    L_train,\n    epochs=10,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n)')
+get_ipython().run_cell_magic('time', '', '#Conditionally independent Generative Model\nindep_gen_model = GenerativeModel()\nindep_gen_model.train(\n    L_train,\n    epochs=10,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n)')
 
 
 # In[13]:
@@ -163,7 +164,7 @@ len(deps)
 # In[14]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'# Model each label function and the underlying correlation structure\ngen_model = GenerativeModel(lf_propensity=True)\ngen_model.train(\n    L_train,\n    epochs=10,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n    deps=deps\n)')
+get_ipython().run_cell_magic('time', '', '# Model each label function and the underlying correlation structure\ngen_model = GenerativeModel(lf_propensity=True)\ngen_model.train(\n    L_train,\n    epochs=10,\n    decay=0.95,\n    step_size=0.1 / L_train.shape[0],\n    reg_param=1e-6,\n    threads=50,\n    deps=deps\n)')
 
 
 # # Generative Model Statistics
@@ -181,7 +182,7 @@ learned_stats_df = gen_model.learned_lf_stats()
 # In[16]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u'train_marginals_indep = indep_gen_model.marginals(L_train)\ntrain_marginals = gen_model.marginals(L_train)')
+get_ipython().run_cell_magic('time', '', 'train_marginals_indep = indep_gen_model.marginals(L_train)\ntrain_marginals = gen_model.marginals(L_train)')
 
 
 # In[17]:
@@ -310,27 +311,27 @@ L_dev.lf_stats(session, dev_data_labels, test_df.query("model=='DA'")["Learned A
 
 # ## Comparison Between The Amount of Label Functions
 
-# In[30]:
-
-
-gen_model_history_df = pd.read_csv("data/gen_model_marginals_history.csv")
-
-
 # In[31]:
 
 
-gen_model_history_df['lfs_26'] = L_dev_ci_marginals
+gen_model_history_df = pd.read_csv("data/disease_gene/disease_associates_gene/gen_model_marginals_history.csv")
+
+
+# In[ ]:
+
+
+gen_model_history_df['lfs_26_50k'] = L_dev_ci_marginals
 gen_model_history_df.head(2)
 
 
-# In[33]:
+# In[32]:
 
 
 positive_class = dev_data_df.curated_dsh.values.sum()/dev_data_df.shape[0]
 plt.plot([0,1], [positive_class, positive_class], color='grey', 
          linestyle='--', label='Baseline (AUC = {:0.2f})'.format(positive_class))
 
-for marginal, model_label in zip(gen_model_history_df.columns, ["17 LFs (AUC {:.2f})", "26 LFs (AUC {:.2f})"]):
+for marginal, model_label in zip(gen_model_history_df.columns, ["17 LFs (AUC {:.2f})", "26 LFs 50k (AUC {:.2f})", "26 LFs 250k (AUC {:.2f})"]):
     precision, recall, threshold = precision_recall_curve(dev_data_labels, gen_model_history_df[marginal])
     area = auc(recall, precision)
     plt.plot(recall, precision, label=model_label.format(area))
@@ -340,11 +341,11 @@ plt.ylabel("Precision")
 plt.legend()
 
 
-# In[34]:
+# In[33]:
 
 
 plt.plot([0,1], [0,1], linestyle='--', color='grey')
-for marginal, model_label in zip(gen_model_history_df.columns, ["17 LFs (AUC {:.2f})", "26 LFs (AUC {:.2f})"]):
+for marginal, model_label in zip(gen_model_history_df.columns, ["17 LFs (AUC {:.2f})", "26 LFs 50k (AUC {:.2f})", "26 LFs 250k (AUC {:.2f})"]):
     fpr, tpr, threshold = roc_curve(dev_data_labels, gen_model_history_df[marginal])
     area = auc(fpr, tpr)
     plt.plot(fpr, tpr, label=model_label.format(area))
@@ -354,43 +355,43 @@ plt.ylabel("True Positive Rate")
 plt.legend()
 
 
-# In[35]:
+# In[ ]:
 
 
-gen_model_history_df.to_csv("gen_model_marginals_history.csv", index=False)
+gen_model_history_df.to_csv("data/disease_gene/gen_model_marginals_history.csv", index=False)
 
 
 # # F1 Score of Train Hand Labeled Set
 
 # Looking at the small hand labeled training set we can see a pretty big spike in performance. In terms of f1 score the DA model has about a 0.25 increase in performance comapred to the CI model. 
 
-# In[36]:
+# In[ ]:
 
 
 tp, fp, tn, fn = indep_gen_model.error_analysis(session, L_train_labeled, L_train_labeled_gold)
 
 
-# In[37]:
+# In[ ]:
 
 
 tp, fp, tn, fn = gen_model.error_analysis(session, L_train_labeled, L_train_labeled_gold)
 
 
-# In[38]:
+# In[ ]:
 
 
 L_train_ci_marginals = indep_gen_model.marginals(L_train_labeled)
 L_train_da_marginals = gen_model.marginals(L_train_labeled)
 
 
-# In[39]:
+# In[ ]:
 
 
 positive_class = sum(list(map(lambda x: 0 if x == -1 else x, L_train_labeled_gold.toarray()[:,0])))
 positive_class = positive_class/L_train_labeled_gold.shape[0]
 
 
-# In[40]:
+# In[ ]:
 
 
 plt.plot([0,1], [positive_class, positive_class], color='grey', 
@@ -406,7 +407,7 @@ plt.ylabel("Precision")
 plt.legend()
 
 
-# In[41]:
+# In[ ]:
 
 
 plt.plot([0,1], [0,1], linestyle='--', color='grey')
@@ -420,7 +421,7 @@ plt.ylabel("True Positive Rate")
 plt.legend()
 
 
-# In[42]:
+# In[ ]:
 
 
 L_train_labeled.lf_stats(session, L_train_labeled_gold.data, test_df.query("model=='DA'")["Learned Acc."])
@@ -521,7 +522,7 @@ train_sentence_df.head(2)
 # In[ ]:
 
 
-writer = pd.ExcelWriter('data/sentence-labels.xlsx')
+writer = pd.ExcelWriter('data/disease_gene/sentence-labels.xlsx')
 (train_sentence_df
     .to_excel(writer, sheet_name='sentences', index=False)
 )

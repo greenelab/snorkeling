@@ -12,9 +12,9 @@
 # In[ ]:
 
 
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 import csv
 import subprocess
@@ -83,7 +83,7 @@ else:
 # In[ ]:
 
 
-train_sentences_df = pd.read_excel("data/sentence-labels-17lfs.xlsx")
+train_sentences_df = pd.read_excel("data/disease_gene/sentence-labels.xlsx")
 train_sentences_df.head(2)
 
 
@@ -106,12 +106,12 @@ dev_sentences_df.head(2)
 
 
 train_candidate_ids = train_sentences_df.candidate_id.astype(int).tolist()
-dev_candidate_ids = (
-    dev_sentences_df[dev_sentences_df.curated_dsh.notnull()]
-    .candidate_id
-    .astype(int)
-    .tolist()
-)
+#dev_candidate_ids = (
+#    dev_sentences_df[dev_sentences_df.curated_dsh.notnull()]
+#    .candidate_id
+#    .astype(int)
+#    .tolist()
+#)
 
 
 # In[ ]:
@@ -124,24 +124,24 @@ train_cands = (
     .all() 
 )
 
-dev_cands = (
-    session
-    .query(Candidate)
-    .filter(Candidate.id.in_(dev_candidate_ids))
-    .all() 
-)
+#dev_cands = (
+#    session
+#    .query(Candidate)
+#    .filter(Candidate.id.in_(dev_candidate_ids))
+#    .all() 
+#)
 
 
 # In[ ]:
 
 
-with open("data/doc2vec/train_data.txt", "w") as f:
+with open("data/disease_gene/disease_associates_gene/doc2vec/sentences/train_data_250k.txt", "w") as f:
     for c in tqdm.tqdm(train_cands):
         f.write(c.get_parent().text + "\n")
 
-with open("data/doc2vec/dev_data_labeled.txt", "w") as f:
-    for c in tqdm.tqdm(dev_cands):
-        f.write(c.get_parent().text + "\n")
+#with open("data/disease_gene/disease_associates_gene/doc2vec/sentences/dev_data_labeled.txt", "w") as f:
+#    for c in tqdm.tqdm(dev_cands):
+#        f.write(c.get_parent().text + "\n")
 
 
 # In[ ]:
@@ -209,9 +209,9 @@ with open("data/doc2vec/train_data_500k.txt", "w") as f:
 
 command = [
     '../iclr2017/doc2vecc',
-    '-train', 'data/doc2vec/training_data/train_data_full_pubmed.txt',
-    '-word', 'data/doc2vec/word_vectors/full_train_word_vectors.txt',
-    '-output', 'data/doc2vec/doc_vectors/full_train_doc_vectors.txt',
+    '-train', 'data/doc2vec/training_data/train_data_500k.txt',
+    '-word', 'data/disease_gene/disease_associates_gene/doc2vec/word_vectors/dag_word_vectors_26lfs_250k_500k.txt',
+    '-output', 'data/disease_gene/disease_associates_gene/doc2vec/doc_vectors/dag_doc_vectors_26lfs_250k_500k.txt',
     '-cbow', '1',
     '-size', '500',
     '-negative', '5',
@@ -219,8 +219,8 @@ command = [
     '-threads', '5',
     '-binary', '0',
     '-iter', '30',
-    '-test', 'data/doc2vec/full_train_set.txt',
-    '-read-vocab', 'data/doc2vec/vocab/train_data_vocab_full_pubmed.txt'
+    '-test', 'data/disease_gene/disease_associates_gene/doc2vec/sentences/train_data_250k.txt',
+    '-read-vocab', 'data/doc2vec/vocab/train_data_vocab_500k.txt'
 ]
 subprocess.Popen(command)
 
@@ -253,8 +253,8 @@ subprocess.Popen(command)
 # In[ ]:
 
 
-doc2vec_X = pd.read_table("data/doc2vec/doc_vectors/train_doc_vectors_50k.txt.xz", 
-                          compression='xz', header=None, sep=" ")
+doc2vec_X = pd.read_table("data/disease_gene/disease_associates_gene/doc2vec/doc_vectors/dag_doc_vectors_26lfs_250k_50k.txt", 
+                          compression=None, header=None, sep=" ")
 doc2vec_X = doc2vec_X.values[:-1, :-1]
 doc2vec_dev_X = pd.read_table("data/doc2vec/doc_vectors/dev_doc_vectors_50k.txt.xz",
                               compression='xz', header=None, sep=" ")
@@ -264,8 +264,8 @@ doc2vec_dev_X = doc2vec_dev_X.values[:-1, :-1]
 # In[ ]:
 
 
-doc2vec_X_500k = pd.read_table("data/doc2vec/doc_vectors/train_doc_vectors_500k.txt.xz", 
-                          compression='xz', header=None, sep=" ")
+doc2vec_X_500k = pd.read_table("data/disease_gene/disease_associates_gene/doc2vec/doc_vectors/dag_doc_vectors_26lfs_250k_500k.txt", 
+                          compression=None, header=None, sep=" ")
 doc2vec_X_500k = doc2vec_X_500k.values[:-1, :-1]
 doc2vec_dev_X_500k = pd.read_table("data/doc2vec/doc_vectors/dev_doc_vectors_500k.txt.xz",
                               compression='xz', header=None, sep=" ")
@@ -275,8 +275,8 @@ doc2vec_dev_X_500k = doc2vec_dev_X_500k.values[:-1, :-1]
 # In[ ]:
 
 
-doc2vec_X_all = pd.read_table("data/doc2vec/doc_vectors/train_doc_vectors_full_pubmed.txt.xz",
-                             compression='xz', header=None, sep=" ")
+doc2vec_X_all = pd.read_table("data/disease_gene/disease_associates_gene/doc2vec/doc_vectors/dag_doc_vectors_26lfs_250k_all.txt",#"data/doc2vec/doc_vectors/train_doc_vectors_full_pubmed.txt.xz",
+                             compression=None, header=None, sep=" ")
 doc2vec_X_all= doc2vec_X_all.values[:-1,:-1]
 doc2vec_dev_X_all = pd.read_table("data/doc2vec/doc_vectors/dev_doc_vectors_full_pubmed.txt.xz",
                               compression='xz', header=None, sep=" ")
@@ -301,6 +301,13 @@ data = [
     doc2vec_X,
     doc2vec_X_500k,
     doc2vec_X_all
+]
+
+dev_data = [
+    dev_X, 
+    doc2vec_dev_X,
+    doc2vec_dev_X_500k,
+    doc2vec_dev_X_all
 ]
 
 labels = [
@@ -332,7 +339,7 @@ lr_model = LogisticRegression()
 # In[ ]:
 
 
-get_ipython().run_cell_magic(u'time', u'', u"for train_data, grid, y_labels in zip(data, lr_grids, labels):\n    fit_model = GridSearchCV(lr_model, \n                         grid, cv=10, n_jobs=3, \n                         verbose=1, scoring='roc_auc', return_train_score=True)\n    fit_model.fit(train_data, y_labels)\n    final_models.append(fit_model)")
+get_ipython().run_cell_magic('time', '', "for train_data, grid, y_labels in zip(data, lr_grids, labels):\n    fit_model = GridSearchCV(lr_model, \n                         grid, cv=10, n_jobs=3, \n                         verbose=1, scoring='roc_auc', return_train_score=True)\n    fit_model.fit(train_data, y_labels)\n    final_models.append(fit_model)")
 
 
 # In[ ]:
@@ -352,7 +359,7 @@ plt.title("BOW Training CV (10-fold)")
 
 
 lr_marginals = []
-for model, test_data in zip(final_models, [dev_X, doc2vec_dev_X, doc2vec_dev_X_500k, doc2vec_dev_X_all]):
+for model, test_data in zip(final_models, dev_data):
     lr_marginals.append(model.best_estimator_.predict_proba(test_data)[:,1])
 
 
@@ -370,7 +377,7 @@ marginals_df.head(2)
 # In[ ]:
 
 
-marginals_df.to_csv('data/disc_model_marginals-17lfs.tsv', index=False, sep='\t')
+marginals_df.to_csv('data/disease_gene/disease_associates_gene/disc_model_marginals_26lfs_250k.tsv', index=False, sep='\t')
 
 
 # # LSTM
@@ -378,7 +385,7 @@ marginals_df.to_csv('data/disc_model_marginals-17lfs.tsv', index=False, sep='\t'
 # In[ ]:
 
 
-train_sentences_df = pd.read_excel("data/sentence-labels.xlsx")
+train_sentences_df = pd.read_excel("data/disease_gene/sentence-labels.xlsx")
 train_sentences_df.head(2)
 
 
@@ -470,7 +477,7 @@ marginals_df.head(2)
 # In[ ]:
 
 
-marginals_df.to_csv('data/disc_model_marginals.tsv', index=False, sep='\t')
+marginals_df.to_csv('data/disease_gene/disease_associates_gene/disc_model_marginals_26lfs_250k.tsv', index=False, sep='\t')
 
 
 # ## Save Best Model
