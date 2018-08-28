@@ -225,7 +225,7 @@ get_ipython().run_cell_magic('time', '', 'train_marginals_indep_df = pd.DataFram
 # In[17]:
 
 
-f, axs = plt.subplots(len(lfs_columns), 1, figsize=(10, 5), sharex=True)
+f, axs = plt.subplots(len(lfs_columns), 1, figsize=(10, 7), sharex=True)
 
 for columns, ax in zip(model_names, axs):
     sns.distplot(train_marginals_indep_df[columns], ax=ax, kde=False, axlabel=False)
@@ -239,7 +239,7 @@ plt.show()
 # In[18]:
 
 
-f, axs = plt.subplots(len(lfs_columns), 1, figsize=(10, 5), sharex=True)
+f, axs = plt.subplots(len(lfs_columns), 1, figsize=(10, 7), sharex=True)
 
 for columns, ax in zip(model_names, axs):
     sns.distplot(train_marginals_dep_df[columns], ax=ax, kde=False, axlabel=False)
@@ -289,7 +289,7 @@ test_df = test_df.reset_index()
 test_df.head(2)
 
 
-# In[51]:
+# In[23]:
 
 
 fig, ax = plt.subplots(figsize=(10,11))
@@ -355,7 +355,7 @@ plt.ylabel("TPR")
 plt.legend()
 
 
-# In[45]:
+# In[29]:
 
 
 plt.figure(figsize=(10,6))
@@ -492,7 +492,7 @@ train_hand_marginals_dep_df = pd.DataFrame(
 )
 
 
-# In[46]:
+# In[41]:
 
 
 plt.figure(figsize=(10,6))
@@ -509,7 +509,7 @@ plt.ylabel("TPR")
 plt.legend()
 
 
-# In[47]:
+# In[42]:
 
 
 plt.figure(figsize=(10,6))
@@ -526,7 +526,7 @@ plt.ylabel("TPR")
 plt.legend()
 
 
-# In[48]:
+# In[43]:
 
 
 plt.figure(figsize=(10,6))

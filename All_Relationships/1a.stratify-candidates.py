@@ -58,10 +58,25 @@ from utils.datafiles.compound_gene_datafiles import cbg_map_df as map_df
 
 
 def partitioner(df):
+    """
+    This function creates a parition rank for the current dataset.
+    This algorithm assigns a rank [0-1) for each datapoint inside each group (outlined below):
+        1,1 -in hetionet and has sentences
+        1,0 - in hetionet and doesn't have sentences
+        0,1 - not in hetionet and does have sentences
+        0,0, - not in hetionet and doesn't have sentences
+        
+    This ranking will be used in the get split function to assign each datapoint 
+    into its corresponding category (train, dev, test)
+    """
     partition_rank = pd.np.linspace(0, 1, num=len(df), endpoint=False)
     pd.np.random.shuffle(partition_rank)
     df['partition_rank'] = partition_rank
     return df
+
+
+# In[ ]:
+
 
 pd.np.random.seed(100)
 map_df = dg_map_df.groupby(['hetionet', 'has_sentence']).apply(partitioner)
@@ -74,6 +89,12 @@ map_df.head(2)
 def get_split(partition_rank, training=0.7, dev=0.2, test=0.1):
     """
     This function partitions the data into training, dev, and test sets
+    The partitioning algorithm is as follows:
+        1. anything less than 0.7 goes into training and receives an appropiate label
+        2. If not less than 0.7 subtract 0.7 and see if the rank is less than 0.2 if not assign to dev
+        3. Lastly if the rank is greater than 0.9 (0.7+0.2) assign it to test set.
+        
+    return label that corresponds to appropiate dataset cateogories
     """
     if partition_rank < training:
         return 6
@@ -83,6 +104,10 @@ def get_split(partition_rank, training=0.7, dev=0.2, test=0.1):
     partition_rank -= dev
     assert partition_rank <= test
     return 8
+
+
+# In[ ]:
+
 
 map_df['split'] = dg_map_df.partition_rank.map(get_split)
 map_df.split.value_counts()

@@ -78,18 +78,38 @@ for row in pair_df.itertuples():
         knowledge_base.add(key)
 
 def LF_HETNET_DISEASES(c):
+    """
+    This label function returns 1 if the given Disease Gene pair is
+    located in the Diseases database
+    """
     return 1 if (c.Gene_cid, c.Disease_cid, "DISEASES") in knowledge_base else 0
 
 def LF_HETNET_DOAF(c):
+    """
+    This label function returns 1 if the given Disease Gene pair is
+    located in the DOAF database
+    """
     return 1 if (c.Gene_cid, c.Disease_cid, "DOAF") in knowledge_base else 0
 
 def LF_HETNET_DisGeNET(c):
+    """
+    This label function returns 1 if the given Disease Gene pair is
+    located in the DisGeNET database
+    """
     return 1 if (c.Gene_cid, c.Disease_cid, "DisGeNET") in knowledge_base else 0
 
 def LF_HETNET_GWAS(c):
+    """
+    This label function returns 1 if the given Disease Gene pair is
+    located in the GWAS database
+    """
     return 1 if (c.Gene_cid, c.Disease_cid, "GWAS Catalog") in knowledge_base else 0
 
 def LF_HETNET_DG_ABSENT(c):
+    """
+    This label function fires -1 if the given Disease Gene pair does not appear 
+    in the databases above.
+    """
     return 0 if any([
         LF_HETNET_DISEASES(c),
         LF_HETNET_DOAF(c),
@@ -282,6 +302,10 @@ def LF_DG_ASSOCIATION(c):
         return 0
 
 def LF_DG_WEAK_ASSOCIATION(c):
+    """
+    This label function is design to search for phrases that indicate a 
+    weak association between the disease and gene
+    """
     if re.search(ltp(weak_association), get_text_between(c), flags=re.I):
         return -1
     elif re.search(ltp(weak_association) + r".*({{B}}|{{A}})", get_tagged_text(c), flags=re.I):
@@ -306,12 +330,20 @@ def LF_DG_NO_ASSOCIATION(c):
         return 0
 
 def LF_DG_METHOD_DESC(c):
+    """
+    This label function is designed to look for phrases 
+    that imply a sentence is description an experimental design
+    """
     if re.search(ltp(method_indication), get_tagged_text(c), flags=re.I):
         return -1
     else:
         return 0
 
 def LF_DG_TITLE(c):
+    """
+    This label function is designed to look for phrases that inditcates
+    a paper title
+    """
     if re.search(r'^'+ltp(title_indication), get_tagged_text(c), flags=re.I):
         return -1
     elif re.search(ltp(title_indication)+r'$', get_tagged_text(c), flags=re.I):
@@ -320,30 +352,63 @@ def LF_DG_TITLE(c):
         return 0
 
 def LF_DG_POSITIVE_DIRECTION(c):
+    """
+    This label function is designed to search for words that indicate
+    a sort of positive response or imply an upregulates association
+    """
     return 1 if any([rule_regex_search_btw_AB(c, r'.*'+ltp(positive_direction)+r'.*', 1), rule_regex_search_btw_BA(c, r'.*'+ltp(positive_direction)+r'.*', 1)]) or \
         re.search(r'({{A}}|{{B}}).*({{A}}|{{B}}).*' + ltp(positive_direction), get_tagged_text(c)) else 0
 
 def LF_DG_NEGATIVE_DIRECTION(c):
+    """
+    This label function is designed to search for words that indicate
+    a sort of negative response or imply an downregulates association
+    """
     return 1 if any([rule_regex_search_btw_AB(c, r'.*'+ltp(negative_direction)+r'.*', 1), rule_regex_search_btw_BA(c, r'.*'+ltp(negative_direction)+r'.*', 1)]) or  \
         re.search(r'({{A}}|{{B}}).*({{A}}|{{B}}).*' + ltp(positive_direction), get_tagged_text(c)) else 0
 
 def LF_DG_DIAGNOSIS(c):
+    """
+    This label function is designed to search for words that imply a patient diagnosis
+    which will provide evidence for possible disease gene association.
+    """
     return 1 if any([rule_regex_search_btw_AB(c, r'.*'+ltp(diagnosis_indicators) + r".*", 1), rule_regex_search_btw_BA(c, r'.*'+ltp(diagnosis_indicators) + r".*", 1)]) or  \
         re.search(r'({{A}}|{{B}}).*({{A}}|{{B}}).*' + ltp(diagnosis_indicators), get_tagged_text(c)) else 0
 
 def LF_DG_RISK(c):
+    """
+    This label function searched for sentences that mention a patient being at risk for disease or 
+    a signal implying increased/decreased risk of disease.
+    """
     return 1 if re.search(r"risk (of|for)", get_tagged_text(c), flags=re.I) else 0
 
 def LF_DG_PATIENT_WITH(c):
+    """
+    This label function looks for the phrase "patients with" disease.
+    """
     return 1 if re.search(r"patient(s)? with {{A}}", get_tagged_text(c), flags=re.I) else 0
 
 def LF_DG_PURPOSE(c):
+    """"
+    This label function searches for the word purpose at the beginning of the sentence.
+    Some abstracts are written in this format.
+    """
     return -1 if "PURPOSE:" in get_tagged_text(c) else 0
 
 def LF_DG_CONCLUSION_TITLE(c):
+    """"
+    This label function searches for the word conclusion at the beginning of the sentence.
+    Some abstracts are written in this format.
+    """
     return 1 if "CONCLUSION" in get_tagged_text(c) or "concluded" in get_tagged_text(c) else 0
 
 def LF_DG_NO_CONCLUSION(c):
+    """
+    This label function fires a -1 if the number of negative label functinos is greater than the number
+    of positive label functions.
+    The main idea behind this label function is add support to sentences that could
+    mention a possible disease gene association.
+    """
     positive_num = np.sum([LF_DG_ASSOCIATION(c), LF_DG_IS_BIOMARKER(c),LF_DG_NO_ASSOCIATION(c),  
             LF_DG_POSITIVE_DIRECTION(c), LF_DG_NEGATIVE_DIRECTION(c), LF_DG_DIAGNOSIS(c),
             np.abs(LF_DG_WEAK_ASSOCIATION(c)), np.abs(LF_DG_NO_ASSOCIATION(c))])
@@ -353,6 +418,12 @@ def LF_DG_NO_CONCLUSION(c):
     return -1
 
 def LF_DG_CONCLUSION(c):
+    """
+    This label function fires a 1 if the number of positive label functions is greater than the number
+    of negative label functions.
+    The main idea behind this label function is add support to sentences that could
+    mention a possible disease gene association
+    """
     if LF_DG_NO_ASSOCIATION(c) or LF_DG_WEAK_ASSOCIATION(c):
         return -1
     elif not LF_DG_NO_CONCLUSION(c):
@@ -368,16 +439,29 @@ def LF_DG_DISTANCE_SHORT(c):
     return -1 if len(list(get_between_tokens(c))) <= 2 else 0
 
 def LF_DG_DISTANCE_LONG(c):
+    """
+    This LF is designed to make sure that the disease mention
+    and the gene mention aren't too far from each other.
+    """
     return -1 if len(list(get_between_tokens(c))) > 25 else 0
 
 def LF_DG_ALLOWED_DISTANCE(c):
+    """
+    This LF is designed to make sure that the disease mention
+    and the gene mention are in an acceptable distance between 
+    each other
+    """
     return 0 if any([
         LF_DG_DISTANCE_LONG(c),
         LF_DG_DISTANCE_SHORT(c)
         ]) else 1 if random.random() < 0.65 else 0
 
 def LF_DG_NO_VERB(c):
-    # Work on adding preprocessing steps
+    """
+    This label function is designed to fire if a given
+    sentence doesn't contain a verb. Helps cut out some of the titles
+    hidden in Pubtator abstracts
+    """
     if len([x for x in  nltk.pos_tag(word_tokenize(c.get_parent().text)) if "VB" in x[1]]) == 0:
         if "correlates with" in c.get_parent().text:
             return 0
@@ -387,9 +471,13 @@ def LF_DG_NO_VERB(c):
 """
 Bi-Clustering LFs
 """
-bicluster_dep_df = pd.read_table("data/disease_gene/disease_associates_gene/biclustering/disease_gene_bicluster_results.tsv")
+#bicluster_dep_df = pd.read_table("data/disease_gene/disease_associates_gene/biclustering/disease_gene_bicluster_results.tsv")
 
 def LF_DG_BICLUSTER_CASUAL_MUTATIONS(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -399,6 +487,10 @@ def LF_DG_BICLUSTER_CASUAL_MUTATIONS(c):
     return 0
 
 def LF_DG_BICLUSTER_MUTATIONS(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -408,6 +500,10 @@ def LF_DG_BICLUSTER_MUTATIONS(c):
     return 0
 
 def LF_DG_BICLUSTER_DRUG_TARGETS(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -417,6 +513,10 @@ def LF_DG_BICLUSTER_DRUG_TARGETS(c):
     return 0
 
 def LF_DG_BICLUSTER_PATHOGENESIS(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -426,6 +526,10 @@ def LF_DG_BICLUSTER_PATHOGENESIS(c):
     return 0
 
 def LF_DG_BICLUSTER_THERAPEUTIC(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -435,6 +539,10 @@ def LF_DG_BICLUSTER_THERAPEUTIC(c):
     return 0
 
 def LF_DG_BICLUSTER_POLYMORPHISMS(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -444,6 +552,10 @@ def LF_DG_BICLUSTER_POLYMORPHISMS(c):
     return 0
 
 def LF_DG_BICLUSTER_PROGRESSION(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -453,6 +565,10 @@ def LF_DG_BICLUSTER_PROGRESSION(c):
     return 0
 
 def LF_DG_BICLUSTER_BIOMARKERS(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -462,6 +578,10 @@ def LF_DG_BICLUSTER_BIOMARKERS(c):
     return 0
 
 def LF_DG_BICLUSTER_OVEREXPRESSION(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -471,6 +591,10 @@ def LF_DG_BICLUSTER_OVEREXPRESSION(c):
     return 0
 
 def LF_DG_BICLUSTER_REGULATION(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")

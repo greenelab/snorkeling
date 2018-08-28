@@ -67,7 +67,7 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-path = pathlib.Path(__file__).joinpath('../../data/compound_gene/compound_binds_gene/compound-gene-pairs-binds.csv').resolve()
+path = pathlib.Path(__file__).joinpath('../../data/compound_gene/compound_binds_gene/compound_gene_pairs_binds.csv').resolve()
 pair_df = pd.read_csv(path, dtype={"sources": str})
 knowledge_base = set()
 for row in pair_df.itertuples():
@@ -79,27 +79,59 @@ for row in pair_df.itertuples():
         knowledge_base.add(key)
 
 def LF_HETNET_DRUGBANK(c):
+    """
+    This label function returns 1 if the given Disease Gene pair is
+    located in the Drugbank database
+    """
     return 1 if (c.Gene_cid, c.Compound_cid, "DrugBank") in knowledge_base else 0
 
 def LF_HETNET_DRUGCENTRAL(c):
+    """
+    This label function returns 1 if the given Disease Gene pair is
+    located in the Drugcentral database
+    """
     return 1 if (c.Gene_cid, c.Compound_cid, "DrugCentral") in knowledge_base else 0
 
 def LF_HETNET_ChEMBL(c):
+    """
+    This label function returns 1 if the given Disease Gene pair is
+    located in the ChEMBL database
+    """
     return 1 if (c.Gene_cid, c.Compound_cid, "ChEMBL") in knowledge_base else 0
 
 def LF_HETNET_BINDINGDB(c):
+    """
+    This label function returns 1 if the given Disease Gene pair is
+    located in the BindingDB database
+    """
     return 1 if (c.Gene_cid, c.Compound_cid, "BindingDB") in knowledge_base else 0
 
 def LF_HETNET_PDSP_KI(c):
+    """
+    This label function returns 1 if the given Disease Gene pair is
+    located in the PDSP_KI database
+    """
     return 1 if (c.Gene_cid, c.Compound_cid, "PDSP Ki") in knowledge_base else 0
 
 def LF_HETNET_US_PATENT(c):
+    """
+    This label function returns 1 if the given Disease Gene pair is
+    located in the US PATENT database
+    """
     return 1 if (c.Gene_cid, c.Compound_cid, "US Patent") in knowledge_base else 0
 
 def LF_HETNET_PUBCHEM(c):
+    """
+    This label function returns 1 if the given Disease Gene pair is
+    located in the PUBCHEM database
+    """
     return 1 if (c.Gene_cid, c.Compound_cid, "PubChem") in knowledge_base else 0
 
 def LF_HETNET_CG_ABSENT(c):
+    """
+    This label function fires -1 if the given Disease Gene pair does not appear 
+    in the databases above.
+    """
     return 0 if any([
         LF_HETNET_DRUGBANK(c),
         LF_HETNET_DRUGCENTRAL(c),
@@ -182,6 +214,10 @@ compound_indentifiers = {
 
 
 def LF_CG_BINDING(c):
+    """
+    This label function is designed to look for phrases
+    that imply a compound binding to a gene/protein
+    """
     if re.search(ltp(binding_indication), get_text_between(c), flags=re.I):
         return 1
     elif re.search(ltp(binding_indication), " ".join(get_left_tokens(c[0], window=5)), flags=re.I):
@@ -192,12 +228,20 @@ def LF_CG_BINDING(c):
         return 0
 
 def LF_CG_WEAK_BINDING(c):
+    """
+    This label function is designed to look for phrases
+    that could imply a compound binding to a gene/protein
+    """
     if re.search(ltp(weak_binding_indications), get_text_between(c), flags=re.I):
         return 1
     else:
         return 0
 
 def LF_CG_UPREGULATES(c):
+    """
+    This label function is designed to look for phrases
+    that implies a compound increaseing activity of a gene/protein
+    """
     if re.search(ltp(upregulates), get_text_between(c), flags=re.I):
         return 1
     elif upregulates.intersection(get_left_tokens(c[1], window=2)):
@@ -206,6 +250,10 @@ def LF_CG_UPREGULATES(c):
         return 0
 
 def LF_CG_DOWNREGULATES(c):
+    """
+    This label function is designed to look for phrases
+    that could implies a compound decreasing the activity of a gene/protein
+    """
     if re.search(ltp(downregulates), get_text_between(c), flags=re.I):
         return 1
     elif downregulates.intersection(get_right_tokens(c[1], window=2)):
@@ -214,6 +262,11 @@ def LF_CG_DOWNREGULATES(c):
         return 0
 
 def LF_CG_GENE_RECEIVERS(c):
+    """
+    This label function is designed to look for phrases
+    that imples a kinases or sort of protein that receives
+    a stimulus to function
+    """
     if re.search(ltp(gene_receivers), " ".join(get_right_tokens(c[1], window=4))) or re.search(ltp(gene_receivers), " ".join(get_left_tokens(c[1], window=4))):
         return 1
     elif re.search(ltp(gene_receivers), c[1].get_span(), flags=re.I):
@@ -222,18 +275,30 @@ def LF_CG_GENE_RECEIVERS(c):
         return 0
 
 def LF_CG_ASE_SUFFIX(c):
+    """
+    This label function is designed to look parts of the gene tags
+    that implies a sort of "ase" or enzyme
+    """
     if re.search(r"ase\b", c[1].get_span(), flags=re.I):
         return 1
     else:
         return 0
 
 def LF_CG_IN_SERIES(c):
+    """
+    This label function is designed to look for a mention being caught
+    in a series of other genes or compounds
+    """
     if len(re.findall(r',', get_tagged_text(c))) >= 2:
         if re.search(', and', get_tagged_text(c)):
             return -1
     return 0
 
 def LF_CG_ANTIBODY(c):
+    """
+    This label function is designed to look for phrase
+    antibody.
+    """
     if "antibody" in c[1].get_span() or re.search("antibody", " ".join(get_right_tokens(c[1], window=3))):
         return 1
     elif "antibodies" in c[1].get_span() or re.search("antibodies", " ".join(get_right_tokens(c[1], window=3))):
@@ -257,12 +322,22 @@ method_indication = {
 
 
 def LF_CG_METHOD_DESC(c):
+    """
+    This label function is designed to look for phrases 
+    that imply a sentence is description an experimental design
+    """
     if re.search(ltp(method_indication), get_tagged_text(c), flags=re.I):
         return -1
     else:
         return 0
 
 def LF_CG_NO_CONCLUSION(c):
+    """
+    This label function fires a -1 if the number of negative label functinos is greater than the number
+    of positive label functions.
+    The main idea behind this label function is add support to sentences that could
+    mention a possible disease gene association.
+    """
     positive_num = np.sum([LF_CG_BINDING(c), LF_CG_WEAK_BINDING(c), 
         LF_CG_GENE_RECEIVERS(c), LF_CG_ANTIBODY(c), 
         LF_CG_UPREGULATES(c),  LF_CG_DOWNREGULATES(c)])
@@ -272,6 +347,12 @@ def LF_CG_NO_CONCLUSION(c):
     return -1
 
 def LF_CG_CONCLUSION(c):
+    """
+    This label function fires a 1 if the number of positive label functions is greater than the number
+    of negative label functions.
+    The main idea behind this label function is add support to sentences that could
+    mention a possible disease gene association
+    """
     if not LF_CG_NO_CONCLUSION(c):
         return 1
     else:
@@ -279,22 +360,35 @@ def LF_CG_CONCLUSION(c):
 
 def LF_CG_DISTANCE_SHORT(c):
     """
-    This LF is designed to make sure that the disease mention
+    This LF is designed to make sure that the compound mention
     and the gene mention aren't right next to each other.
     """
     return -1 if len(list(get_between_tokens(c))) <= 2 else 0
 
 def LF_CG_DISTANCE_LONG(c):
+    """
+    This LF is designed to make sure that the compound mention
+    and the gene mention aren't too far from each other.
+    """
     return -1 if len(list(get_between_tokens(c))) > 25 else 0
 
 def LF_CG_ALLOWED_DISTANCE(c):
+    """
+    This LF is designed to make sure that the compound mention
+    and the gene mention are in an acceptable distance between 
+    each other
+    """
     return 0 if any([
         LF_CG_DISTANCE_LONG(c),
         LF_CG_DISTANCE_SHORT(c)
         ]) else 1 if random.random() < 0.65 else 0
 
 def LF_CG_NO_VERB(c):
-    # Work on adding preprocessing steps
+    """
+    This label function is designed to fire if a given
+    sentence doesn't contain a verb. Helps cut out some of the titles
+    hidden in Pubtator abstracts
+    """
     if len([x for x in  nltk.pos_tag(word_tokenize(c.get_parent().text)) if "VB" in x[1]]) == 0:
         if "correlates with" in c.get_parent().text:
             return 0
@@ -302,6 +396,10 @@ def LF_CG_NO_VERB(c):
     return 0
 
 def LF_CG_PARENTHETICAL_DESC(c):
+    """
+    This label function looks for mentions that are in paranthesis.
+    Some of the gene mentions are abbreviations rather than names of a gene.
+    """
     if ")" in c[1].get_span() and "(" in list(get_left_tokens(c[1], window=1)):
         if LF_CG_DISTANCE_SHORT(c):
             return -1
@@ -314,6 +412,10 @@ Bi-Clustering LFs
 bicluster_dep_df = pd.read_table("data/hierarchical_clustering/compound_gene_bicluster_results.tsv")
 
 def LF_CG_BICLUSTER_BINDS(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -323,6 +425,10 @@ def LF_CG_BICLUSTER_BINDS(c):
     return 0
 
 def LF_CG_BICLUSTER_AGONISM(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -332,6 +438,10 @@ def LF_CG_BICLUSTER_AGONISM(c):
     return 0
 
 def LF_CG_BICLUSTER_ANTAGONISM(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -341,6 +451,10 @@ def LF_CG_BICLUSTER_ANTAGONISM(c):
     return 0
 
 def LF_CG_BICLUSTER_INC_EXPRESSION(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -350,6 +464,10 @@ def LF_CG_BICLUSTER_INC_EXPRESSION(c):
     return 0
 
 def LF_CG_BICLUSTER_DEC_EXPRESSION(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -359,6 +477,10 @@ def LF_CG_BICLUSTER_DEC_EXPRESSION(c):
     return 0
 
 def LF_CG_BICLUSTER_AFF_EXPRESSION(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
@@ -368,6 +490,10 @@ def LF_CG_BICLUSTER_AFF_EXPRESSION(c):
     return 0
 
 def LF_CG_BICLUSTER_INHIBITS(c):
+    """
+    This label function uses the bicluster data located in the 
+    A global network of biomedical relationships
+    """
     sen_pos = c.get_parent().position
     pubmed_id = c.get_parent().document.name
     query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")

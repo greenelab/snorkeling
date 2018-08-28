@@ -140,16 +140,21 @@ from utils.compound_gene_lf import CG_LFS
 
 
 from  sqlalchemy.sql.expression import func
-labeler = LabelAnnotator(lfs=list(CG_LFS["CG_DB"].values()) + 
-                         list(CG_LFS["CG_TEXT"].values()) +  
-                         list(CG_LFS["CG_BICLUSTER"]) + 
-                         list(DG_LFS["DG_TEXT"].values()))
+labeler = LabelAnnotator(lfs=list(CG_LFS["CbG_DB"].values()) + 
+                         list(CG_LFS["CbG_TEXT"].values()) +   
+                         list(DG_LFS["DaG_TEXT"].values()))
 
 
 # In[ ]:
 
 
 def make_sentence_df(candidates):
+    """ 
+    This function creats a dataframe for all candidates (sentences that contain at least two mentions)
+    located in our database.
+    
+    candidates - a list of candidate objects passed in from sqlalchemy
+    """
     rows = list()
     for c in tqdm_notebook(candidates):
         row = OrderedDict()
