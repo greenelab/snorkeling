@@ -149,6 +149,12 @@ print("Total Number of Label Functions: {}".format(L_train.shape[1]))
 
 
 def get_columns(lf_hash, lf_name):
+    """
+    This function is designed to extract the column positions of
+    each individual label function given their category (i.e. CbG_DB or DaG_TEXT ...)
+    
+    returns a list of column positions that corresponds to each label function 
+    """
     return list(
     map(lambda x: L_train.key_index[x[0]],
     session.query(L_train.annotation_key_cls.id)
