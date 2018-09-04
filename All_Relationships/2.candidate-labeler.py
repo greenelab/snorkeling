@@ -3,7 +3,7 @@
 
 # # Label The Candidates!
 
-# This notebook corresponds to labeling and genearting features for each extracted candidate from the [previous notebook](1.data-loader.ipynb).
+# This notebook corresponds to labeling each extracted candidate from the [previous notebook](1.data-loader.ipynb).
 
 # ## MUST RUN AT THE START OF EVERYTHING
 
@@ -12,14 +12,15 @@
 # In[ ]:
 
 
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().magic(u'load_ext autoreload')
+get_ipython().magic(u'autoreload 2')
+get_ipython().magic(u'matplotlib inline')
 
 import os
 
 import pandas as pd
 
+# This module is designed to help create dataframes for each candidate sentence
 from utils.notebook_utils.dataframe_helper import make_sentence_df, write_candidates_to_excel
 
 
@@ -51,22 +52,10 @@ from snorkel.viewer import SentenceNgramViewer
 # In[ ]:
 
 
-edge_type = "cd"
-
-
-# In[ ]:
-
-
-if edge_type == "dg":
-    CandidateClass = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
-elif edge_type == "gg":
-    CandidateClass = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
-elif edge_type == "cg":
-    CandidateClass = candidate_subclass('CompoundGene', ['Compound', 'Gene'])
-elif edge_type == "cd":
-    CandidateClass = candidate_subclass('CompoundDisease', ['Compound', 'Disease'])
-else:
-    print("Please pick a valid edge type")
+DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
+GeneGene = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
+CompoundGene = candidate_subclass('CompoundGene', ['Compound', 'Gene'])
+CompoundDisease = candidate_subclass('CompoundDisease', ['Compound', 'Disease'])
 
 
 # ## Write the Candidates to Excel File
@@ -135,7 +124,7 @@ train_df.head(2)
 # In[ ]:
 
 
-train_candidate_ids = list(map(int, train_candidate_df.candidate_id.values))[0:10]
+train_candidate_ids = train_df.candidate_id.astype(int)
 
 
 # In[ ]:
@@ -145,7 +134,8 @@ candidates = (
     session
     .query(CompoundGene)
     .filter(CompoundGene.id.in_(train_candidate_ids))
-    .limit(100)
+    .limit(10)
+    .offset(0)
 )
 sv = SentenceNgramViewer(candidates, session)
 
@@ -185,7 +175,7 @@ create_bicluster_df(url+dep_path, url+file_dist, output_file)
 
 # Here is one of the fundamental part of this project. Below are the label functions that are used to give a candidate a label of 1,0 or -1 which corresponds to correct label, unknown label and incorrection label. The goal here is to develop functions that can label accurately label as many candidates as possible. This idea comes from the [data programming paradigm](https://papers.nips.cc/paper/6523-data-programming-creating-large-training-sets-quickly), where the goal is to be able to create labels that machine learning algorithms can use for accurate classification.  
 
-# In[7]:
+# In[ ]:
 
 
 from utils.label_functions.disease_gene_lf import DG_LFS
@@ -242,5 +232,5 @@ train_hand_df.head(2)
 
 for cid_list in [train_cids, train_hand_cids, dev_cids]:
     cids = session.query(CompoundGene.id).filter(CompoundGene.id.in_(cid_list))
-    get_ipython().run_line_magic('time', 'labeler.apply(cids_query=cids, parallelism=5)')
+    get_ipython().magic(u'time labeler.apply(cids_query=cids, parallelism=5)')
 

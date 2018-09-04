@@ -27,7 +27,7 @@ def plot_cand_histogram(model_names, lfs_columns, data_df, plot_title, xlabel):
     return
 
 def plot_roc_curve(marginals_df, true_labels, model_names, plot_title):
-     """
+    """
     This function is designed to plot ROC curves for the models.
 
     marginals_df - a dataframe containing marginals from the generative model

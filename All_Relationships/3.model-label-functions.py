@@ -12,9 +12,9 @@
 # In[ ]:
 
 
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().magic(u'load_ext autoreload')
+get_ipython().magic(u'autoreload 2')
+get_ipython().magic(u'matplotlib inline')
 
 import os
 from tqdm import tqdm_notebook
@@ -64,22 +64,10 @@ from utils.notebook_utils.plot_helper import *
 # In[ ]:
 
 
-edge_type = "cd"
-
-
-# In[ ]:
-
-
-if edge_type == "dg":
-    DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
-elif edge_type == "gg":
-    GeneGene = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
-elif edge_type == "cg":
-    CompoundGene = candidate_subclass('CompoundGene', ['Compound', 'Gene'])
-elif edge_type == "cd":
-    CompoundDisease = candidate_subclass('CompoundDisease', ['Compound', 'Disease'])
-else:
-    print("Please pick a valid edge type")
+DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
+GeneGene = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
+CompoundGene = candidate_subclass('CompoundGene', ['Compound', 'Gene'])
+CompoundDisease = candidate_subclass('CompoundDisease', ['Compound', 'Disease'])
 
 
 # # Load preprocessed data 
@@ -131,7 +119,7 @@ print("Total Hand Labeled Train Sentences: {}".format(len(train_hand_label_ids))
 # In[ ]:
 
 
-get_ipython().run_cell_magic('time', '', 'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have labels\ncids = session.query(Candidate.id).filter(Candidate.id.in_(train_ids))\nL_train = labeler.load_matrix(session, cids_query=cids)\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(dev_ids))\nL_dev = labeler.load_matrix(session, cids_query=cids)\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(train_hand_label_ids))\nL_train_hand_label = labeler.load_matrix(session, cids_query=cids)')
+get_ipython().run_cell_magic(u'time', u'', u'labeler = LabelAnnotator(lfs=[])\n\n# Only grab candidates that have labels\ncids = session.query(Candidate.id).filter(Candidate.id.in_(train_ids))\nL_train = labeler.load_matrix(session, cids_query=cids)\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(dev_ids))\nL_dev = labeler.load_matrix(session, cids_query=cids)\n\ncids = session.query(Candidate.id).filter(Candidate.id.in_(train_hand_label_ids))\nL_train_hand_label = labeler.load_matrix(session, cids_query=cids)')
 
 
 # In[ ]:
@@ -157,10 +145,12 @@ dg_text = get_columns(session, L_train, DG_LFS, "DaG_TEXT")
 # In[ ]:
 
 
+# This block defines a list of label function columns defined above
 lfs_columns = [
     cg_text
 ]
 
+# This block specifies the labels for the above label function columns
 model_names = [
     "CbG_TEXT"
 ]
@@ -216,7 +206,7 @@ for columns in lfs_columns:
 # In[ ]:
 
 
-get_ipython().run_cell_magic('time', '', 'train_marginals_indep_df = create_marginal_df(L_train, indep_models, \n                                              lfs_columns,model_names, \n                                              train_df.candidate_id.values)\n\ntrain_marginals_dep_df = create_marginal_df(L_train, dep_models,\n                                              lfs_columns, model_names,\n                                              train_df.candidate_id.values)')
+get_ipython().run_cell_magic(u'time', u'', u'train_marginals_indep_df = create_marginal_df(L_train, indep_models, \n                                              lfs_columns,model_names, \n                                              train_df.candidate_id.values)\n\ntrain_marginals_dep_df = create_marginal_df(L_train, dep_models,\n                                              lfs_columns, model_names,\n                                              train_df.candidate_id.values)')
 
 
 # In[ ]:
