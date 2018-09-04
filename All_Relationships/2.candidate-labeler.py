@@ -3,7 +3,7 @@
 
 # # Label The Candidates!
 
-# This notebook corresponds to labeling and genearting features for each extracted candidate from the [previous notebook](1.data-loader.ipynb).
+# This notebook corresponds to labeling each extracted candidate from the [previous notebook](1.data-loader.ipynb).
 
 # ## MUST RUN AT THE START OF EVERYTHING
 
@@ -12,20 +12,16 @@
 # In[ ]:
 
 
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().magic(u'load_ext autoreload')
+get_ipython().magic(u'autoreload 2')
+get_ipython().magic(u'matplotlib inline')
 
-from collections import defaultdict, OrderedDict
-import csv
 import os
-import re
 
-
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-from tqdm import tqdm_notebook
+
+# This module is designed to help create dataframes for each candidate sentence
+from utils.notebook_utils.dataframe_helper import make_sentence_df, write_candidates_to_excel
 
 
 # In[ ]:
@@ -47,37 +43,69 @@ session = SnorkelSession()
 # In[ ]:
 
 
-from snorkel.annotations import FeatureAnnotator, LabelAnnotator
-from snorkel.features import get_span_feats
+from snorkel.annotations import LabelAnnotator
 from snorkel.models import candidate_subclass
-from snorkel.models import Candidate, GoldLabel
+from snorkel.models import Candidate
 from snorkel.viewer import SentenceNgramViewer
 
 
 # In[ ]:
 
 
-edge_type = "cg"
-debug = False
+DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
+GeneGene = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
+CompoundGene = candidate_subclass('CompoundGene', ['Compound', 'Gene'])
+CompoundDisease = candidate_subclass('CompoundDisease', ['Compound', 'Disease'])
+
+
+# ## Write the Candidates to Excel File
+
+# In[ ]:
+
+
+sql_statements = [
+    '''
+    SELECT id from candidate
+    WHERE split = 9 and type='compound_disease'
+    ORDER BY RANDOM()
+    LIMIT 50;
+    ''',
+    
+    '''
+    SELECT id from candidate
+    WHERE split = 9 and type='compound_disease'
+    ORDER BY RANDOM()
+    LIMIT 10;
+    ''',
+
+    '''
+    SELECT id from candidate
+    WHERE split = 10 and type='compound_disease'
+    ORDER BY RANDOM()
+    LIMIT 10;
+    '''
+]
+
+spreadsheet_names = {
+    'train': 'data/compound_disease/sentence_labels_train.xlsx',
+    'train_hand_label': 'data/compound_disease/sentence_labels_train_dev.xlsx',
+    'dev': 'data/compound_disease/sentence_labels_dev.xlsx'
+}
 
 
 # In[ ]:
 
 
-if edge_type == "dg":
-    DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
-    edge = "disease_gene"
-elif edge_type == "gg":
-    GeneGene = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
-    edge = "gene_gene"
-elif edge_type == "cg":
-    CompoundGene = candidate_subclass('CompoundGene', ['Compound', 'Gene'])
-    edge = "compound_gene"
-elif edge_type == "cd":
-    CompoundDisease = candidate_subclass('CompoundDisease', ['Compound', 'Disease'])
-    edge = "compound_disease"
-else:
-    print("Please pick a valid edge type")
+for sql, spreadsheet_name in zip(sql_statements, spreadsheet_names.values()):
+    target_cids = [x[0] for x in session.execute(sql)]
+    candidates = (
+        session
+        .query(CandidateClass)
+        .filter(CandidateClass.id.in_(target_cids))
+        .all()
+    )
+    candidate_df = make_sentence_df(candidates)
+    write_candidates_to_excel(candidate_df, spreadsheet_name)
 
 
 # # Develop Label Functions
@@ -89,20 +117,26 @@ else:
 # In[ ]:
 
 
-train_candidate_df = pd.read_excel("data/compound_gene/sentence_labels.xlsx")
-train_candidate_df.head(2)
+train_df = pd.read_excel(spreadsheet_names['train'])
+train_df.head(2)
 
 
 # In[ ]:
 
 
-train_candidate_ids = list(map(int, train_candidate_df.candidate_id.values))[0:10]
+train_candidate_ids = train_df.candidate_id.astype(int)
 
 
 # In[ ]:
 
 
-candidates = session.query(CompoundGene).filter(CompoundGene.id.in_(train_candidate_ids)).limit(100)
+candidates = (
+    session
+    .query(CompoundGene)
+    .filter(CompoundGene.id.in_(train_candidate_ids))
+    .limit(10)
+    .offset(0)
+)
 sv = SentenceNgramViewer(candidates, session)
 
 
@@ -119,6 +153,24 @@ c = sv.get_selected()
 c
 
 
+# ## Bicluster Dataframe formation
+
+# In[ ]:
+
+
+url = "https://zenodo.org/record/1035500/files/"
+dep_path = "part-ii-dependency-paths-chemical-disease-sorted-with-themes.txt"
+file_dist = "part-i-chemical-disease-path-theme-distributions.txt"
+output_file = "data/compound_disease/biclustering/compound_disease_bicluster_results.tsv"
+
+
+# In[ ]:
+
+
+from utils.notebook_utils.bicluster import create_bicluster_df
+create_bicluster_df(url+dep_path, url+file_dist, output_file)
+
+
 # # Label Functions
 
 # Here is one of the fundamental part of this project. Below are the label functions that are used to give a candidate a label of 1,0 or -1 which corresponds to correct label, unknown label and incorrection label. The goal here is to develop functions that can label accurately label as many candidates as possible. This idea comes from the [data programming paradigm](https://papers.nips.cc/paper/6523-data-programming-creating-large-training-sets-quickly), where the goal is to be able to create labels that machine learning algorithms can use for accurate classification.  
@@ -126,10 +178,10 @@ c
 # In[ ]:
 
 
-from utils.disease_gene_lf import DG_LFS
-from utils.compound_gene_lf import CG_LFS
-#from utils.gene_gene_lf import *
-#from utils.compound_disease_lf import *
+from utils.label_functions.disease_gene_lf import DG_LFS
+from utils.label_functions.compound_gene_lf import CG_LFS
+from utils.label_functions.compound_disease_lf import CD_LFS
+#from utils.gene_gene_lf import GG_LFS
 
 
 # # Label The Candidates
@@ -139,154 +191,11 @@ from utils.compound_gene_lf import CG_LFS
 # In[ ]:
 
 
-from  sqlalchemy.sql.expression import func
-labeler = LabelAnnotator(lfs=list(CG_LFS["CbG_DB"].values()) + 
-                         list(CG_LFS["CbG_TEXT"].values()) +   
-                         list(DG_LFS["DaG_TEXT"].values()))
+label_functions = list(CG_LFS["CbG_DB"].values()) + 
+                  list(CG_LFS["CbG_TEXT"].values()) +   
+                  list(DG_LFS["DaG_TEXT"].values())
 
-
-# In[ ]:
-
-
-def make_sentence_df(candidates):
-    """ 
-    This function creats a dataframe for all candidates (sentences that contain at least two mentions)
-    located in our database.
-    
-    candidates - a list of candidate objects passed in from sqlalchemy
-    """
-    rows = list()
-    for c in tqdm_notebook(candidates):
-        row = OrderedDict()
-        row['candidate_id'] = c.id
-        row['compound'] = c[0].get_span()
-        row['disease'] = c[1].get_span()
-        row['drugbank_id'] = c.Compound_cid
-        row['entrez_gene_id'] = c.Gene_cid
-        row['sentence'] = c.get_parent().text
-        rows.append(row)
-    return pd.DataFrame(rows)
-
-
-# ### Train Set
-
-# In[ ]:
-
-
-sql = '''
-SELECT id from candidate
-WHERE split = 9 and type='compound_gene'
-ORDER BY RANDOM()
-LIMIT 50000;
-'''
-target_cids = [x[0] for x in session.execute(sql)]
-
-
-# In[ ]:
-
-
-candidates = session.query(CompoundGene).filter(CompoundGene.id.in_(target_cids)).all()
-
-
-# In[ ]:
-
-
-train_df = make_sentence_df(candidates)
-train_df.head(2)
-
-
-# In[ ]:
-
-
-writer = pd.ExcelWriter('data/compound_gene/sentence_labels_train.xlsx')
-(train_df
-    .to_excel(writer, sheet_name='sentences', index=False)
-)
-if writer.engine == 'xlsxwriter':
-    for sheet in writer.sheets.values():
-        sheet.freeze_panes(1, 0)
-writer.close()
-
-
-# ### Label Train Set
-
-# In[ ]:
-
-
-sql = '''
-SELECT id from candidate
-WHERE split = 9 and type='compound_gene'
-ORDER BY RANDOM()
-LIMIT 1000;
-'''
-target_cids = [x[0] for x in session.execute(sql)]
-
-
-# In[ ]:
-
-
-candidates = session.query(CompoundGene).filter(CompoundGene.id.in_(target_cids)).all()
-
-
-# In[ ]:
-
-
-train_hand_df = make_sentence_df(candidates)
-train_hand_df.head(2)
-
-
-# In[ ]:
-
-
-writer = pd.ExcelWriter('data/compound_gene/sentence_labels_train_dev.xlsx')
-(train_hand_df
-    .to_excel(writer, sheet_name='sentences', index=False)
-)
-if writer.engine == 'xlsxwriter':
-    for sheet in writer.sheets.values():
-        sheet.freeze_panes(1, 0)
-writer.close()
-
-
-# ### Dev Set
-
-# In[ ]:
-
-
-sql = '''
-SELECT id from candidate
-WHERE split = 10 and type='compound_gene'
-ORDER BY RANDOM()
-LIMIT 10000;
-'''
-gold_cids = [x[0] for x in session.execute(sql)]
-gold_cids
-
-
-# In[ ]:
-
-
-candidates = session.query(CompoundGene).filter(CompoundGene.id.in_(gold_cids)).all()
-
-
-# In[ ]:
-
-
-dev_df = make_sentence_df(candidates)
-dev_df.head(2)
-
-
-# In[ ]:
-
-
-writer = pd.ExcelWriter('data/compound_gene/sentence_labels_dev.xlsx')
-(dev_df
-    .to_excel(writer, sheet_name='sentences', index=False)
-)
-if writer.engine == 'xlsxwriter':
-    for sheet in writer.sheets.values():
-        sheet.freeze_panes(1, 0)
-writer.close()
+labeler = LabelAnnotator(lfs=label_functions)
 
 
 # # Quickly Relabel Candidates
@@ -296,46 +205,32 @@ writer.close()
 # In[ ]:
 
 
-train_df = pd.read_excel('data/compound_gene/sentence_labels.xlsx')
-target_cids = train_df.candidate_id.astype(int).tolist()
-len(target_cids)
+train_df = pd.read_excel(spreadsheet_names['train'])
+train_cids = train_df.candidate_id.astype(int).tolist()
+train_df.head(2)
 
 
 # In[ ]:
 
 
-cids = session.query(CompoundGene.id).filter(CompoundGene.id.in_(target_cids))
-get_ipython().run_line_magic('time', 'L_train = labeler.apply(split=6, cids_query=cids, parallelism=5)')
-
-
-# In[ ]:
-
-
-dev_df = pd.read_excel("data/compound_gene/sentence_labels_dev.xlsx")
+dev_df = pd.read_excel(spreadsheet_names['dev'])
 dev_df = dev_df[dev_df.curated_dsh.notnull()]
-gold_cids = list(map(int, dev_df.candidate_id.values))
-#gold_cids = np.loadtxt('data/compound_gene/labeled_dev_candidates.txt').astype(int).tolist()
-len(gold_cids)
+dev_cids = list(map(int, dev_df.candidate_id.values))
+dev_df.head(2)
 
 
 # In[ ]:
 
 
-cids = session.query(Candidate.id).filter(Candidate.id.in_(gold_cids))
-get_ipython().run_line_magic('time', 'L_dev = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
-
-
-# In[ ]:
-
-
-train_hand_df = pd.read_excel("data/compound_gene/sentence_labels_train_hand.xlsx")
+train_hand_df = pd.read_excel(spreadsheet_names['train_hand_label'])
 train_hand_cids = train_hand_df[train_hand_df.curated_dsh.notnull()].candidate_id.astype(int).tolist()
-len(train_hand_cids)
+train_hand_df.head(2)
 
 
 # In[ ]:
 
 
-cids = session.query(Candidate.id).filter(Candidate.id.in_(train_hand_cids))
-get_ipython().run_line_magic('time', 'L_train_hand_labeled = labeler.apply_existing(cids_query=cids, parallelism=5, clear=False)')
+for cid_list in [train_cids, train_hand_cids, dev_cids]:
+    cids = session.query(CompoundGene.id).filter(CompoundGene.id.in_(cid_list))
+    get_ipython().magic(u'time labeler.apply(cids_query=cids, parallelism=5)')
 

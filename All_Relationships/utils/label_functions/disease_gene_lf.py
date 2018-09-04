@@ -67,7 +67,7 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-path = pathlib.Path(__file__).joinpath('../../data/disease-gene-pairs-association.csv.xz').resolve()
+path = pathlib.Path(__file__).joinpath('../../../data/disease_gene/disease_associates_gene/disease_gene_pairs_association.csv.xz').resolve()
 pair_df = pd.read_csv(path, dtype={"sources": str})
 knowledge_base = set()
 for row in pair_df.itertuples():
@@ -471,7 +471,8 @@ def LF_DG_NO_VERB(c):
 """
 Bi-Clustering LFs
 """
-#bicluster_dep_df = pd.read_table("data/disease_gene/disease_associates_gene/biclustering/disease_gene_bicluster_results.tsv")
+path = pathlib.Path(__file__).joinpath("../../../data/disease_gene/biclustering/disease_gene_bicluster_results.tsv.xz").resolve()
+bicluster_dep_df = pd.read_table(path)
 
 def LF_DG_BICLUSTER_CASUAL_MUTATIONS(c):
     """
