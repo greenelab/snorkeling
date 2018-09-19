@@ -1,9 +1,10 @@
 from collections import OrderedDict
 from tqdm import tqdm_notebook
 import pandas as pd
+import numpy as np
 
 
-def create_marginal_df(L_data, models, lfs_columns, model_names, candidate_ids):
+def create_gen_marginal_df(L_data, models, lfs_columns, model_names, candidate_ids):
     """
     This function is designed to create a dataframe that will hold
     the marginals outputted from the generative model
@@ -23,6 +24,20 @@ def create_marginal_df(L_data, models, lfs_columns, model_names, candidate_ids):
     )
     marginals_df['candidate_id'] = candidate_ids
     return marginals_df
+
+
+def create_disc_marginal_df(models, test_data):
+    """
+    This function is desgined get the predicted marginals from the sklearn models
+    """
+
+    return (
+        pd.DataFrame([model.best_estimator_.predict_proba(test_data)[:,1] for model in models])
+        .transpose()
+        .rename(index=str, columns=columns)
+        )
+
+
 
 def make_sentence_df(candidates):
     """ 
