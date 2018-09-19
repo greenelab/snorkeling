@@ -7,6 +7,12 @@ def get_columns(session, L_data, lf_hash, lf_name):
     """
     This function is designed to extract the column positions of
     each individual label function given their category (i.e. CbG_DB or DaG_TEXT ...)
+
+    L_data - the sparse label matrix
+    lf_hash - a dictionary containing label functions groupd into specific categories
+        the keys are label function groups and the valeus are  dictionaries containg 
+        label function names (keys) to their acutal fucntions (values)
+    lf_name - the  query for the label function category of interest
     
     returns a list of column positions that corresponds to each label function 
     """
@@ -27,6 +33,13 @@ def get_auc_significant_stats(data_df, model_aucs):
     relevant websites:
      https://www.quora.com/How-is-statistical-significance-determined-for-ROC-curves-and-AUC-values
      https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test
+
+
+    data_df - a dataframe that contains sentences that were hand labeded 
+        for validation purposes.
+
+    model_aucs - dictionary that contains the names of models as the key
+        and the auroc score as the values.
 
     returns a dataframe with the provided statsitics
     """
@@ -56,6 +69,10 @@ def get_overlap_matrix(L, normalize=False):
     This code is "borrowed" from the snorkel metal repo.
     It is designed to output a matrix of overlaps between label fucntions
 
+    L - a sparse label matrix  created by snorkel.annotations.LabelAnnotator, 
+        contains output from each label function and extract information 
+        such as names of the label functions
+
     returns a matrix that contains the overlaps between label functions
     """
     L = L.todense() if sparse.issparse(L) else L
@@ -71,6 +88,10 @@ def get_conflict_matrix(L, normalize=False):
     """
     This code is "borrowed" from the snorkel metal repo.
     It is designed to output a matrix of overlaps between label fucntions
+
+    L - a sparse label matrix  created by snorkel.annotations.LabelAnnotator, 
+        contains output from each label function and extract information 
+        such as names of the label functions
 
     returns a matrix that contains the conflicts between label functions
     """

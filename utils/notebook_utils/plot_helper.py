@@ -85,6 +85,10 @@ def plot_label_matrix_heatmap(L, title="Label Matrix", figsize=(10,6), colorbar=
     It diplays Label Functions in the form of a heatmap. 
     WIll be usefule to see how label functions are firing on a particualr dataset
     
+
+    L - a matrix that contains either label function output, 
+        number of overlaps or number of conflicts.
+
     return None but plots label function diagnostics
     """
 

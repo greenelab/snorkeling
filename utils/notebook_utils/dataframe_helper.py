@@ -29,6 +29,12 @@ def create_gen_marginal_df(L_data, models, lfs_columns, model_names, candidate_i
 def create_disc_marginal_df(models, test_data):
     """
     This function is desgined get the predicted marginals from the sklearn models
+
+    models - list of sklearn models that marginals will be generated from
+
+    test_data - the dev set data used to generate testing marginals
+
+    return a dataframe containing marginal probabilities for each sklearn model
     """
 
     return (
@@ -45,6 +51,8 @@ def make_sentence_df(candidates):
     located in our database.
     
     candidates - a list of candidate objects passed in from sqlalchemy
+
+    return a Dataframe that contains each candidate sentence  and the corresponding candidate entities
     """
     rows = list()
     for c in tqdm_notebook(candidates):
