@@ -51,3 +51,5 @@ sentence_count_df = pd.read_sql(query, database_str)
 dag_map_df = dag_map_df.merge(sentence_count_df, how='left')
 dag_map_df.n_sentences = dag_map_df.n_sentences.fillna(0).astype(int)
 dag_map_df['has_sentence'] = (dag_map_df.n_sentences > 0).astype(int)
+dag_map_df.to_csv("disease_gene/disease_associates_gene/compound_treats_disease_df.tsv.xz", compression='xz', 
+	sep="\t", index=False, float_format='%.5g')
