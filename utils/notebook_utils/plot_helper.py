@@ -28,7 +28,7 @@ def plot_cand_histogram(model_names, lfs_columns, data_df, plot_title, xlabel):
     plt.show()
     return
 
-def plot_roc_curve(marginals_df, true_labels, model_names, plot_title):
+def plot_roc_curve(marginals_df, true_labels, plot_title="ROC", barplot=False, xlim=[0,1], figsize=(10,6)):
     """
     This function is designed to plot ROC curves for the models.
 
@@ -37,23 +37,47 @@ def plot_roc_curve(marginals_df, true_labels, model_names, plot_title):
     model_names - labels for each model
     plot_title - the title of the plot
     """
+    
     model_aucs = {}
-    plt.figure(figsize=(10,6))
-    plt.plot([0,1], [0,1], linestyle='--', color='grey', label="Random (AUC = 0.50)")
+    plt.figure(figsize=figsize)
+    
+    #Get marginals
+    model_roc_rates = {
+        model:roc_curve(true_labels, marginals_df[model])
+        for model in marginals_df.columns
+    }
+    model_aucs = {
+        model:auc(model_roc_rates[model][0], model_roc_rates[model][1]) 
+        for model in model_roc_rates
+    }
+            
+    if barplot:
+        display_df = (
+            pd.DataFrame
+            .from_dict(model_aucs,orient='index', columns=["auc"])
+            .reset_index()
+            .rename(index=str, columns={"index": "model"})
+        )
+        sns.barplot(x='auc', y='model', data=display_df, color='blue')
+        plt.xlim(xlim)
+    else:
+        plt.plot([0,1], [0,1], linestyle='--', color='grey', label="Random (AUC = 0.50)")
+        
+        for model in model_roc_rates:
+            plt.plot(
+                model_roc_rates[model][0],
+                model_roc_rates[model][1], 
+                label=model+" (AUC = {:0.2f})".format(model_aucs[model])
+            )
 
-    for marginal, model_label in zip(marginals_df.columns, model_names):
-        fpr, tpr, threshold = roc_curve(true_labels, marginals_df[marginal])
-        area = auc(fpr, tpr)
-        model_aucs[model_label] = area
-        plt.plot(fpr, tpr, label=model_label+" (AUC = {:0.2f})".format(area))
+        plt.title(plot_title)
+        plt.xlabel("FPR")
+        plt.ylabel("TPR")
+        plt.legend()
 
-    plt.title(plot_title)
-    plt.xlabel("FPR")
-    plt.ylabel("TPR")
-    plt.legend()
     return model_aucs
 
-def plot_pr_curve(marginals_df, true_labels, model_names, plot_title):
+def plot_pr_curve(marginals_df, true_labels, plot_title="PRC", barplot=False, xlim=[0,1], figsize=(10,6)):
     """
     This function is designed to plot PR curves for the models.
 
@@ -62,24 +86,47 @@ def plot_pr_curve(marginals_df, true_labels, model_names, plot_title):
     model_names - labels for each model
     plot_title - the title of the plot
     """
-    plt.figure(figsize=(10,6))
-    positive_class = true_labels.sum()/len(true_labels)
-    plt.plot([0,1], [positive_class, positive_class], color='grey', 
-             linestyle='--', label='Baseline (AUC = {:0.2f})'.format(positive_class))
+    model_aucs = {}
+    plt.figure(figsize=figsize)
+    
+    #Get marginals
+    model_pr_rates = {
+        model:precision_recall_curve(true_labels, marginals_df[model])
+        for model in marginals_df.columns
+    }
+    model_aucs = {
+        model:auc(model_pr_rates[model][1], model_pr_rates[model][0]) 
+        for model in model_pr_rates
+    }
+    if barplot:
+        display_df = (
+            pd.DataFrame
+            .from_dict(model_aucs,orient='index', columns=["auc"])
+            .reset_index()
+            .rename(index=str, columns={"index": "model"})
+        )
+        sns.barplot(x='auc', y='model', data=display_df, color='blue')
+        plt.xlim(xlim)
+    else:
+        positive_class = true_labels.sum()/len(true_labels)
+        plt.plot([0,1], [positive_class, positive_class], color='grey', 
+                 linestyle='--', label='Baseline (AUC = {:0.2f})'.format(positive_class))
 
-    for marginal, model_label in zip(marginals_df.columns, model_names):
-        precision, recall, threshold = precision_recall_curve(true_labels, marginals_df[marginal])
-        area = auc(recall, precision)
-        plt.plot(recall, precision, label=model_label+" (AUC = {:0.2f})".format(area))
+        for model in model_pr_rates:
+            plt.plot(
+                model_pr_rates[model][1], 
+                model_pr_rates[model][0], 
+                label=model+" (AUC = {:0.2f})".format(model_aucs[model])
+            )
 
-    plt.title(plot_title)
-    plt.xlabel("Recall")
-    plt.ylabel("Precision")
-    plt.legend()
+        plt.title(plot_title)
+        plt.xlabel("Recall")
+        plt.ylabel("Precision")
+        plt.legend()
     return 
 
 
-def plot_label_matrix_heatmap(L, title="Label Matrix", figsize=(10,6), colorbar=True, **kwargs):
+def plot_label_matrix_heatmap(L, plot_title="Label Matrix", figsize=(10,6), colorbar=True, **kwargs):
     """
     This code is "borrowed" from the snorkel metal repository.
     It diplays Label Functions in the form of a heatmap. 
@@ -111,3 +158,10 @@ def plot_label_matrix_heatmap(L, title="Label Matrix", figsize=(10,6), colorbar=
         boundaries = np.array(labels + [max(labels) + 1]) - 0.5
         plt.colorbar(boundaries=boundaries, ticks=labels)
 
+def plot_generative_model_weights(gen_model, lf_names, plot_title="Gen Model Weights", figsize=(10,6)):
+    plt.figure(figsize=figsize)
+    lf_df = pd.DataFrame(gen_model.weights.lf_accuracy.T, columns=["weights"])
+    lf_df['label_functions'] = lf_names
+    sns.barplot(x="weights", y="label_functions", data=lf_df)
+    plt.title(title)
+    return

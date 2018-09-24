@@ -3,6 +3,8 @@ import numpy as np
 from scipy.stats import norm
 import scipy.sparse as sparse
 
+from snorkel.models import Candidate
+
 def get_columns(session, L_data, lf_hash, lf_name):
     """
     This function is designed to extract the column positions of
@@ -113,3 +115,23 @@ def get_conflict_matrix(L, normalize=False):
     if normalize:
         C = C / n
     return C
+
+def make_cids_query(session, df):
+    """
+    """
+    ids = df.candidate_id.astype(int).tolist()
+    query = (
+        session
+        .query(Candidate.id)
+        .filter(Candidate.id.in_(ids))
+    )
+    return query
+
+def label_candidates(labeler, cids_query, label_functions, apply_existing=False):
+    """
+    """
+    if apply_existing:
+        return labeler.apply_existing(cids_query=cids_query, parllelistm=5, clear=False)
+    else:
+        return labeler.apply(cids_query=cids_query, parallelism=5)
+

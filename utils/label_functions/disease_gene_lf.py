@@ -67,7 +67,7 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-path = pathlib.Path(__file__).joinpath('../../../data/disease_gene/disease_associates_gene/disease_gene_pairs_association.csv.xz').resolve()
+path = pathlib.Path(__file__).joinpath('../../../disease_gene/disease_associates_gene/disease_gene_pairs_association.csv.xz').resolve()
 pair_df = pd.read_csv(path, dtype={"sources": str})
 knowledge_base = set()
 for row in pair_df.itertuples():
@@ -120,7 +120,14 @@ def LF_HETNET_DG_ABSENT(c):
 
 # obtained from ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/ (ncbi's ftp server)
 # https://github.com/dhimmel/entrez-gene/blob/a7362748a34211e5df6f2d185bb3246279760546/download/Homo_sapiens.gene_info.gz <-- use pandas and trim i guess
-gene_desc = pd.read_table("gene_desc.tsv")
+columns = [
+    "tax_id", "GeneID", "Symbol",
+    "LocusTag", "Synonyms", "dbXrefs",
+    "chromosome", "map_location", "description",
+    "type_of_gene", "Symbol_from_nomenclature_authority", "Full_name_from_nomenclature_authority",
+    "Nomenclature_status", "Other_designations", "Modification_date"
+]
+gene_desc = pd.read_table("https://github.com/dhimmel/entrez-gene/blob/a7362748a34211e5df6f2d185bb3246279760546/download/Homo_sapiens.gene_info.gz?raw=true", sep="\t", names=columns, compression="gzip", skiprows=1)
 
 
 def LF_DG_CHECK_GENE_TAG(c):
@@ -471,7 +478,7 @@ def LF_DG_NO_VERB(c):
 """
 Bi-Clustering LFs
 """
-path = pathlib.Path(__file__).joinpath("../../../data/disease_gene/biclustering/disease_gene_bicluster_results.tsv.xz").resolve()
+path = pathlib.Path(__file__).joinpath("../../../disease_gene/biclustering/disease_gene_bicluster_results.tsv.xz").resolve()
 bicluster_dep_df = pd.read_table(path)
 
 def LF_DG_BICLUSTER_CASUAL_MUTATIONS(c):

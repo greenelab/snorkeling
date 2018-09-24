@@ -42,3 +42,30 @@ def create_bicluster_df(dep_file, dep_dist_file, output_df_file):
         .to_csv(output_df_file, sep="\t", index=False, compression='xz')
     )
     return
+
+
+if __name__ == "__main__":
+    url = "https://zenodo.org/record/1035500/files/"
+    dep_path = "part-ii-dependency-paths-gene-disease-sorted-with-themes.txt"
+    file_dist = "part-i-gene-disease-path-theme-distributions.txt"
+    output_file = "disease_gene/biclustering/disease_gene_bicluster_results.tsv"
+
+    create_bicluster_df(url+dep_path, url+file_dist, output_file)
+
+    dep_path = "ppart-ii-dependency-paths-chemical-gene-sorted-with-themes.txt"
+    file_dist = "part-i-chemical-gene-path-theme-distributions.txt"
+    output_file = "compound_gene/biclustering/compound_gene_bicluster_results.tsv"
+
+    create_bicluster_df(url+dep_path, url+file_dist, output_file)
+
+    dep_path = "part-ii-dependency-paths-chemical-disease-sorted-with-themes.txt"
+    file_dist = "part-i-chemical-disease-path-theme-distributions.txt"
+    output_file = "compound_disease/biclustering/compound_disease_bicluster_results.tsv"
+
+    create_bicluster_df(url+dep_path, url+file_dist, output_file)
+
+    dep_path = "part-ii-dependency-paths-gene-gene-sorted-with-themes.txt"
+    file_dist = "part-i-gene-gene-path-theme-distributions.txt"
+    output_file = "gene_gene/biclustering/gene_gene_bicluster_results.tsv"
+
+    create_bicluster_df(url+dep_path, url+file_dist, output_file)    
