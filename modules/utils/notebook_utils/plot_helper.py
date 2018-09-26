@@ -28,7 +28,7 @@ def plot_cand_histogram(model_names, lfs_columns, data_df, plot_title, xlabel):
     plt.show()
     return
 
-def plot_roc_curve(marginals_df, true_labels, plot_title="ROC", barplot=False, xlim=[0,1], figsize=(10,6)):
+def plot_roc_curve(marginals_df, true_labels, plot_title="ROC", model_type='scatterplot', xlim=[0,1], figsize=(10,6)):
     """
     This function is designed to plot ROC curves for the models.
 
@@ -51,7 +51,7 @@ def plot_roc_curve(marginals_df, true_labels, plot_title="ROC", barplot=False, x
         for model in model_roc_rates
     }
             
-    if barplot:
+    if model_type == 'barplot':
         display_df = (
             pd.DataFrame
             .from_dict(model_aucs,orient='index', columns=["auc"])
@@ -60,7 +60,8 @@ def plot_roc_curve(marginals_df, true_labels, plot_title="ROC", barplot=False, x
         )
         sns.barplot(x='auc', y='model', data=display_df, color='blue')
         plt.xlim(xlim)
-    else:
+        plt.title(plot_title)
+    elif model_type == 'curve':
         plt.plot([0,1], [0,1], linestyle='--', color='grey', label="Random (AUC = 0.50)")
         
         for model in model_roc_rates:
@@ -74,10 +75,20 @@ def plot_roc_curve(marginals_df, true_labels, plot_title="ROC", barplot=False, x
         plt.xlabel("FPR")
         plt.ylabel("TPR")
         plt.legend()
-
+    elif model_type == 'scatterplot':
+        display_df = (
+            pd.DataFrame
+            .from_dict(model_aucs,orient='index', columns=["auc"])
+            .reset_index()
+            .rename(index=str, columns={"index": "model"})
+        )
+        sns.pointplot(x='model', y='auc', data=display_df)
+        plt.title(plot_title)
+    else:
+        raise Exception("Please pick a valid option: barplot, curve, scatterplot")
     return model_aucs
 
-def plot_pr_curve(marginals_df, true_labels, plot_title="PRC", barplot=False, xlim=[0,1], figsize=(10,6)):
+def plot_pr_curve(marginals_df, true_labels, plot_title="PRC", model_type="barplot", xlim=[0,1], figsize=(10,6)):
     """
     This function is designed to plot PR curves for the models.
 
@@ -98,7 +109,7 @@ def plot_pr_curve(marginals_df, true_labels, plot_title="PRC", barplot=False, xl
         model:auc(model_pr_rates[model][1], model_pr_rates[model][0]) 
         for model in model_pr_rates
     }
-    if barplot:
+    if model_type == 'barplot':
         display_df = (
             pd.DataFrame
             .from_dict(model_aucs,orient='index', columns=["auc"])
@@ -107,7 +118,8 @@ def plot_pr_curve(marginals_df, true_labels, plot_title="PRC", barplot=False, xl
         )
         sns.barplot(x='auc', y='model', data=display_df, color='blue')
         plt.xlim(xlim)
-    else:
+        plt.title(plot_title)
+    elif model_type == 'curve':
         positive_class = true_labels.sum()/len(true_labels)
         plt.plot([0,1], [positive_class, positive_class], color='grey', 
                  linestyle='--', label='Baseline (AUC = {:0.2f})'.format(positive_class))
@@ -123,6 +135,17 @@ def plot_pr_curve(marginals_df, true_labels, plot_title="PRC", barplot=False, xl
         plt.xlabel("Recall")
         plt.ylabel("Precision")
         plt.legend()
+    elif model_type == 'scatterplot':
+        display_df = (
+            pd.DataFrame
+            .from_dict(model_aucs,orient='index', columns=["auc"])
+            .reset_index()
+            .rename(index=str, columns={"index": "model"})
+        )
+        sns.pointplot(x='model', y='auc', data=display_df)
+        plt.title(plot_title)
+    else:
+        raise Exception("Please pick a valid option: barplot, curve, scatterplot")
     return 
 
 
@@ -142,7 +165,7 @@ def plot_label_matrix_heatmap(L, plot_title="Label Matrix", figsize=(10,6), colo
     plt.figure(figsize=figsize)
     L = L.todense() if sparse.issparse(L) else L
     plt.imshow(L, aspect="auto")
-    plt.title(title)
+    plt.title(plot_title)
 
     if "xaxis_tick_labels" in kwargs:
         xtick_pos = range(len(kwargs["xaxis_tick_labels"]))
@@ -163,5 +186,5 @@ def plot_generative_model_weights(gen_model, lf_names, plot_title="Gen Model Wei
     lf_df = pd.DataFrame(gen_model.weights.lf_accuracy.T, columns=["weights"])
     lf_df['label_functions'] = lf_names
     sns.barplot(x="weights", y="label_functions", data=lf_df)
-    plt.title(title)
+    plt.title(plot_title)
     return

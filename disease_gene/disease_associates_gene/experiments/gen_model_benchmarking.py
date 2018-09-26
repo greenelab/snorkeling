@@ -20,7 +20,7 @@ from itertools import product
 import os
 import sys
 
-sys.path.append(os.path.abspath('../../../.'))
+sys.path.append(os.path.abspath('../../../modules'))
 
 import pandas as pd
 from tqdm import tqdm_notebook
@@ -76,6 +76,7 @@ quick_load = True
 
 spreadsheet_names = {
     'train': '../../sentence_labels_train.xlsx',
+    'dev': '../../sentence_labels_train_dev.xlsx',
     'test': '../../sentence_labels_dev.xlsx'
 }
 
@@ -180,10 +181,7 @@ label_matricies['train'].lf_stats(session)
 # In[14]:
 
 
-burn_in_grid = [10, 50, 100]
-regularization_grid = [1e-6, 0.2, 0.35, 0.5]
-epoch_grid = [50,100,250]
-search_grid = list(product(burn_in_grid, epoch_grid, regularization_grid))
+regularization_grid = np.round(pd.np.linspace(0.001, 0.5, num=20), 3)
 
 
 # ## What are the best hyperparameters for the conditionally independent model?
@@ -192,14 +190,14 @@ search_grid = list(product(burn_in_grid, epoch_grid, regularization_grid))
 
 
 gen_ci_models = {
-    ",".join(map(str, parameters)):train_generative_model(
+   "{}".format(str(parameter)):train_generative_model(
         label_matricies['train'],
-        burn_in=parameters[0],
-        epochs=parameters[1],
-        reg_param=parameters[2],
+        burn_in=100,
+        epochs=100,
+        reg_param=parameter,
         step_size=1/label_matricies['train'].shape[0]
     )
-    for parameters in tqdm_notebook(search_grid)
+    for parameter in tqdm_notebook(regularization_grid)
 }
 
 
@@ -207,20 +205,20 @@ gen_ci_models = {
 
 
 ci_marginal_df = pd.DataFrame(pd.np.array([
-    gen_ci_models[model_name].marginals(label_matricies['test'])
+    gen_ci_models[model_name].marginals(label_matricies['dev'])
     for model_name in sorted(gen_ci_models.keys())
 ]).T, columns=sorted(gen_ci_models.keys()))
-ci_marginal_df['candidate_id'] = candidate_dfs['test'].candidate_id.values
+ci_marginal_df['candidate_id'] = candidate_dfs['dev'].candidate_id.values
 ci_marginal_df.head(2)
 
 
-# In[17]:
+# In[31]:
 
 
 ci_aucs = plot_roc_curve(
     ci_marginal_df.drop("candidate_id", axis=1), 
-    candidate_dfs['test'].curated_dsh,
-    barplot=True, xlim=[0,0.7], figsize=(10,8), 
+    candidate_dfs['dev'].curated_dsh,
+    model_type='scatterplot', xlim=[0,0.7], figsize=(12,8), 
     plot_title="Disease Associates Gene CI AUROC"
 )
 
@@ -228,19 +226,19 @@ ci_aucs = plot_roc_curve(
 # In[18]:
 
 
-ci_auc_stats_df = get_auc_significant_stats(candidate_dfs['test'], ci_aucs).sort_values('auroc', ascending=False)
+ci_auc_stats_df = get_auc_significant_stats(candidate_dfs['dev'], ci_aucs).sort_values('auroc', ascending=False)
 ci_auc_stats_df
 
 
 # From this data frame, the best performing model had the following parameters: 50-burnin, 50-epochs, 0.2-regularization. By looking at the top five models, the regularization parameter stays at 0.2. The amount of epochs and burnin varies, but the regularization parameter is important to note.
 
-# In[19]:
+# In[30]:
 
 
 plot_pr_curve(
     ci_marginal_df.drop("candidate_id", axis=1), 
-    candidate_dfs['test'].curated_dsh,
-    barplot=True, xlim=[0, 1], figsize=(10,8), 
+    candidate_dfs['dev'].curated_dsh,
+    model_type='scatterplot', xlim=[0, 1], figsize=(12,8), 
     plot_title="Disease Associates Gene CI AUPRC"
 )
 
@@ -248,7 +246,12 @@ plot_pr_curve(
 # In[20]:
 
 
-plot_generative_model_weights(gen_ci_models['100,100,0.2'], lf_names)
+best_model_ci = ci_auc_stats_df.iloc[0].name
+test_ci_marginal_df = pd.DataFrame(pd.np.array([
+    gen_ci_models[ci_auc_stats_df.iloc[0].name].marginals(label_matricies['test'])
+]).T, columns=[best_model_ci])
+test_ci_marginal_df['candidate_id'] = candidate_dfs['test'].candidate_id.values
+test_ci_marginal_df.head(2)
 
 
 # ## Does modeling dependencies aid in performance?
@@ -258,16 +261,16 @@ plot_generative_model_weights(gen_ci_models['100,100,0.2'], lf_names)
 
 from snorkel.learning.structure import DependencySelector
 gen_da_models = {
-    ",".join(map(str, parameters)):train_generative_model(
+    "{}".format(parameter):train_generative_model(
         label_matricies['train'],
-        burn_in=parameters[0],
-        epochs=parameters[1],
-        reg_param=parameters[2],
+        burn_in=100,
+        epochs=100,
+        reg_param=parameter,
         step_size=1/label_matricies['train'].shape[0],
         deps=DependencySelector().select(label_matricies['train']),
         lf_propensity=True
     )
-    for parameters in tqdm_notebook(search_grid)
+    for parameter in tqdm_notebook(regularization_grid)
 }
 
 
@@ -275,20 +278,20 @@ gen_da_models = {
 
 
 da_marginal_df = pd.DataFrame(pd.np.array([
-    gen_da_models[model_name].marginals(label_matricies['test'])
+    gen_da_models[model_name].marginals(label_matricies['dev'])
     for model_name in sorted(gen_da_models.keys())
 ]).T, columns=sorted(gen_da_models.keys()))
-da_marginal_df['candidate_id'] = candidate_dfs['test'].candidate_id.values
+da_marginal_df['candidate_id'] = candidate_dfs['dev'].candidate_id.values
 da_marginal_df.head(2)
 
 
-# In[23]:
+# In[29]:
 
 
 da_aucs = plot_roc_curve(
     da_marginal_df.drop("candidate_id", axis=1), 
-    candidate_dfs['test'].curated_dsh,
-    barplot=True, xlim=[0,1], figsize=(10,8),
+    candidate_dfs['dev'].curated_dsh,
+    model_type='scatterplot', xlim=[0,1], figsize=(12,8),
     plot_title="Disease Associates Gene DA AUROC"
 )
 
@@ -296,19 +299,19 @@ da_aucs = plot_roc_curve(
 # In[24]:
 
 
-da_auc_stats_df = get_auc_significant_stats(candidate_dfs['test'], da_aucs).sort_values('auroc', ascending=False)
+da_auc_stats_df = get_auc_significant_stats(candidate_dfs['dev'], da_aucs).sort_values('auroc', ascending=False)
 da_auc_stats_df
 
 
 # From this data frame, the best performing model had the following parameters: 100-burnin, 100-epochs, 0.2-regularization. By looking at the top nine models, the regularization parameter stays at 0.2. The pattern of regularization is the same with the conditionally independent model. This means using 0.2 is a good choice for regularization. The amount of burnin and epochs can vary.
 
-# In[25]:
+# In[32]:
 
 
 plot_pr_curve(
     da_marginal_df.drop("candidate_id", axis=1), 
-    candidate_dfs['test'].curated_dsh,
-    barplot=True, xlim=[0, 1], figsize=(10,8),
+    candidate_dfs['dev'].curated_dsh,
+    model_type='scatterplot', xlim=[0, 1], figsize=(12,8),
     plot_title="Disease Associates Gene DA AUPRC"
 )
 
@@ -316,14 +319,32 @@ plot_pr_curve(
 # In[26]:
 
 
-plot_generative_model_weights(gen_da_models['50,50,0.2'], lf_names)
+best_model_da = da_auc_stats_df.iloc[0].name
+test_da_marginal_df = pd.DataFrame(pd.np.array([
+    gen_da_models[da_auc_stats_df.iloc[0].name].marginals(label_matricies['test'])
+]).T, columns=[best_model_da])
+test_da_marginal_df['candidate_id'] = candidate_dfs['test'].candidate_id.values
+test_da_marginal_df.head(2)
 
 
 # In[27]:
 
 
-print(ci_auc_stats_df.iloc[0])
-print(da_auc_stats_df.iloc[0])
+combined_df = pd.DataFrame(np.array([
+    test_da_marginal_df.drop("candidate_id", axis=1)[best_model_da].values,
+    test_ci_marginal_df.drop("candidate_id", axis=1)[best_model_ci].values
+]).T, columns=["DA", "CI"])
+
+
+# In[28]:
+
+
+_ = plot_roc_curve(
+    combined_df, 
+    candidate_dfs['test'].curated_dsh,
+    model_type='curve', xlim=[0,0.7], figsize=(10,8), 
+    plot_title="Disease Associates Gene Test AUROC"
+)
 
 
 # Printed above are the best performing models from the conditinally independent model and the dependency aware model. These reults support the hypothesis that modeling depenency structure improves performance compared to the conditionally indepent assumption. Now that the best parameters are found the next step is to begin training the discriminator model to make the actual classification of sentneces.
