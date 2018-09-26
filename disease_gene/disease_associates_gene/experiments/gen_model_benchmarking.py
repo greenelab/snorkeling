@@ -52,9 +52,20 @@ from snorkel.models import candidate_subclass
 from utils.label_functions import DG_LFS
 
 from utils.notebook_utils.dataframe_helper import load_candidate_dataframes
-from utils.notebook_utils.label_matrix_helper import *
+from utils.notebook_utils.label_matrix_helper import (
+    get_auc_significant_stats, 
+    get_overlap_matrix, 
+    get_conflict_matrix, 
+    make_cids_query,
+    label_candidates
+)
 from utils.notebook_utils.train_model_helper import train_generative_model
-from utils.notebook_utils.plot_helper import plot_label_matrix_heatmap, plot_roc_curve, plot_generative_model_weights, plot_pr_curve
+from utils.notebook_utils.plot_helper import (
+    plot_label_matrix_heatmap, 
+    plot_roc_curve, 
+    plot_generative_model_weights, 
+    plot_pr_curve
+)
 
 
 # In[4]:
