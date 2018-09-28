@@ -104,7 +104,7 @@ def write_candidates_to_excel(candidate_df, spreadsheet_name):
     candidate_df - the dataframe that holds all the candidates
     spreadsheet_name - the name of the excel spreadsheet
     """
-    writer = pd.ExcelWriter(speadsheet_name)
+    writer = pd.ExcelWriter(spreadsheet_name)
     (
         candidate_df
         .to_excel(writer, sheet_name='sentences', index=False)
@@ -114,3 +114,12 @@ def write_candidates_to_excel(candidate_df, spreadsheet_name):
             sheet.freeze_panes(1, 0)
     writer.close()
     return
+
+def load_candidate_dataframes(filename):
+    """
+    This function reads in the candidates excel files to preform analyses.
+    """
+    data_df = pd.read_excel(filename)
+    if "curated_dsh" in data_df.columns:
+        data_df = data_df.query("curated_dsh.notnull()")
+    return data_df.sort_values('candidate_id')

@@ -67,7 +67,7 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-path = pathlib.Path(__file__).joinpath('../../../data/compound_gene/compound_binds_gene/compound_gene_pairs_binds.csv').resolve()
+path = pathlib.Path(__file__).joinpath('../../../../compound_gene/compound_binds_gene/compound_gene_pairs_binds.csv').resolve()
 pair_df = pd.read_csv(path, dtype={"sources": str})
 knowledge_base = set()
 for row in pair_df.itertuples():
@@ -145,7 +145,14 @@ def LF_HETNET_CG_ABSENT(c):
 
 # obtained from ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/ (ncbi's ftp server)
 # https://github.com/dhimmel/entrez-gene/blob/a7362748a34211e5df6f2d185bb3246279760546/download/Homo_sapiens.gene_info.gz <-- use pandas and trim i guess
-gene_desc = pd.read_table("gene_desc.tsv")
+columns = [
+    "tax_id", "GeneID", "Symbol",
+    "LocusTag", "Synonyms", "dbXrefs",
+    "chromosome", "map_location", "description",
+    "type_of_gene", "Symbol_from_nomenclature_authority", "Full_name_from_nomenclature_authority",
+    "Nomenclature_status", "Other_designations", "Modification_date"
+]
+gene_desc = pd.read_table("https://github.com/dhimmel/entrez-gene/blob/a7362748a34211e5df6f2d185bb3246279760546/download/Homo_sapiens.gene_info.gz?raw=true", sep="\t", names=columns, compression="gzip", skiprows=1)
 
 
 def LF_CG_CHECK_GENE_TAG(c):
@@ -409,7 +416,7 @@ def LF_CG_PARENTHETICAL_DESC(c):
 """
 Bi-Clustering LFs
 """
-path = pathlib.Path(__file__).joinpath("../../../data/compound_gene/biclustering/compound_gene_bicluster_results.tsv.xz").resolve()
+path = pathlib.Path(__file__).joinpath("../../../../compound_gene/biclustering/compound_gene_bicluster_results.tsv.xz").resolve()
 bicluster_dep_df = pd.read_table(path)
 
 def LF_CG_BICLUSTER_BINDS(c):
