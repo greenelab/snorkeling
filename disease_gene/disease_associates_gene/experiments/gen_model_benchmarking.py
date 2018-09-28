@@ -147,7 +147,7 @@ lf_names = [
 
 # Before training the generative model, here are some visualizations for the given label functions. These visualizations are helpful in determining the efficacy of each label functions as well as observing the overlaps and conflicts between each function.
 
-# In[10]:
+# In[14]:
 
 
 plot_label_matrix_heatmap(label_matricies['train'].T, 
@@ -157,7 +157,7 @@ plot_label_matrix_heatmap(label_matricies['train'].T,
 
 # Looking at the heatmap above, this is a decent distribution of labels. Some of the label functions are outputting a lot of labels (distant supervision ones) and some are very sparse in their output. Nevertheless, nothing shocking scream out here in terms of label function performance. 
 
-# In[11]:
+# In[15]:
 
 
 plot_label_matrix_heatmap(get_overlap_matrix(label_matricies['train'], normalize=True), 
@@ -167,7 +167,7 @@ plot_label_matrix_heatmap(get_overlap_matrix(label_matricies['train'], normalize
 
 # The overlap matrix above shows how two label functions overlap with each other. The brighter the color the more overlaps a label function has with another label function. Ignoring the diagonals, there isn't much overlap between functions as expected.
 
-# In[12]:
+# In[16]:
 
 
 plot_label_matrix_heatmap(get_conflict_matrix(label_matricies['train'], normalize=True), 
@@ -177,7 +177,7 @@ plot_label_matrix_heatmap(get_conflict_matrix(label_matricies['train'], normaliz
 
 # The conflict matrix above shows how often label functions conflict with each other. The brighter the color the more conflict a label function has with another function. Ignoring the diagonals, there isn't many conflicts between functions except for the LF_DG_NO_CONCLUSION and LF_DG_ALLOWED_DISTANCE. Possible reasons for lack of conflicts could be lack of coverage a few functions have, which is shown in the cell below.
 
-# In[13]:
+# In[17]:
 
 
 label_matricies['train'].lf_stats(session)
@@ -189,15 +189,15 @@ label_matricies['train'].lf_stats(session)
 
 # ## Set the hyperparameter grid search
 
-# In[14]:
+# In[10]:
 
 
-regularization_grid = np.round(pd.np.linspace(0.001, 0.5, num=20), 3)
+regularization_grid = pd.np.round(pd.np.linspace(0.001, 0.8, num=25), 3)
 
 
 # ## What are the best hyperparameters for the conditionally independent model?
 
-# In[15]:
+# In[ ]:
 
 
 gen_ci_models = {
@@ -212,7 +212,7 @@ gen_ci_models = {
 }
 
 
-# In[16]:
+# In[18]:
 
 
 ci_marginal_df = pd.DataFrame(pd.np.array([
@@ -223,18 +223,18 @@ ci_marginal_df['candidate_id'] = candidate_dfs['dev'].candidate_id.values
 ci_marginal_df.head(2)
 
 
-# In[31]:
+# In[22]:
 
 
 ci_aucs = plot_roc_curve(
     ci_marginal_df.drop("candidate_id", axis=1), 
     candidate_dfs['dev'].curated_dsh,
-    model_type='scatterplot', xlim=[0,0.7], figsize=(12,8), 
+    model_type='scatterplot', xlim=[0,0.7], figsize=(14,8), 
     plot_title="Disease Associates Gene CI AUROC"
 )
 
 
-# In[18]:
+# In[20]:
 
 
 ci_auc_stats_df = get_auc_significant_stats(candidate_dfs['dev'], ci_aucs).sort_values('auroc', ascending=False)
@@ -243,31 +243,20 @@ ci_auc_stats_df
 
 # From this data frame, the best performing model had the following parameters: 50-burnin, 50-epochs, 0.2-regularization. By looking at the top five models, the regularization parameter stays at 0.2. The amount of epochs and burnin varies, but the regularization parameter is important to note.
 
-# In[30]:
+# In[21]:
 
 
 plot_pr_curve(
     ci_marginal_df.drop("candidate_id", axis=1), 
     candidate_dfs['dev'].curated_dsh,
-    model_type='scatterplot', xlim=[0, 1], figsize=(12,8), 
+    model_type='scatterplot', xlim=[0, 1], figsize=(14,8), 
     plot_title="Disease Associates Gene CI AUPRC"
 )
 
 
-# In[20]:
-
-
-best_model_ci = ci_auc_stats_df.iloc[0].name
-test_ci_marginal_df = pd.DataFrame(pd.np.array([
-    gen_ci_models[ci_auc_stats_df.iloc[0].name].marginals(label_matricies['test'])
-]).T, columns=[best_model_ci])
-test_ci_marginal_df['candidate_id'] = candidate_dfs['test'].candidate_id.values
-test_ci_marginal_df.head(2)
-
-
 # ## Does modeling dependencies aid in performance?
 
-# In[21]:
+# In[ ]:
 
 
 from snorkel.learning.structure import DependencySelector
@@ -285,7 +274,7 @@ gen_da_models = {
 }
 
 
-# In[22]:
+# In[13]:
 
 
 da_marginal_df = pd.DataFrame(pd.np.array([
@@ -296,13 +285,13 @@ da_marginal_df['candidate_id'] = candidate_dfs['dev'].candidate_id.values
 da_marginal_df.head(2)
 
 
-# In[29]:
+# In[26]:
 
 
 da_aucs = plot_roc_curve(
     da_marginal_df.drop("candidate_id", axis=1), 
     candidate_dfs['dev'].curated_dsh,
-    model_type='scatterplot', xlim=[0,1], figsize=(12,8),
+    model_type='scatterplot', xlim=[0,1], figsize=(14,8),
     plot_title="Disease Associates Gene DA AUROC"
 )
 
@@ -316,42 +305,35 @@ da_auc_stats_df
 
 # From this data frame, the best performing model had the following parameters: 100-burnin, 100-epochs, 0.2-regularization. By looking at the top nine models, the regularization parameter stays at 0.2. The pattern of regularization is the same with the conditionally independent model. This means using 0.2 is a good choice for regularization. The amount of burnin and epochs can vary.
 
-# In[32]:
+# In[31]:
 
 
 plot_pr_curve(
     da_marginal_df.drop("candidate_id", axis=1), 
     candidate_dfs['dev'].curated_dsh,
-    model_type='scatterplot', xlim=[0, 1], figsize=(12,8),
+    model_type='scatterplot', xlim=[0, 1], figsize=(14,8),
     plot_title="Disease Associates Gene DA AUPRC"
 )
-
-
-# In[26]:
-
-
-best_model_da = da_auc_stats_df.iloc[0].name
-test_da_marginal_df = pd.DataFrame(pd.np.array([
-    gen_da_models[da_auc_stats_df.iloc[0].name].marginals(label_matricies['test'])
-]).T, columns=[best_model_da])
-test_da_marginal_df['candidate_id'] = candidate_dfs['test'].candidate_id.values
-test_da_marginal_df.head(2)
-
-
-# In[27]:
-
-
-combined_df = pd.DataFrame(np.array([
-    test_da_marginal_df.drop("candidate_id", axis=1)[best_model_da].values,
-    test_ci_marginal_df.drop("candidate_id", axis=1)[best_model_ci].values
-]).T, columns=["DA", "CI"])
 
 
 # In[28]:
 
 
+best_model_ci = '0.334'
+best_model_da = '0.401'
+test_marginals_df = pd.DataFrame(pd.np.array([
+    gen_ci_models[best_model_ci].marginals(label_matricies['test']),
+    gen_da_models[best_model_da].marginals(label_matricies['test'])
+]).T, columns=['CI', 'DA'])
+test_marginals_df['candidate_id'] = candidate_dfs['test'].candidate_id.values
+test_marginals_df.head(2)
+
+
+# In[30]:
+
+
 _ = plot_roc_curve(
-    combined_df, 
+    test_marginals_df.drop('candidate_id',axis=1), 
     candidate_dfs['test'].curated_dsh,
     model_type='curve', xlim=[0,0.7], figsize=(10,8), 
     plot_title="Disease Associates Gene Test AUROC"
