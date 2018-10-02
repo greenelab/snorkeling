@@ -12,9 +12,17 @@ database_str = "postgresql+psycopg2://{}:{}@/{}?host=/var/run/postgresql".format
 compound_url = "https://raw.githubusercontent.com/dhimmel/drugbank/7b94454b14a2fa4bb9387cb3b4b9924619cfbd3e/data/drugbank.tsv"
 gene_url = "https://raw.githubusercontent.com/dhimmel/entrez-gene/a7362748a34211e5df6f2d185bb3246279760546/data/genes-human.tsv"
 cbg_url = "https://raw.githubusercontent.com/dhimmel/integrate/93feba1765fbcd76fd79e22f25121f5399629148/compile/CbG-binding.tsv"
-full_map_output_file = "data/compound_gene/compound_binds_gene/compound_gene_pairs_binds_full_map.csv"
-full_map_sen_count_file = "data/compound_gene/compound_binds_gene/compound_gene-pairs_binds_mapping.csv"
-final_output_file = "data/compound_gene/compound_binds_gene/compound_gene_pairs_binds.csv"
+crg_url = "https://raw.githubusercontent.com/dhimmel/lincs/bbc6812b7d19e98637b44373cdfc52f61bce6327/data/consensi/signif/dysreg-drugbank.tsv"
+
+full_map_output_file = "../compound_gene/compound_gene_pairs.csv"
+
+cbg_sen_count_file = "../compound_gene/compound_gene-pairs_binds_sen_count.csv"
+cug_sen_count_file = "../compound_gene/compound_gene-pairs_upreg_sen_count.csv"
+cdg_sen_count_file = "../compound_gene/compound_gene-pairs_downreg_sen_count.csv"
+
+final_cbg_output_file = "../compound_gene/compound_binds_gene/compound_gene_pairs_binds.csv"
+final_cug_output_file = "../compound_gene/compound_gene_pairs_upregulates.csv"
+final_cdg_output_file = "../compound_gene/compound_gene_pairs_downregulates.csv"
 
 
 compound_df = pd.read_table(compound_url)
@@ -38,30 +46,67 @@ del pair_df
 
 compound_binds_gene_df = pd.read_table(cbg_url, dtype={'entrez_gene_id': int})
 
+compound_regulates_gene_df = (
+    pd.read_table(crg_url, dtype={'entrez_gene_id': int})
+    .assign(sources='lincs')
+    .drop(['z_score', 'status', 'nlog10_bonferroni_pval'], axis=1)
+    .rename(index=str, columns={"perturbagen":'drugbank_id'})
+    )
+
+compound_upregulates_gene_df  = (
+    compound_regulates_gene_df.query("direction == 'up'").drop('direction', axis=1)
+    )
+
+compound_downregulates_gene_df = (
+    compound_regulates_gene_df.query("direction == 'down'").drop('direction', axis=1)
+    )
+
 query = '''
 SELECT "Compound_cid" AS drugbank_id, "Gene_cid" AS entrez_gene_id, count(*) AS n_sentences
 FROM compound_gene
 GROUP BY "Compound_cid", "Gene_cid";
 '''
+
 sentence_count_df = (
     pd.read_sql(query, database_str)
     .astype(dtype={'entrez_gene_id': int})
 )
 
-for r in tqdm_notebook(pd.read_csv("data/compound_gene/compound_binds_gene/compound_gene_pairs_binds_full_map.csv", chunksize=1e6, dtype={'entrez_gene_id': int})):
+for r in tqdm_notebook(pd.read_csv(full_map_output_file, chunksize=1e6, dtype={'entrez_gene_id': int})):
     merged_df = pd.merge(r, compound_binds_gene_df[["drugbank_id", "entrez_gene_id", "sources"]], how="left")
     merged_df['hetionet'] = merged_df.sources.notnull().astype(int)
     merged_df = merged_df.merge(sentence_count_df, how='left', copy=False)
     merged_df.n_sentences = merged_df.n_sentences.fillna(0).astype(int)
     merged_df['has_sentence'] = (merged_df.n_sentences > 0).astype(int)
-    merged_df.to_csv(full_map_sen_count_file, mode='a', index=False)
+    merged_df.to_csv(cbg_sen_count_file, mode='a', index=False)
 
+    merged_df = pd.merge(r, compound_upregulates_gene_df[["drugbank_id", "entrez_gene_id", "sources"]], how="left")
+    merged_df['hetionet'] = merged_df.sources.notnull().astype(int)
+    merged_df = merged_df.merge(sentence_count_df, how='left', copy=False)
+    merged_df.n_sentences = merged_df.n_sentences.fillna(0).astype(int)
+    merged_df['has_sentence'] = (merged_df.n_sentences > 0).astype(int)
+    merged_df.to_csv(cug_sen_count_file, mode='a', index=False)
+
+    merged_df = pd.merge(r, compound_downregulates_gene_df[["drugbank_id", "entrez_gene_id", "sources"]], how="left")
+    merged_df['hetionet'] = merged_df.sources.notnull().astype(int)
+    merged_df = merged_df.merge(sentence_count_df, how='left', copy=False)
+    merged_df.n_sentences = merged_df.n_sentences.fillna(0).astype(int)
+    merged_df['has_sentence'] = (merged_df.n_sentences > 0).astype(int)
+    merged_df.to_csv(cdg_sen_count_file, mode='a', index=False)
 
 # Memory issues occur when I try to build the full dataframe
 # Have to rely on command line to remedy this issue
 os.system(
-    "head -n 1 {}  > {};".format(full_map_output_file, full_map_sen_count_file) +
-    "cat {}} |  awk -F ',' '{if($8==1) print $0}' >> {}".format(full_map_sen_count_file, final_output_file)
+    "head -n 1 {}  > {};".format(full_map_output_file, cbg_sen_count_file) +
+    "cat {}} |  awk -F ',' '{if($8==1) print $0}' >> {}".format(cbg_sen_count_file, final_cbg_output_file)
 )
 
-cbg_map_df = pd.read_csv(final_output_file)
+os.system(
+    "head -n 1 {}  > {};".format(full_map_output_file, cug_sen_count_file) +
+    "cat {}} |  awk -F ',' '{if($8==1) print $0}' >> {}".format(cug_sen_count_file, final_cug_output_file)
+)
+
+os.system(
+    "head -n 1 {}  > {};".format(full_map_output_file, cdg_sen_count_file) +
+    "cat {}} |  awk -F ',' '{if($8==1) print $0}' >> {}".format(cdg_sen_count_file, final_cdg_output_file)
+)
