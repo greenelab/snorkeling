@@ -11,6 +11,8 @@ disease_url = 'https://raw.githubusercontent.com/dhimmel/disease-ontology/052ffc
 compound_url = "https://raw.githubusercontent.com/dhimmel/drugbank/7b94454b14a2fa4bb9387cb3b4b9924619cfbd3e/data/drugbank.tsv"
 ctpd_url = "https://raw.githubusercontent.com/dhimmel/indications/11d535ba0884ee56c3cd5756fdfb4985f313bd80/catalog/indications.tsv"
 
+base_dir = os.path.join(os.path.dirname(os.getcwd()), 'compound_disease')
+
 disease_ontology_df = pd.read_csv(disease_url, sep="\t")
 disease_ontology_df = (
     disease_ontology_df
@@ -65,12 +67,12 @@ ctd_map_df = ctd_map_df.merge(sentence_count_df, how='left')
 ctd_map_df.n_sentences = ctd_map_df.n_sentences.fillna(0).astype(int)
 ctd_map_df['has_sentence'] = (ctd_map_df.n_sentences > 0).astype(int)
 
-ctd_map_df.to_csv("../compound_disease/compound_treats_disease.tsv.xz", compression='xz', 
+ctd_map_df.to_csv(os.path.join("compound_treats_disease.tsv.xz"), compression='xz', 
 	sep="\t", index=False, float_format='%.5g')
 
 cpd_map_df = cpd_map_df.merge(sentence_count_df, how='left')
 cpd_map_df.n_sentences = cpd_map_df.n_sentences.fillna(0).astype(int)
 cpd_map_df['has_sentence'] = (cpd_map_df.n_sentences > 0).astype(int)
 
-cpd_map_df.to_csv("../compound_disease/compound_palliates_disease_df.tsv.xz", compression='xz', 
+cpd_map_df.to_csv(os.path.join(base_dir, "compound_palliates_disease_df.tsv.xz"), compression='xz', 
 	sep="\t", index=False, float_format='%.5g')

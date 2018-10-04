@@ -1,5 +1,5 @@
 import pandas as pd
-from tqdm import tqdm_notebook
+import tqdm
 
 #Set up the environment
 username = "danich1"
@@ -14,15 +14,17 @@ gene_url = "https://raw.githubusercontent.com/dhimmel/entrez-gene/a7362748a34211
 cbg_url = "https://raw.githubusercontent.com/dhimmel/integrate/93feba1765fbcd76fd79e22f25121f5399629148/compile/CbG-binding.tsv"
 crg_url = "https://raw.githubusercontent.com/dhimmel/lincs/bbc6812b7d19e98637b44373cdfc52f61bce6327/data/consensi/signif/dysreg-drugbank.tsv"
 
-full_map_output_file = "../compound_gene/compound_gene_pairs.csv"
+base_dir = os.path.join(os.path.dirname(os.getcwd()), 'compound_gene')
 
-cbg_sen_count_file = "../compound_gene/compound_gene-pairs_binds_sen_count.csv"
-cug_sen_count_file = "../compound_gene/compound_gene-pairs_upreg_sen_count.csv"
-cdg_sen_count_file = "../compound_gene/compound_gene-pairs_downreg_sen_count.csv"
+full_map_output_file = os.path.join(base_dir, "compound_gene_pairs.csv")
 
-final_cbg_output_file = "../compound_gene/compound_binds_gene/compound_gene_pairs_binds.csv"
-final_cug_output_file = "../compound_gene/compound_gene_pairs_upregulates.csv"
-final_cdg_output_file = "../compound_gene/compound_gene_pairs_downregulates.csv"
+cbg_sen_count_file = os.path.join(base_dir, "compound_gene-pairs_binds_sen_count.csv")
+cug_sen_count_file = os.path.join(base_dir, "compound_gene-pairs_upreg_sen_count.csv")
+cdg_sen_count_file = os.path.join(base_dir, "compound_gene-pairs_downreg_sen_count.csv")
+
+final_cbg_output_file = os.path.join(base_dir, "compound_binds_gene/compound_gene_pairs_binds.csv")
+final_cug_output_file = os.path.join(base_dir, "compound_gene_pairs_upregulates.csv")
+final_cdg_output_file = os.path.join(base_dir, "compound_gene_pairs_downregulates.csv")
 
 
 compound_df = pd.read_table(compound_url)
@@ -72,7 +74,7 @@ sentence_count_df = (
     .astype(dtype={'entrez_gene_id': int})
 )
 
-for r in tqdm_notebook(pd.read_csv(full_map_output_file, chunksize=1e6, dtype={'entrez_gene_id': int})):
+for r in tqdm.tqdm(pd.read_csv(full_map_output_file, chunksize=1e6, dtype={'entrez_gene_id': int})):
     merged_df = pd.merge(r, compound_binds_gene_df[["drugbank_id", "entrez_gene_id", "sources"]], how="left")
     merged_df['hetionet'] = merged_df.sources.notnull().astype(int)
     merged_df = merged_df.merge(sentence_count_df, how='left', copy=False)
