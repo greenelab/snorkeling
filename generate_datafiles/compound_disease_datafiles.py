@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 
 #Set up the environment
 username = "danich1"
@@ -67,7 +68,7 @@ ctd_map_df = ctd_map_df.merge(sentence_count_df, how='left')
 ctd_map_df.n_sentences = ctd_map_df.n_sentences.fillna(0).astype(int)
 ctd_map_df['has_sentence'] = (ctd_map_df.n_sentences > 0).astype(int)
 
-ctd_map_df.to_csv(os.path.join("compound_treats_disease.tsv.xz"), compression='xz', 
+ctd_map_df.to_csv(os.path.join(base_dir, "compound_treats_disease.tsv.xz"), compression='xz', 
 	sep="\t", index=False, float_format='%.5g')
 
 cpd_map_df = cpd_map_df.merge(sentence_count_df, how='left')
