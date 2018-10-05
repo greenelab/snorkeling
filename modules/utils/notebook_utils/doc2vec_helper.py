@@ -1,10 +1,13 @@
 import subprocess
 
-from sklearn.model_selection import GridSearchCV
 from snorkel.models import Candidate
 
 def get_candidate_objects(session, candidate_dicts):
     """
+    This function is designed to get candiadte objects from the postgres database
+
+    session - an open connection to the postgres database
+    candidate_dicts - a dictionary containing the candidate dataframes
     """
 
     return {
@@ -20,6 +23,10 @@ def get_candidate_objects(session, candidate_dicts):
 
 def write_sentences_to_file(candidate_obj_dict, sentences_file_dict):
     """
+    This function is designed to get candiadte objects from the postgres database
+
+    candidate_obj_dict - a dictionary containing candidates objects
+    sentences_file_dict - a dictionary containing directories to write each file to.
     """
 
     for key in candidate_obj_dict:
@@ -31,6 +38,14 @@ def write_sentences_to_file(candidate_obj_dict, sentences_file_dict):
 
 def execute_doc2vec(training_file, word_file, output_file, test_file, vocab_file, read_vocab=False):
     """
+    This function is designed run doc2vec to embed sentences into dense vectors.
+
+    training_file - a file path that contains training sentences used for embeddings
+    word_file - a file path that tells doc2vec where to output word vectors
+    output_file - a file path that tells doc2vec where to output doc vectors
+    test_file - a file path that contains sentences that will be embedded
+    vocab_file - a file path that tells doc2vec where to output vocabulary
+    read_vocab - a boolean to say read in a vocab list or create one from scratch
     """
 
     command = [
@@ -55,11 +70,3 @@ def execute_doc2vec(training_file, word_file, output_file, test_file, vocab_file
 
     subprocess.Popen(command).wait()
     return
-
-def run_grid_search(model, data,  grid, labels):
-    """
-    """
-
-    searcher = GridSearchCV(model, param_grid=grid, cv=10, return_train_score=True)
-    return searcher.fit(data, labels)
-
