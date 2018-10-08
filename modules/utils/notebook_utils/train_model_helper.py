@@ -1,3 +1,4 @@
+from sklearn.model_selection import GridSearchCV
 from snorkel.learning import GenerativeModel
 
 def train_generative_model(data_matrix, burn_in=10, epochs=100, reg_param=1e-6, 
@@ -22,3 +23,16 @@ def train_generative_model(data_matrix, burn_in=10, epochs=100, reg_param=1e-6,
         step_size=step_size, reg_type=2
     )
     return model
+
+def run_grid_search(model, data,  grid, labels):
+    """
+    This function is designed to find the best hyperparameters for a machine learning model.
+
+    model - Sklearn model to be optimized
+    data - the data to train the model
+    grid - the search grid for each model
+    labels - binary training labels for optimization criteria
+    """
+
+    searcher = GridSearchCV(model, param_grid=grid, cv=10, return_train_score=True, scoring='roc_auc')
+    return searcher.fit(data, labels)
