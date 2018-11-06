@@ -59,8 +59,8 @@ def make_sentence_df(candidates):
         if hasattr(c, 'Disease_cid') and hasattr(c, 'Gene_cid'):
             row = OrderedDict()
             row['candidate_id'] = c.id
-            row['compound'] = c[0].get_span()
-            row['disease'] = c[1].get_span()
+            row['disease'] = c[0].get_span()
+            row['gene'] = c[1].get_span()
             row['doid_id'] = c.Disease_cid
             row['entrez_gene_id'] = c.Gene_cid
             row['sentence'] = c.get_parent().text
@@ -68,8 +68,8 @@ def make_sentence_df(candidates):
         elif hasattr(c, 'Gene1_cid') and hasattr(c, 'Gene2_cid'):
             row = OrderedDict()
             row['candidate_id'] = c.id
-            row['compound'] = c[0].get_span()
-            row['disease'] = c[1].get_span()
+            row['gene1'] = c[0].get_span()
+            row['gene2'] = c[1].get_span()
             row['entrez_gene_id'] = c.Gene_cid
             row['entrez_gene_id'] = c.Gene_cid
             row['sentence'] = c.get_parent().text
@@ -78,7 +78,7 @@ def make_sentence_df(candidates):
             row = OrderedDict()
             row['candidate_id'] = c.id
             row['compound'] = c[0].get_span()
-            row['disease'] = c[1].get_span()
+            row['gene'] = c[1].get_span()
             row['drugbank_id'] = c.Compound_cid
             row['entrez_gene_id'] = c.Gene_cid
             row['sentence'] = c.get_parent().text
@@ -118,6 +118,8 @@ def write_candidates_to_excel(candidate_df, spreadsheet_name):
 def load_candidate_dataframes(filename):
     """
     This function reads in the candidates excel files to preform analyses.
+
+    dataframe - the path of the dataframe to load
     """
     data_df = pd.read_excel(filename)
     if "curated_dsh" in data_df.columns:

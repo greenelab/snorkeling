@@ -3,7 +3,18 @@
 
 # # Generative Model Benchmarking
 
-# The goal here is to use the [data programing paradigm](https://arxiv.org/abs/1605.07723) to probabilistically label our training dataset for the disease associates gene realtionship. The label functions have already been generated and now it is time to train the generative model. This model captures important features such as agreements and disagreements between label functions; furthermore, this model can capture the dependency structure between label functions (i.e. correlations between label functions). More information can be found in this [blog post](https://hazyresearch.github.io/snorkel/blog/structure_learning.html) or in this [paper](https://arxiv.org/abs/1703.00854). The underlying hypothesis here is: **Incorporating multiple weak sources improves prediction performance compared towards the normal distant supervision approach**.
+# The goal here is to use the [data programing paradigm](https://arxiv.org/abs/1605.07723) to probabilistically label our training dataset for the disease associates gene relationship. The label functions have already been generated and now it is time to train the generative model. This model captures important features such as agreements and disagreements between label functions, by estimating the probability of label functions emitting a combination of labels given the class. $P(\lambda_{i} = j \mid Y=y)$. More information can be found in this [technical report](https://arxiv.org/pdf/1810.02840.pdf) or in this [paper](https://ajratner.github.io/assets/papers/deem-metal-prototype.pdf). The testable hypothesis here is: **Incorporating multiple weak sources improves performance compared to the normal distant supervision approach, which uses a single resource for labels**.
+
+# # Experimental Design:
+# 
+# Compares three different models. The first model uses four databases (DisGeNET, Diseases, DOAF and GWAS) as the distant supervision approach. The second model uses the above databases with user defined rules such as (regular expressions, trigger word identification and sentence contextual rules). The last model uses the above sources of information in conjunction with biclustering data obtained from this [paper](https://www.ncbi.nlm.nih.gov/pubmed/29490008).
+
+# ## Dataset
+#     
+# | Set type  | Size |
+# |:---|:---|
+# | Train |  50k  |
+# | Dev |  210 (hand labeled) |
 
 # ## Set up The Environment
 
@@ -65,7 +76,6 @@ from utils.notebook_utils.label_matrix_helper import (
     get_auc_significant_stats, 
     get_overlap_matrix, 
     get_conflict_matrix, 
-    make_cids_query,
     label_candidates
 )
 from utils.notebook_utils.train_model_helper import train_generative_model
@@ -154,7 +164,7 @@ plot_label_matrix_heatmap(label_matricies['train'].T,
                           figsize=(10,8), font_size=10)
 
 
-# Looking at the heatmap above, this is a decent distribution of labels. Some of the label functions are outputting a lot of labels (distant supervision ones) and some are very sparse in their output. Nevertheless, nothing shocking scream out here in terms of label function performance. 
+# Looking at the heatmap above, this is a decent distribution of labels. Some of the label functions are covering a lot of data points (distant supervision ones) and some are very sparse in their output.
 
 # In[11]:
 
@@ -164,7 +174,7 @@ plot_label_matrix_heatmap(get_overlap_matrix(label_matricies['train'], normalize
                           figsize=(10,8), colorbar=False, plot_title="Overlap Matrix")
 
 
-# The overlap matrix above shows how two label functions overlap with each other. The brighter the color the more overlaps a label function has with another label function. Ignoring the diagonals, there isn't much overlap between functions as expected.
+# The overlap matrix above shows how two label functions overlap with each other. The brighter the color the more overlaps a label function has with another label function.
 
 # In[12]:
 
@@ -174,11 +184,11 @@ plot_label_matrix_heatmap(get_conflict_matrix(label_matricies['train'], normaliz
                           figsize=(10,8), colorbar=False, plot_title="Conflict Matrix")
 
 
-# The conflict matrix above shows how often label functions conflict with each other. The brighter the color the more conflict a label function has with another function. Ignoring the diagonals, there isn't many conflicts between functions except for the LF_DG_NO_CONCLUSION and LF_DG_ALLOWED_DISTANCE. Possible reasons for lack of conflicts could be lack of coverage a few functions have, which is shown in the cell below.
+# The conflict matrix above shows how often label functions conflict with each other. The brighter the color the more conflict a label function has with another function. Ignoring the diagonals, there isn't many conflicts between functions except for the LF_DG_NO_CONCLUSION and LF_DG_ALLOWED_DISTANCE.
 
 # # Train the Generative Model
 
-# After visualizing the label functions and their associated properties, now it is time to work on the generative model. AS with common machine learning pipelines, the first step is to find the best hyperparameters for this model. Using the grid search algorithm, the follow parameters were optimized: amount of burnin, strength of regularization, number of epochs to run the model.
+# After visualizing the label functions and their associated properties, now it is time to work on the generative model. As with common machine learning pipelines, the first step is to find the best hyperparameters for this model. Using the grid search algorithm, the follow parameters were optimized: amount of burnin, strength of regularization, number of epochs to run the model.
 
 # ## Set the hyperparameter grid search
 
@@ -242,7 +252,7 @@ for model in model_grid_aucs:
 
 # # Final Evaluation on Held out Hand Labeled Test Data
 
-# In[19]:
+# In[18]:
 
 
 dev_model_df = pd.DataFrame()
@@ -252,18 +262,18 @@ for best_model, model_data, model_label in zip([1.083, 2.067, 1.575], validation
     dev_model_df[model_label] = label_model.predict_proba(model_data[1])[:,0]
 
 
-# In[34]:
+# In[19]:
 
 
 _ = plot_curve(
     dev_model_df, 
     candidate_dfs['dev'].curated_dsh,
     model_type='curve', figsize=(10,8), 
-    plot_title="Disease Associates Gene AUROC on Test Data", font_size=16
+    plot_title="Disease Associates Gene AUROC on Dev Data", font_size=16
 )
 
 
-# In[36]:
+# In[20]:
 
 
 _ = plot_curve(
@@ -275,7 +285,7 @@ _ = plot_curve(
 )
 
 
-# In[22]:
+# In[21]:
 
 
 label_model = LabelModel(k=2, seed=100)
@@ -284,7 +294,7 @@ dev_predictions = convert_labels(label_model.predict(validation_data[1][1]), 'ca
 dev_marginals = label_model.predict_proba(validation_data[1][1])[:,0]
 
 
-# In[23]:
+# In[22]:
 
 
 plt.rcParams.update({'font.size': 16})
@@ -296,7 +306,7 @@ plot_predictions_histogram(
 )
 
 
-# In[24]:
+# In[23]:
 
 
 confusion_matrix(
@@ -304,5 +314,3 @@ confusion_matrix(
     convert_labels(dev_predictions, 'onezero', 'categorical')
 )
 
-
-# Printed above are the best performing models from the conditinally independent model and the dependency aware model. These reults support the hypothesis that modeling depenency structure improves performance compared to the conditionally indepent assumption. Now that the best parameters are found the next step is to begin training the discriminator model to make the actual classification of sentneces.

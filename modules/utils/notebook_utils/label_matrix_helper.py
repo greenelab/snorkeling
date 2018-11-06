@@ -1,9 +1,16 @@
+import threading
+import queue
+import sys
 import pandas as pd
 import numpy as np
 from scipy.stats import norm
 import scipy.sparse as sparse
+from tqdm import tqdm_notebook
 
 from snorkel.models import Candidate
+
+candidate_queue = queue.Queue()
+data_queue = queue.Queue()
 
 def get_columns(session, L_data, lf_hash, lf_name):
     """
@@ -116,22 +123,127 @@ def get_conflict_matrix(L, normalize=False):
         C = C / n
     return C
 
-def make_cids_query(session, df):
+def label_candidates_db(labeler, cids_query, label_functions, apply_existing=False):
     """
-    """
-    ids = df.candidate_id.astype(int).tolist()
-    query = (
-        session
-        .query(Candidate.id)
-        .filter(Candidate.id.in_(ids))
-    )
-    return query
+    This function is designed to label candidates and place the annotations inside a database.
+    Will be rarely used since snorkel metal doesn't use a database for annotations.
+    Important to keep if I were to go back towards snorkel's original database version
 
-def label_candidates(labeler, cids_query, label_functions, apply_existing=False):
-    """
+    labeler - the labeler object
+    cids_query - the query make for extracting candidate objects
+    label_functions - a list of label functions to generate annotations
     """
     if apply_existing:
         return labeler.apply_existing(cids_query=cids_query, parllelistm=5, clear=False)
     else:
         return labeler.apply(cids_query=cids_query, parallelism=5)
 
+
+def label_candidates(session, candidate_ids, lfs, multitask=False, num_threads=4, batch_size=10):
+    """
+    This function returns a sparse matrix in memory. Helps bypass using a static database to store annotations
+    Only catch is that this structure doesn't contain the names of label functions
+    
+    session - the session object
+    candidate_ids - the ids for candidates to be extracted
+    lfs - a list of label functions to label candidates
+    multitask - a boolean to signify that labels will be in multitask format
+    num_threads - the number of threads to execute
+    batch_size - the batch size to prevent a memory overload
+    """
+    iteration = 0
+    started = False
+    
+    #set up the threads
+    thread_list = [
+    threading.Thread(target=_label_candidates_multithread, args=(lfs, multitask))
+    for t in range(num_threads) 
+    ]
+
+    with tqdm_notebook(total=len(candidate_ids)) as pbar:
+        while iteration < len(candidate_ids):
+            candidate_batch = candidate_ids[iteration:iteration + batch_size]
+            row_indicies = range(iteration, iteration + batch_size, 1)
+
+            #Fire up the threads to label each candidate
+            candidates = session.query(Candidate).filter(Candidate.id.in_(candidate_batch)).all()
+            for row_index, cand_obj in zip(row_indicies, candidates):
+                candidate_queue.put((row_index, cand_obj))
+
+            #Only start the threads once
+            if not(started):
+                for thread in thread_list:
+                    thread.start()
+                started = True
+
+            pbar.update(batch_size)
+            iteration += batch_size
+
+    for thread in thread_list:
+        thread.join()
+
+
+    # Once finished use appropiate 
+    # steps to form the matricies
+    if multitask:
+        multirow  = [[] for i in lfs]
+        multicol = [[] for i in lfs]
+        multidata = [[] for i in lfs]
+
+        while not(data_queue.empty()):
+            entry = data_queue.get()
+            multirow[entry[0]].append(entry[1])
+            multicol[entry[0]].append(entry[2])
+            multidata[entry[0]].append(entry[3])
+
+        L_data = [
+        sparse.csr_matrix(
+            (
+                multidata[task_index], (multirow[task_index], multicol[task_index])),
+                shape=(len(candidate_ids), max([len(lf) for lf in lfs]))
+            )
+        for task_index in range(len(lfs))
+        ]
+        return L_data
+    else:
+        row = []
+        data =[]
+        col = []
+
+        while not(data_queue.empty()):
+            entry = data_queue.get()
+            row.append(entry[0])
+            col.append(entry[1])
+            data.append(entry[2])
+
+        return sparse.csr_matrix((data, (row, col)), shape=(len(candidate_ids),len(lfs)))
+
+def _label_candidates_multithread(lfs, multitask):
+    """
+    This function is called when each thread is created.
+
+    lfs - the label functions to annotate candidates
+    multitask - a boolean that tells the function to label candidates in a multitask format
+    """
+    while not(candidate_queue.empty()):
+       
+        candidate = candidate_queue.get()
+        sys.stdout.write("\r{:7d}".format(candidate_queue.qsize()))
+        sys.stdout.flush()
+        
+        if multitask:
+            for task_index, lf_task in enumerate(lfs):
+                for col_index, lf in enumerate(lf_task):
+                    val = lf(candidate[1])
+                    
+                    if val != 0:
+                        data_queue.put((task_index, candidate[0], col_index, val))
+        else:
+            for col_index, lf in enumerate(lfs):
+                val = lf(candidate[1])
+            
+                if val != 0:
+                    # put row_index, col_index and data onto a synchronized queue
+                    data = (candidate[0], col_index, val)
+                    data_queue.put(data)
+    

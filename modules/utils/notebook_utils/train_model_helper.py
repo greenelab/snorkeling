@@ -1,4 +1,8 @@
-from sklearn.model_selection import GridSearchCV
+import numpy as np
+from sklearn.metrics import auc, roc_curve, f1_score
+from sklearn.model_selection import GridSearchCV, cross_val_score, StratifiedKFold
+from tqdm import tqdm_notebook
+
 from snorkel.learning import GenerativeModel
 
 def train_generative_model(data_matrix, burn_in=10, epochs=100, reg_param=1e-6, 
@@ -24,7 +28,7 @@ def train_generative_model(data_matrix, burn_in=10, epochs=100, reg_param=1e-6,
     )
     return model
 
-def run_grid_search(model, data,  grid, labels):
+def run_grid_search(model, data,  grid, labels, cv=10):
     """
     This function is designed to find the best hyperparameters for a machine learning model.
 
@@ -32,7 +36,8 @@ def run_grid_search(model, data,  grid, labels):
     data - the data to train the model
     grid - the search grid for each model
     labels - binary training labels for optimization criteria
+    cv - the number of cross validation folds to use
     """
 
-    searcher = GridSearchCV(model, param_grid=grid, cv=10, return_train_score=True, scoring='roc_auc')
+    searcher = GridSearchCV(model, param_grid=grid, cv=cv, return_train_score=True, scoring=['roc_auc', 'f1'], refit='roc_auc')
     return searcher.fit(data, labels)
