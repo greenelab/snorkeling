@@ -69,7 +69,7 @@ from metal.contrib.visualization.analysis import(
     plot_predictions_histogram, 
 )
 
-from utils.label_functions.disease_gene_lf_multitask import DG_LFS
+from utils.label_functions import DG_LFS
 
 from utils.notebook_utils.dataframe_helper import load_candidate_dataframes
 from utils.notebook_utils.label_matrix_helper import (
