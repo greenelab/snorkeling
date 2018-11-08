@@ -41,3 +41,4 @@ dependencies:
     - git+https://github.com/HazyResearch/treedlib@15840e2ff8e51763d7d4fb737ca7a04f66cbc3cd
     - hetio==0.2.6
     - spacy==1.10.0
+    - snorkel-metal==0.3.2

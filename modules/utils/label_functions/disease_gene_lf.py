@@ -22,7 +22,7 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 
 random.seed(100)
-
+stop_word_list = stopwords.words('english')
 """
 Debugging to understand how LFs work
 """
@@ -76,6 +76,24 @@ for row in pair_df.itertuples():
     for source in row.sources.split('|'):
         key = str(row.entrez_gene_id), row.doid_id, source
         knowledge_base.add(key)
+        
+path = pathlib.Path(__file__).joinpath('../../../../disease_gene/disease_downregulates_gene.tsv.xz').resolve()
+pair_df = pd.read_table(path, dtype={"sources": str})
+for row in pair_df.itertuples():
+    if not row.sources or pd.isnull(row.sources):
+        continue
+    for source in row.sources.split('|'):
+        key = str(row.entrez_gene_id), row.doid_id, source+'_down'
+        knowledge_base.add(key)        
+
+path = pathlib.Path(__file__).joinpath('../../../../disease_gene/disease_upregulates_gene.tsv.xz').resolve()
+pair_df = pd.read_table(path, dtype={"sources": str})
+for row in pair_df.itertuples():
+    if not row.sources or pd.isnull(row.sources):
+        continue
+    for source in row.sources.split('|'):
+        key = str(row.entrez_gene_id), row.doid_id, source+'_up'
+        knowledge_base.add(key)
 
 def LF_HETNET_DISEASES(c):
     """
@@ -105,7 +123,13 @@ def LF_HETNET_GWAS(c):
     """
     return 1 if (c.Gene_cid, c.Disease_cid, "GWAS Catalog") in knowledge_base else 0
 
-def LF_HETNET_DG_ABSENT(c):
+def LF_HETNET_STARGEO_UP(c):
+    return 1 if (c.Gene_cid, c.Disease_cid, "strego_up") in knowledge_base else 0
+
+def LF_HETNET_STARGEO_DOWN(c):
+    return 1 if (c.Gene_cid, c.Disease_cid, "strego_down") in knowledge_base else 0
+
+def LF_HETNET_DaG_ABSENT(c):
     """
     This label function fires -1 if the given Disease Gene pair does not appear 
     in the databases above.
@@ -117,6 +141,19 @@ def LF_HETNET_DG_ABSENT(c):
         LF_HETNET_GWAS(c)
     ]) else -1
 
+def LF_HETNET_DuG_ABSENT(c):
+    """
+    This label function fires -1 if the given Disease Gene pair does not appear 
+    in the databases above.
+    """
+    return 0 if LF_HETNET_STARGEO_UP(c) else -1
+
+def LF_HETNET_DdG_ABSENT(c):
+    """
+    This label function fires -1 if the given Disease Gene pair does not appear 
+    in the databases above.
+    """
+    return 0 if LF_HETNET_STARGEO_DOWN(c) else -1
 
 # obtained from ftp://ftp.ncbi.nlm.nih.gov/gene/DATA/ (ncbi's ftp server)
 # https://github.com/dhimmel/entrez-gene/blob/a7362748a34211e5df6f2d185bb3246279760546/download/Homo_sapiens.gene_info.gz <-- use pandas and trim i guess
@@ -165,7 +202,7 @@ def LF_DG_CHECK_DISEASE_TAG(c):
     sen = c[0].get_parent()
     disease_name = re.sub("\) ?", "", c[0].get_span())
     disease_name = re.sub(r"(\w)-(\w)", r"\g<1> \g<2>", disease_name)
-    disease_name = " ".join([word for word in word_tokenize(disease_name) if word not in set(stopwords.words('english'))])
+    disease_name = " ".join([word for word in word_tokenize(disease_name) if word not in set(stop_word_list)])
 
     # If abbreviation skip since no means of easy resolution
     if len(disease_name) <=5 and disease_name.isupper():
@@ -226,13 +263,21 @@ direct_association = {
     }
 
 positive_direction = {
-    r"\bhigh\b", "elevate(d|s)?", "(significant(ly)?)? increase(d|s)?", "greated for",
-    "greater in", "higher", "prevent their degeneration"
+    r"\bhigh\b", "elevate(d|s)?", "greated for",
+    "greater in", "higher", "prevent their degeneration", "gain", "increased",
+    "positive", "strong", "elevated", "upregulated", "up-regulated", "higher",
 }
 
 negative_direction = {
     r"\blow\b", "reduce(d|s)?", "(significant(ly)?)? decrease(d|s)?", "inhibited by", "not higher",
-    "unresponsive"
+    "unresponsive", "under-expression", "underexpresed", "down-regulated", "downregulated", "knockdown",
+    "suppressed", "negative", "weak", "lower"
+}
+
+disease_sample_indicators = {
+    "tissue", "cell", "patient", "tumor", "cancer", "carcinoma",
+    "cell line", "cell-line", "group", "blood", "sera", "serum", "fluid", "subset", 
+    "case", "men", "womdn"
 }
 
 diagnosis_indicators = {
@@ -372,7 +417,7 @@ def LF_DG_NEGATIVE_DIRECTION(c):
     a sort of negative response or imply an downregulates association
     """
     return 1 if any([rule_regex_search_btw_AB(c, r'.*'+ltp(negative_direction)+r'.*', 1), rule_regex_search_btw_BA(c, r'.*'+ltp(negative_direction)+r'.*', 1)]) or  \
-        re.search(r'({{A}}|{{B}}).*({{A}}|{{B}}).*' + ltp(positive_direction), get_tagged_text(c)) else 0
+        re.search(r'({{A}}|{{B}}).*({{A}}|{{B}}).*' + ltp(negative_direction), get_tagged_text(c)) else 0
 
 def LF_DG_DIAGNOSIS(c):
     """
@@ -409,7 +454,7 @@ def LF_DG_CONCLUSION_TITLE(c):
     """
     return 1 if "CONCLUSION" in get_tagged_text(c) or "concluded" in get_tagged_text(c) else 0
 
-def LF_DG_NO_CONCLUSION(c):
+def LF_DaG_NO_CONCLUSION(c):
     """
     This label function fires a -1 if the number of negative label functinos is greater than the number
     of positive label functions.
@@ -424,7 +469,7 @@ def LF_DG_NO_CONCLUSION(c):
         return 0
     return -1
 
-def LF_DG_CONCLUSION(c):
+def LF_DaG_CONCLUSION(c):
     """
     This label function fires a 1 if the number of positive label functions is greater than the number
     of negative label functions.
@@ -433,7 +478,61 @@ def LF_DG_CONCLUSION(c):
     """
     if LF_DG_NO_ASSOCIATION(c) or LF_DG_WEAK_ASSOCIATION(c):
         return -1
-    elif not LF_DG_NO_CONCLUSION(c):
+    elif not LF_DaG_NO_CONCLUSION(c):
+        return 1
+    else:
+        return 0
+    
+def LF_DuG_NO_CONCLUSION(c):
+    """
+    This label function fires a -1 if the number of negative label functinos is greater than the number
+    of positive label functions.
+    The main idea behind this label function is add support to sentences that could
+    mention a possible disease gene association.
+    """
+    positive_num = np.sum([  
+            LF_DG_POSITIVE_DIRECTION(c)
+    ])
+    negative_num = np.abs(np.sum(LF_DG_METHOD_DESC(c), LF_DG_TITLE(c)))
+    if positive_num - negative_num >= 1:
+        return 0
+    return -1
+
+def LF_DuG_CONCLUSION(c):
+    """
+    This label function fires a 1 if the number of positive label functions is greater than the number
+    of negative label functions.
+    The main idea behind this label function is add support to sentences that could
+    mention a possible disease gene association
+    """
+    if not LF_DuG_NO_CONCLUSION(c):
+        return 1
+    else:
+        return 0
+    
+def LF_DdG_NO_CONCLUSION(c):
+    """
+    This label function fires a -1 if the number of negative label functinos is greater than the number
+    of positive label functions.
+    The main idea behind this label function is add support to sentences that could
+    mention a possible disease gene association.
+    """
+    positive_num = np.sum([ 
+            LF_DG_NEGATIVE_DIRECTION(c)
+    ])
+    negative_num = np.abs(np.sum(LF_DG_METHOD_DESC(c), LF_DG_TITLE(c)))
+    if positive_num - negative_num >= 1:
+        return 0
+    return -1
+
+def LF_DdG_CONCLUSION(c):
+    """
+    This label function fires a 1 if the number of positive label functions is greater than the number
+    of negative label functions.
+    The main idea behind this label function is add support to sentences that could
+    mention a possible disease gene association
+    """
+    if not LF_DdG_NO_CONCLUSION(c):
         return 1
     else:
         return 0
@@ -616,42 +715,32 @@ RETRUN LFs to Notebook
 """
 
 DG_LFS = {
-    "DaG_DB": 
+    "DaG":
     {
         "LF_HETNET_DISEASES": LF_HETNET_DISEASES,
         "LF_HETNET_DOAF": LF_HETNET_DOAF,
         "LF_HETNET_DisGeNET": LF_HETNET_DisGeNET,
         "LF_HETNET_GWAS": LF_HETNET_GWAS,
-        "LF_HETNET_DG_ABSENT":LF_HETNET_DG_ABSENT,
+        "LF_HETNET_DaG_ABSENT":LF_HETNET_DaG_ABSENT,
         "LF_DG_CHECK_GENE_TAG": LF_DG_CHECK_GENE_TAG, 
-        "LF_DG_CHECK_DISEASE_TAG": LF_DG_CHECK_DISEASE_TAG
-    },
-    
-    "DaG_TEXT":
-    {
+        "LF_DG_CHECK_DISEASE_TAG": LF_DG_CHECK_DISEASE_TAG,
         "LF_DG_IS_BIOMARKER": LF_DG_IS_BIOMARKER,
         "LF_DG_ASSOCIATION": LF_DG_ASSOCIATION,
         "LF_DG_WEAK_ASSOCIATION": LF_DG_WEAK_ASSOCIATION,
         "LF_DG_NO_ASSOCIATION": LF_DG_NO_ASSOCIATION,
         "LF_DG_METHOD_DESC": LF_DG_METHOD_DESC,
         "LF_DG_TITLE": LF_DG_TITLE,
-        "LF_DG_POSITIVE_DIRECTION": LF_DG_POSITIVE_DIRECTION,
-        "LF_DG_NEGATIVE_DIRECTION": LF_DG_NEGATIVE_DIRECTION,
         "LF_DG_DIAGNOSIS": LF_DG_DIAGNOSIS,
         "LF_DG_RISK": LF_DG_RISK,
         "LF_DG_PATIENT_WITH":LF_DG_PATIENT_WITH,
         "LF_DG_PURPOSE":LF_DG_PURPOSE,
         "LF_DG_CONCLUSION_TITLE":LF_DG_CONCLUSION_TITLE,
-        "LF_DG_NO_CONCLUSION": LF_DG_NO_CONCLUSION,
-        "LF_DG_CONCLUSION": LF_DG_CONCLUSION,
+        "LF_DaG_NO_CONCLUSION": LF_DaG_NO_CONCLUSION,
+        "LF_DaG_CONCLUSION": LF_DaG_CONCLUSION,
         "LF_DG_DISTANCE_SHORT": LF_DG_DISTANCE_SHORT,
         "LF_DG_DISTANCE_LONG": LF_DG_DISTANCE_LONG,
         "LF_DG_ALLOWED_DISTANCE": LF_DG_ALLOWED_DISTANCE,
-        "LF_DG_NO_VERB": LF_DG_NO_VERB
-    },
-    
-    "DG_BICLUSTER":
-    {
+        "LF_DG_NO_VERB": LF_DG_NO_VERB,
         "LF_DG_BICLUSTER_CASUAL_MUTATIONS":LF_DG_BICLUSTER_CASUAL_MUTATIONS,
         "LF_DG_BICLUSTER_MUTATIONS": LF_DG_BICLUSTER_MUTATIONS,
         "LF_DG_BICLUSTER_DRUG_TARGETS": LF_DG_BICLUSTER_DRUG_TARGETS,
@@ -662,5 +751,61 @@ DG_LFS = {
         "LF_DG_BICLUSTER_BIOMARKERS": LF_DG_BICLUSTER_BIOMARKERS,
         "LF_DG_BICLUSTER_OVEREXPRESSION": LF_DG_BICLUSTER_OVEREXPRESSION,
         "LF_DG_BICLUSTER_REGULATION": LF_DG_BICLUSTER_REGULATION
-    }     
+    },
+    "DuG":
+    {
+        "LF_HETNET_STARGEO_UP":LF_HETNET_STARGEO_UP,
+        "LF_HETNET_DuG_ABSENT":LF_HETNET_DuG_ABSENT,
+        "LF_DG_CHECK_GENE_TAG": LF_DG_CHECK_GENE_TAG, 
+        "LF_DG_CHECK_DISEASE_TAG": LF_DG_CHECK_DISEASE_TAG,
+        "LF_DG_METHOD_DESC": LF_DG_METHOD_DESC,
+        "LF_DG_TITLE": LF_DG_TITLE,
+        "LF_DG_POSITIVE_DIRECTION": LF_DG_POSITIVE_DIRECTION,
+        "LF_DG_RISK": LF_DG_RISK,
+        "LF_DG_PATIENT_WITH":LF_DG_PATIENT_WITH,
+        "LF_DG_PURPOSE":LF_DG_PURPOSE,
+        "LF_DG_CONCLUSION_TITLE":LF_DG_CONCLUSION_TITLE,
+        "LF_DuG_NO_CONCLUSION": LF_DuG_NO_CONCLUSION,
+        "LF_DuG_CONCLUSION": LF_DuG_CONCLUSION,
+        "LF_DG_DISTANCE_SHORT": LF_DG_DISTANCE_SHORT,
+        "LF_DG_DISTANCE_LONG": LF_DG_DISTANCE_LONG,
+        "LF_DG_ALLOWED_DISTANCE": LF_DG_ALLOWED_DISTANCE,
+        "LF_DG_NO_VERB": LF_DG_NO_VERB,
+        "LF_DG_BICLUSTER_MUTATIONS": LF_DG_BICLUSTER_MUTATIONS,
+        "LF_DG_BICLUSTER_DRUG_TARGETS": LF_DG_BICLUSTER_DRUG_TARGETS,
+        "LF_DG_BICLUSTER_PATHOGENESIS": LF_DG_BICLUSTER_PATHOGENESIS,
+        "LF_DG_BICLUSTER_THERAPEUTIC": LF_DG_BICLUSTER_THERAPEUTIC,
+        "LF_DG_BICLUSTER_PROGRESSION": LF_DG_BICLUSTER_PROGRESSION,
+        "LF_DG_BICLUSTER_BIOMARKERS": LF_DG_BICLUSTER_BIOMARKERS,
+        "LF_DG_BICLUSTER_OVEREXPRESSION": LF_DG_BICLUSTER_OVEREXPRESSION,
+        "LF_DG_BICLUSTER_REGULATION": LF_DG_BICLUSTER_REGULATION
+    },
+    "DdG":
+    {
+        "LF_HETNET_STARGEO_DOWN":LF_HETNET_STARGEO_DOWN,
+        "LF_HETNET_DuG_ABSENT":LF_HETNET_DdG_ABSENT,
+        "LF_DG_CHECK_GENE_TAG": LF_DG_CHECK_GENE_TAG, 
+        "LF_DG_CHECK_DISEASE_TAG": LF_DG_CHECK_DISEASE_TAG,
+        "LF_DG_METHOD_DESC": LF_DG_METHOD_DESC,
+        "LF_DG_TITLE": LF_DG_TITLE,
+        "LF_DG_NEGATIVE_DIRECTION": LF_DG_NEGATIVE_DIRECTION,
+        "LF_DG_RISK": LF_DG_RISK,
+        "LF_DG_PATIENT_WITH":LF_DG_PATIENT_WITH,
+        "LF_DG_PURPOSE":LF_DG_PURPOSE,
+        "LF_DG_CONCLUSION_TITLE":LF_DG_CONCLUSION_TITLE,
+        "LF_DdG_NO_CONCLUSION": LF_DdG_NO_CONCLUSION,
+        "LF_DdG_CONCLUSION": LF_DdG_CONCLUSION,
+        "LF_DG_DISTANCE_SHORT": LF_DG_DISTANCE_SHORT,
+        "LF_DG_DISTANCE_LONG": LF_DG_DISTANCE_LONG,
+        "LF_DG_ALLOWED_DISTANCE": LF_DG_ALLOWED_DISTANCE,
+        "LF_DG_NO_VERB": LF_DG_NO_VERB,
+        "LF_DG_BICLUSTER_MUTATIONS": LF_DG_BICLUSTER_MUTATIONS,
+        "LF_DG_BICLUSTER_DRUG_TARGETS": LF_DG_BICLUSTER_DRUG_TARGETS,
+        "LF_DG_BICLUSTER_PATHOGENESIS": LF_DG_BICLUSTER_PATHOGENESIS,
+        "LF_DG_BICLUSTER_THERAPEUTIC": LF_DG_BICLUSTER_THERAPEUTIC,
+        "LF_DG_BICLUSTER_POLYMORPHISMS": LF_DG_BICLUSTER_POLYMORPHISMS,
+        "LF_DG_BICLUSTER_PROGRESSION": LF_DG_BICLUSTER_PROGRESSION,
+        "LF_DG_BICLUSTER_BIOMARKERS": LF_DG_BICLUSTER_BIOMARKERS,
+        "LF_DG_BICLUSTER_REGULATION": LF_DG_BICLUSTER_REGULATION
+    }
 }
