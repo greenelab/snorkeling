@@ -22,7 +22,7 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 
 random.seed(100)
-
+stop_word_list = stopwords.words('english')
 """
 Debugging to understand how LFs work
 """
@@ -165,7 +165,7 @@ def LF_DG_CHECK_DISEASE_TAG(c):
     sen = c[0].get_parent()
     disease_name = re.sub("\) ?", "", c[0].get_span())
     disease_name = re.sub(r"(\w)-(\w)", r"\g<1> \g<2>", disease_name)
-    disease_name = " ".join([word for word in word_tokenize(disease_name) if word not in set(stopwords.words('english'))])
+    disease_name = " ".join([word for word in word_tokenize(disease_name) if word not in set(stop_word_list)])
 
     # If abbreviation skip since no means of easy resolution
     if len(disease_name) <=5 and disease_name.isupper():
