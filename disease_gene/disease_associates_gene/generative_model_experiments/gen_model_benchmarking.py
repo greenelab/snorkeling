@@ -206,8 +206,18 @@ L = convert_labels(label_matricies['train'].toarray(), 'plusminus', 'categorical
 L_dev = convert_labels(label_matricies['dev'].toarray(), 'plusminus', 'categorical')
 L_test = convert_labels(label_matricies['test'].toarray(), 'plusminus', 'categorical')
 
-validation_data = list(zip([L[:,:7], L[:, :24], L], [L_dev[:,:7], L_dev[:, :24], L_dev]))
-test_data = list(zip([L[:,:7], L[:, :24], L], [L_test[:,:7], L_test[:, :24], L_test]))
+validation_data = list(
+    zip(
+        [L[:,:7], L[:, :24], L],
+        [L_dev[:,:7], L_dev[:, :24], L_dev]
+    )
+)
+test_data = list(
+    zip(
+        [L[:,:7], L[:, :24], L],
+        [L_test[:,:7], L_test[:, :24], L_test]
+    )
+)
 model_labels = ["Knowledge Bases (KB)", "KB+Text Patterns", "All"]
 
 
@@ -255,7 +265,8 @@ for model in model_grid_aucs:
 
 
 dev_model_df = pd.DataFrame()
-for best_model, model_data, model_label in zip([1.083, 2.067, 1.575], validation_data, model_labels):
+best_hyper_parameters = [1.083, 2.067, 1.575]
+for best_model, model_data, model_label in zip(best_hyper_parameters, validation_data, model_labels):
     label_model = LabelModel(k=2, seed=100)
     label_model.train_model(model_data[0] , n_epochs=1000, verbose=False, lr=0.01, l2=best_model)
     dev_model_df[model_label] = label_model.predict_proba(model_data[1])[:,0]
@@ -331,5 +342,6 @@ plot_label_matrix_heatmap(convert_labels(label_matricies['dev'].toarray(), 'cate
 # In[27]:
 
 
-pickle.dump(label_model.predict_proba(L[:, :24]), open("data/train_marginals.pkl", "wb"))
+output_file = "data/train_marginals.pkl"
+pickle.dump(label_model.predict_proba(L[:, :24]), open(output_file, "wb"))
 

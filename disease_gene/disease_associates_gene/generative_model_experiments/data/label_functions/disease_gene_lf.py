@@ -238,6 +238,8 @@ def LF_DG_CHECK_DISEASE_TAG(c):
 
 """
 SENTENCE PATTERN MATCHING
+
+Keywords and phrases were obtained from manual curation of abstract sentences.
 """
 
 biomarker_indicators = {
@@ -329,7 +331,7 @@ title_indication = {
     "Mutational analysis of"
 }
 
-def LF_DG_IS_BIOMARKER(c):
+def LF_DG_BIOMARKER(c):
     """
     This label function examines a sentences to determine of a sentence
     is talking about a biomarker. (A biomarker leads towards D-G assocation
@@ -490,7 +492,7 @@ def LF_DaG_NO_CONCLUSION(c):
     mention a possible disease gene association.
     """
     positive_num = np.sum([
-        LF_DaG_ASSOCIATION(c), LF_DG_IS_BIOMARKER(c),
+        LF_DaG_ASSOCIATION(c), LF_DG_BIOMARKER(c),
         LF_DaG_NO_ASSOCIATION(c),  LF_DG_DIAGNOSIS(c),
         np.abs(LF_DaG_WEAK_ASSOCIATION(c)), np.abs(LF_DaG_NO_ASSOCIATION(c))
     ])
@@ -754,7 +756,7 @@ DG_LFS = {
         "LF_HETNET_DaG_ABSENT":LF_HETNET_DaG_ABSENT,
         "LF_DG_CHECK_GENE_TAG": LF_DG_CHECK_GENE_TAG, 
         "LF_DG_CHECK_DISEASE_TAG": LF_DG_CHECK_DISEASE_TAG,
-        "LF_DG_IS_BIOMARKER": LF_DG_IS_BIOMARKER,
+        "LF_DG_BIOMARKER": LF_DG_BIOMARKER,
         "LF_DaG_ASSOCIATION": LF_DaG_ASSOCIATION,
         "LF_DaG_WEAK_ASSOCIATION": LF_DaG_WEAK_ASSOCIATION,
         "LF_DaG_NO_ASSOCIATION": LF_DaG_NO_ASSOCIATION,
@@ -776,7 +778,7 @@ DG_LFS = {
         "LF_HETNET_DuG_ABSENT":LF_HETNET_DuG_ABSENT,
         "LF_DG_CHECK_GENE_TAG": LF_DG_CHECK_GENE_TAG, 
         "LF_DG_CHECK_DISEASE_TAG": LF_DG_CHECK_DISEASE_TAG,
-        "LF_DG_IS_BIOMARKER": LF_DG_IS_BIOMARKER,
+        "LF_DG_BIOMARKER": LF_DG_BIOMARKER,
         "LF_DG_METHOD_DESC": LF_DG_METHOD_DESC,
         "LF_DG_TITLE": LF_DG_TITLE,
         "LF_DuG_UPREGULATES": LF_DuG_UPREGULATES,
@@ -795,7 +797,7 @@ DG_LFS = {
         "LF_HETNET_DdG_ABSENT":LF_HETNET_DdG_ABSENT,
         "LF_DG_CHECK_GENE_TAG": LF_DG_CHECK_GENE_TAG, 
         "LF_DG_CHECK_DISEASE_TAG": LF_DG_CHECK_DISEASE_TAG,
-        "LF_DG_IS_BIOMARKER": LF_DG_IS_BIOMARKER,
+        "LF_DG_BIOMARKER": LF_DG_BIOMARKER,
         "LF_DG_METHOD_DESC": LF_DG_METHOD_DESC,
         "LF_DG_TITLE": LF_DG_TITLE,
         "LF_DdG_DOWNREGULATES": LF_DdG_DOWNREGULATES,
