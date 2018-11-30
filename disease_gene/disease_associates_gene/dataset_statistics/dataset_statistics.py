@@ -22,6 +22,7 @@ sys.path.append(os.path.abspath('../../../modules'))
 
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib_venn import venn2
 import seaborn as sns
 from tqdm import tqdm_notebook
 
@@ -107,65 +108,10 @@ entity_level_df.head(2)
 # In[6]:
 
 
-print(
-    "Number of sentences in train set with entity pairs in hetionet: {}"
-    .format(
-        entity_level_df.query("split==0&has_sentence==1&hetionet==1").n_sentences.sum()
-    )
-)
-print(
-    "Number of sentences in train set with entity pairs not in hetionet: {}"
-    .format(
-        entity_level_df.query("split==0&has_sentence==1&hetionet==0").n_sentences.sum()
-    )
-)
-
-
-# In[7]:
-
-
-print(
-    "Number of sentences in dev set with entity pairs in hetionet: {}"
-    .format(
-        entity_level_df.query("split==1&has_sentence==1&hetionet==1").n_sentences.sum()
-    )
-)
-print(
-    "Number of sentences in dev set with entity pairs not in hetionet: {}"
-    .format(
-        entity_level_df.query("split==1&has_sentence==1&hetionet==0").n_sentences.sum()
-    )
-)
-
-
-# In[8]:
-
-
-print(
-    "Number of sentences in test set with entity pairs in hetionet: {}"
-    .format(
-        entity_level_df.query("split==2&has_sentence==1&hetionet==1").n_sentences.sum()
-    )
-)
-print(
-    "Number of sentences in test set with entity pairs not in hetionet: {}"
-    .format(
-        entity_level_df.query("split==2&has_sentence==1&hetionet==0").n_sentences.sum()
-    )
-)
-
-
-# # Co-occuring Mentions Sentence Stats
-
-# This next block contains visualizations for the distribution of mentions occuring in a given sentence. These visualizations are heatmaps that represent the counts of sentences that fall into certain mention groups
-
-# In[9]:
-
-
 sentence_stats_df = pd.read_table("data/sentence_stats.tsv.xz")
 
 
-# In[10]:
+# In[7]:
 
 
 sentence_sql = '''
@@ -180,7 +126,7 @@ dev_candidate_df = pd.read_sql(sentence_sql.format(1), database_str)
 test_candidate_df = pd.read_sql(sentence_sql.format(2), database_str)
 
 
-# In[11]:
+# In[8]:
 
 
 clean_up_df = lambda x: (
@@ -194,10 +140,11 @@ clean_up_df = lambda x: (
             "Disease_cid": "doid_id",
             "Gene_cid": "entrez_gene_id"
         })
+        .astype({"entrez_gene_id": int})
     )
 
 
-# In[12]:
+# In[9]:
 
 
 train_candidate_df = clean_up_df(train_candidate_df)
@@ -205,13 +152,127 @@ dev_candidate_df = clean_up_df(dev_candidate_df)
 test_candidate_df = clean_up_df(test_candidate_df)
 
 
-# In[13]:
+# In[10]:
 
 
 train_candidate_df.head(2)
 
 
+# In[12]:
+
+
+training_set_df = (
+    entity_level_df
+    .query("split==0&has_sentence==1")
+    .merge(
+        train_candidate_df, 
+        on=["entrez_gene_id", "doid_id"]
+    )
+)
+
+dev_set_df = (
+    entity_level_df
+    .query("split==1&has_sentence==1")
+    .merge(
+        dev_candidate_df, 
+        on=["entrez_gene_id", "doid_id"]
+    )
+)
+
+test_set_df = (
+    entity_level_df
+    .query("split==2&has_sentence==1")
+    .merge(
+        test_candidate_df, 
+        on=["entrez_gene_id", "doid_id"]
+    )
+)
+
+
+# In[13]:
+
+
+total_candidates_df = (
+    training_set_df
+    .append(dev_set_df)
+    .append(test_set_df)
+)
+
+
 # In[14]:
+
+
+venn2(
+    [
+        set(total_candidates_df.query("hetionet==0").sentence_id),
+        set(total_candidates_df.query("hetionet==1").sentence_id)
+    ], set_labels=["Not In Hetionet", "In Hetionet"])
+plt.title("# of Unique Sentences in Entire Dataset with Co-Mention Pair in/not in hetionet")
+
+
+# In[15]:
+
+
+venn2(
+    [
+        set(training_set_df.query("hetionet==0").sentence_id),
+        set(training_set_df.query("hetionet==1").sentence_id)
+    ], set_labels=["Not in Hetionet", "In Hetionet"])
+plt.title("# of Unique Sentences in Training Set with Co-mentions in/not in Hetionet")
+plt.show()
+
+
+# In[16]:
+
+
+venn2(
+    [
+        set(dev_set_df.query("hetionet==0").sentence_id),
+        set(dev_set_df.query("hetionet==1").sentence_id)
+    ], set_labels=["Not in Hetionet", "In Hetionet"])
+plt.title("# of Unique Sentences in Dev Set with Co-mentions in/not in Hetionet")
+plt.show()
+
+
+# In[17]:
+
+
+venn2(
+    [
+        set(test_set_df.query("hetionet==0").sentence_id),
+        set(test_set_df.query("hetionet==1").sentence_id)
+    ], set_labels=["Not in Hetionet", "In Hetionet"])
+plt.title("# of Unique Sentences in Test Set with Co-mentions in/not in Hetionet")
+plt.show()
+
+
+# # Co-occuring Mentions Sentence Stats
+
+# This next block contains visualizations for the distribution of mentions occuring in a given sentence. These visualizations are heatmaps that represent the counts of sentences that fall into certain mention groups
+
+# In[18]:
+
+
+sns.set(rc={'figure.figsize':(10,6), "font.size":17})
+ax = sns.scatterplot(
+    x="Disease_mention_count", 
+    y="Gene_mention_count", 
+    data=
+    (
+        total_candidates_df
+        .drop_duplicates("sentence_id")
+        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
+        .reset_index()
+        .rename(index=str, columns={0:"size"})
+        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
+    ),
+    hue="natural_log_size",
+    palette='viridis'
+)
+ax.set_title("Sentence Distribution of Entire Dataset")
+
+
+# In[19]:
 
 
 sns.set(rc={'figure.figsize':(10,6)})
@@ -230,12 +291,12 @@ ax = sns.scatterplot(
     hue="natural_log_size",
     palette='viridis'
 )
-ax.set_title("Sentence Distribution of Entire Training Dataset")
+ax.set_title("Sentence Distribution of Training Dataset")
 
 
 # Notice that there are a few outliers, especially one that contains a total of 175 gene mentions in one sentence. Upon closer inspection this sentence is actually a listing of abbreviations that could be removed to filter out a bit of noise.
 
-# In[15]:
+# In[20]:
 
 
 sns.set(rc={'figure.figsize':(10,6)})
@@ -254,10 +315,32 @@ ax = sns.scatterplot(
     hue="natural_log_size",
     palette='viridis'
 )
-ax.set_title("Sentence Distribution of Entire Dev Dataset")
+ax.set_title("Sentence Distribution of Dev Dataset")
 
 
-# In[16]:
+# In[21]:
+
+
+sns.set(rc={'figure.figsize':(10,6)})
+ax = sns.scatterplot(
+    x="Disease_mention_count", 
+    y="Gene_mention_count", 
+    data=
+    (
+        test_candidate_df
+        .drop_duplicates("sentence_id")
+        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
+        .reset_index()
+        .rename(index=str, columns={0:"size"})
+        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
+    ),
+    hue="natural_log_size",
+    palette='viridis'
+)
+ax.set_title("Sentence Distribution of Test Dataset")
+
+
+# In[ ]:
 
 
 candidate_files = zip(
@@ -271,7 +354,7 @@ for dataframe, file in candidate_files:
 
 # # Subsampled Set Distributions
 
-# In[17]:
+# In[22]:
 
 
 train_dataset_df = pd.read_excel("sentence_labels_train.xlsx")
@@ -279,7 +362,7 @@ dev_dataset_df = pd.read_excel("sentence_labels_dev.xlsx").query("curated_dsh.no
 test_dataset_df = pd.read_excel("sentence_labels_test.xlsx").query("curated_dsh.notnull()")
 
 
-# In[18]:
+# In[23]:
 
 
 train_candidates_stats_df = (
@@ -298,7 +381,7 @@ test_candidates_stats_df = (
 )
 
 
-# In[19]:
+# In[24]:
 
 
 sns.set(rc={'figure.figsize':(10,6)})
@@ -320,7 +403,7 @@ ax = sns.scatterplot(
 ax.set_title("Distribution of Sentences in Subsampled Training Set")
 
 
-# In[20]:
+# In[25]:
 
 
 sns.set(rc={'figure.figsize':(10,6), 'font.size':30})
@@ -342,7 +425,7 @@ ax = sns.scatterplot(
 ax.set_title("Sentence Distribution of Hand Labeled Dev Dataset")
 
 
-# In[21]:
+# In[26]:
 
 
 dev_dataset_df.curated_dsh.value_counts()
