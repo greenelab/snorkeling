@@ -26,6 +26,8 @@ from matplotlib_venn import venn2
 import seaborn as sns
 from tqdm import tqdm_notebook
 
+sns.set(rc={'figure.figsize':(12,6), "font.size":17})
+
 
 # In[2]:
 
@@ -64,7 +66,10 @@ from utils.notebook_utils.dataframe_helper import write_candidates_to_excel
 
 
 sql = '''
-select id, text, entity_cids, entity_types 
+select id, text, (
+    char_length(regexp_replace(CAST(words AS TEXT), '[\u0080-\u00ff]', '', 'g')) - 
+    char_length(regexp_replace(regexp_replace(CAST(words AS TEXT), '[\u0080-\u00ff]', '', 'g'), ',', '','g'))
+) as sen_length, entity_cids, entity_types 
 from sentence 
 where entity_types::text like '%%Gene%%' or entity_types::text like '%%Disease%%';
 '''
@@ -75,28 +80,24 @@ sentence_df.head(2)
 # In[ ]:
 
 
-records = []
+entity_counts = Counter()
 for index, row in tqdm_notebook(sentence_df.iterrows()):
-    entity_record = Counter([x for x in row['entity_types'] if x !='O'])
-    entity_record.update({'sentence_id':row['id']})
-    records.append(dict(entity_record))
-sentence_stats_df = pd.DataFrame.from_records(records).fillna(0)
-sentence_stats_df.to_csv("data/sentence_stats.tsv.xz", sep="\t",  index=False)
+    entity_counts.update([x for x in row['entity_cids'] if x!='O'])
+entity_stats_df = pd.DataFrame.from_dict(records).fillna(0)
+entity_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False, compression="xz")
 
 
 # In[ ]:
 
 
-entity_counts = Counter()
-for index, row in tqdm_notebook(sentence_df.iterrows()):
-    entity_counts.update([x for x in row['entity_cids'] if x!='O'])
-sentence_stats_df = pd.DataFrame.from_dict(records).fillna(0)
-sentence_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False)
+sentence_df[["id", "text", "sen_length"]].to_csv("data/sentence_stats.tsv.xz", sep="\t", index=False, compression="xz")
 
 
-# # Stratified Sentence Counts and Statistics
+# # Sentence Counts and Statistics
 
-# Below are the counts of sentences that contain a co-occuring pair in and not in hetionet. Sentences can contain multiple co=ccuring pairs, so these results do have single sentences counted multiple times.
+# Below is the block of code that contains information about the full distribution of sentences tied to each candidate pair. Multiple sentences can contain more than one co-occuring pair, which results in some sentences being counted more than once.
+
+# ## Load and Merge DataFrames
 
 # In[5]:
 
@@ -108,10 +109,18 @@ entity_level_df.head(2)
 # In[6]:
 
 
-sentence_stats_df = pd.read_table("data/sentence_stats.tsv.xz")
+entity_stats_df = pd.read_table("data/entity_stats.tsv.xz")
+entity_stats_df.head(2)
 
 
 # In[7]:
+
+
+sentence_count_df = pd.read_table("data/sentence_stats.tsv.xz").rename(index=str, columns={"id":"sentence_id"})
+sentence_count_df.head(2)
+
+
+# In[8]:
 
 
 sentence_sql = '''
@@ -121,16 +130,28 @@ inner join candidate on disease_gene.id=candidate.id
 where split={}
 ) as candidate_splits inner join span on candidate_splits."Disease_id"=span.id;
 '''
+
+
+# In[9]:
+
+
 train_candidate_df = pd.read_sql(sentence_sql.format(0), database_str)
+train_candidate_df.head(2)
+
+
+# In[10]:
+
+
 dev_candidate_df = pd.read_sql(sentence_sql.format(1), database_str)
 test_candidate_df = pd.read_sql(sentence_sql.format(2), database_str)
 
 
-# In[8]:
+# In[11]:
 
 
 clean_up_df = lambda x: (
-        sentence_stats_df
+        entity_stats_df
+        .merge(sentence_count_df, on="sentence_id")
         .merge(x, on="sentence_id")
         .rename(index=str, columns={
             "Disease":"Disease_mention_count", 
@@ -144,21 +165,21 @@ clean_up_df = lambda x: (
     )
 
 
-# In[9]:
+# In[12]:
 
 
 train_candidate_df = clean_up_df(train_candidate_df)
+train_candidate_df.head(2)
+
+
+# In[13]:
+
+
 dev_candidate_df = clean_up_df(dev_candidate_df)
 test_candidate_df = clean_up_df(test_candidate_df)
 
 
-# In[10]:
-
-
-train_candidate_df.head(2)
-
-
-# In[12]:
+# In[14]:
 
 
 training_set_df = (
@@ -169,6 +190,11 @@ training_set_df = (
         on=["entrez_gene_id", "doid_id"]
     )
 )
+training_set_df.head(2)
+
+
+# In[15]:
+
 
 dev_set_df = (
     entity_level_df
@@ -189,7 +215,7 @@ test_set_df = (
 )
 
 
-# In[13]:
+# In[16]:
 
 
 total_candidates_df = (
@@ -199,135 +225,87 @@ total_candidates_df = (
 )
 
 
-# In[14]:
-
-
-venn2(
-    [
-        set(total_candidates_df.query("hetionet==0").sentence_id),
-        set(total_candidates_df.query("hetionet==1").sentence_id)
-    ], set_labels=["Not In Hetionet", "In Hetionet"])
-plt.title("# of Unique Sentences in Entire Dataset with Co-Mention Pair in/not in hetionet")
-
-
-# In[15]:
-
-
-venn2(
-    [
-        set(training_set_df.query("hetionet==0").sentence_id),
-        set(training_set_df.query("hetionet==1").sentence_id)
-    ], set_labels=["Not in Hetionet", "In Hetionet"])
-plt.title("# of Unique Sentences in Training Set with Co-mentions in/not in Hetionet")
-plt.show()
-
-
-# In[16]:
-
-
-venn2(
-    [
-        set(dev_set_df.query("hetionet==0").sentence_id),
-        set(dev_set_df.query("hetionet==1").sentence_id)
-    ], set_labels=["Not in Hetionet", "In Hetionet"])
-plt.title("# of Unique Sentences in Dev Set with Co-mentions in/not in Hetionet")
-plt.show()
-
+# ## Distribution of Sentence Length
 
 # In[17]:
 
 
-venn2(
-    [
-        set(test_set_df.query("hetionet==0").sentence_id),
-        set(test_set_df.query("hetionet==1").sentence_id)
-    ], set_labels=["Not in Hetionet", "In Hetionet"])
-plt.title("# of Unique Sentences in Test Set with Co-mentions in/not in Hetionet")
-plt.show()
+sns.distplot(total_candidates_df["sen_length"], rug=False)
 
-
-# # Co-occuring Mentions Sentence Stats
-
-# This next block contains visualizations for the distribution of mentions occuring in a given sentence. These visualizations are heatmaps that represent the counts of sentences that fall into certain mention groups
 
 # In[18]:
 
 
-sns.set(rc={'figure.figsize':(10,6), "font.size":17})
-ax = sns.scatterplot(
-    x="Disease_mention_count", 
-    y="Gene_mention_count", 
-    data=
-    (
-        total_candidates_df
-        .drop_duplicates("sentence_id")
-        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
-)
-ax.set_title("Sentence Distribution of Entire Dataset")
+total_candidates_df["sen_length"].describe().astype(int)
 
+
+# Something seems fishy about this distribution. The number of tokens for one given sentence is in the thousands range. Intuitively that doesn't make sense, since an average number of tokens for a given sentence is 37. Possible reason for this abnormality is parsing error. Lets take a look at this 1120 token sentence.
 
 # In[19]:
 
 
-sns.set(rc={'figure.figsize':(10,6)})
-ax = sns.scatterplot(
-    x="Disease_mention_count", 
-    y="Gene_mention_count", 
-    data=
-    (
-        train_candidate_df
-        .drop_duplicates("sentence_id")
-        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
-)
-ax.set_title("Sentence Distribution of Training Dataset")
+total_candidates_df.query("sen_length==1120").iloc[0]["text"]
 
 
-# Notice that there are a few outliers, especially one that contains a total of 175 gene mentions in one sentence. Upon closer inspection this sentence is actually a listing of abbreviations that could be removed to filter out a bit of noise.
+# The above uspicion was correct. This is a parsing error where the list of authors are combined with the title of their work for a winter symposium. The following can be found at this id link: [27090254](https://www.ncbi.nlm.nih.gov/pubmed/27090254). The goal here is to take these parsing errors into account and determine an optimal cutoff point for these sentences. Using common statsitic rules any point that is greater than two standard deviations away from the mean will be removed.
 
 # In[20]:
 
 
-sns.set(rc={'figure.figsize':(10,6)})
-ax = sns.scatterplot(
-    x="Disease_mention_count", 
-    y="Gene_mention_count", 
-    data=
-    (
-        dev_candidate_df
-        .drop_duplicates("sentence_id")
-        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
-)
-ax.set_title("Sentence Distribution of Dev Dataset")
+sns.distplot(total_candidates_df.query("sen_length < 83+1")["sen_length"], rug=False)
 
 
 # In[21]:
 
 
-sns.set(rc={'figure.figsize':(10,6)})
+total_candidates_df.query("sen_length < 83+1")["sen_length"].describe().astype(int)
+
+
+# This distribution looks a bit more reasonable compared to the above distribution. After filtering out the outliers, we still have a pleathora of sentences on the order of 3.6 million. (removed 146841 sentences).
+
+# In[22]:
+
+
+before_filter = set([tuple(line) for line in total_candidates_df[["entrez_gene_id", "doid_id"]].values])
+after_filter = set([tuple(line) for line in total_candidates_df.query("sen_length < 83+1")[["entrez_gene_id", "doid_id"]].values])
+print(
+    "Total number of entity candidates before filter: {}".format(
+        total_candidates_df[["entrez_gene_id", "doid_id"]].drop_duplicates().shape[0]
+    )
+)
+print("Total number of entity candidates being thrown out: {}".format(len(before_filter.difference(after_filter))))
+
+
+# In[23]:
+
+
+filtered_total_candidates_df = total_candidates_df.query("sen_length < 83+1")
+
+
+# In[24]:
+
+
+venn2(
+    [
+        set(filtered_total_candidates_df.query("hetionet==0").sentence_id),
+        set(filtered_total_candidates_df.query("hetionet==1").sentence_id)
+    ], set_labels=["Not In Hetionet", "In Hetionet"])
+plt.title("# of Unique Sentences in Entire Dataset with Co-Mention Pair in/not in hetionet")
+
+
+# # Co-occuring Mentions Sentence Stats
+
+# This next block contains a visualization about the number of mentions a sentence may contain.
+
+# In[25]:
+
+
 ax = sns.scatterplot(
     x="Disease_mention_count", 
     y="Gene_mention_count", 
     data=
     (
-        test_candidate_df
+        filtered_total_candidates_df
         .drop_duplicates("sentence_id")
         .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
         .reset_index()
@@ -337,60 +315,29 @@ ax = sns.scatterplot(
     hue="natural_log_size",
     palette='viridis'
 )
-ax.set_title("Sentence Distribution of Test Dataset")
+ax.set_title("Mention Distribution of Entire Dataset")
 
 
-# In[ ]:
-
-
-candidate_files = zip(
-    [train_candidate_df, dev_candidate_df, test_candidate_df], 
-    ["data/train_sentence_stats.tsv.xz", "data/dev_sentence_stats.tsv.xz", "data/test_sentence_stats.tsv.xz"]
-)
-
-for dataframe, file in candidate_files:
-    dataframe.to_csv(file, sep="\t", index=False, compression='xz')
-
+# In the above graph every point is group of possible mention counts sentences could contain. For example one group has sentences containing one gene mention and one disease mention (indicated in the bottom left in yellow). Overall this graph is acceptable in terms of the spread between mentions; however, when getting ready to train the deep learning models one has to make sure the algorithm can detect which co-mention pair the candidate is referring to.
 
 # # Subsampled Set Distributions
 
-# In[22]:
+# Take a look at the stratification for each train/dev/test set.
+
+# ## Training Set
+
+# Here the training set covers majority of the characterisitics are the entire dataset. This isn't surprising because a stratified sort was used to allocate candidates.
+
+# In[26]:
 
 
-train_dataset_df = pd.read_excel("sentence_labels_train.xlsx")
-dev_dataset_df = pd.read_excel("sentence_labels_dev.xlsx").query("curated_dsh.notnull()")
-test_dataset_df = pd.read_excel("sentence_labels_test.xlsx").query("curated_dsh.notnull()")
-
-
-# In[23]:
-
-
-train_candidates_stats_df = (
-    train_candidate_df
-    .merge(train_dataset_df[["candidate_id"]], on="candidate_id")
-)
-
-dev_candidates_stats_df = (
-    dev_candidate_df
-    .merge(dev_dataset_df[["candidate_id"]], on="candidate_id")
-)
-
-test_candidates_stats_df = (
-    train_candidate_df
-    .merge(test_dataset_df, on="candidate_id")
-)
-
-
-# In[24]:
-
-
-sns.set(rc={'figure.figsize':(10,6)})
 ax = sns.scatterplot(
     x="Disease_mention_count", 
     y="Gene_mention_count", 
     data=
     (
-        train_candidates_stats_df
+        filtered_total_candidates_df
+        .query("split==0")
         .drop_duplicates("sentence_id")
         .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
         .reset_index()
@@ -403,10 +350,52 @@ ax = sns.scatterplot(
 ax.set_title("Distribution of Sentences in Subsampled Training Set")
 
 
-# In[25]:
+# ## Dev Set
+
+# This block contains information on the development set (aka tuning set).
+
+# In[27]:
 
 
-sns.set(rc={'figure.figsize':(10,6), 'font.size':30})
+ax = sns.scatterplot(
+    x="Disease_mention_count", 
+    y="Gene_mention_count", 
+    data=
+    (
+        filtered_total_candidates_df
+        .query("split==1")
+        .drop_duplicates("sentence_id")
+        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
+        .reset_index()
+        .rename(index=str, columns={0:"size"})
+        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
+    ),
+    hue="natural_log_size",
+    palette='viridis'
+)
+ax.set_title("Sentence Distribution of Total Dev Dataset")
+
+
+# In[28]:
+
+
+dev_dataset_df = pd.read_excel("sentence_labels_dev.xlsx").query("curated_dsh.notnull()")
+
+
+# In[29]:
+
+
+dev_candidates_stats_df = (
+    filtered_total_candidates_df
+    .query("split==1")
+    .merge(dev_dataset_df[["candidate_id", "curated_dsh"]], on="candidate_id")
+)
+print("Total number of positives (1) and negatives (0): \n{}".format(dev_candidates_stats_df.curated_dsh.value_counts()))
+
+
+# In[30]:
+
+
 ax = sns.scatterplot(
     x="Disease_mention_count", 
     y="Gene_mention_count", 
@@ -425,8 +414,78 @@ ax = sns.scatterplot(
 ax.set_title("Sentence Distribution of Hand Labeled Dev Dataset")
 
 
-# In[26]:
+# In[31]:
 
 
-dev_dataset_df.curated_dsh.value_counts()
+sns.distplot(dev_candidates_stats_df["sen_length"], rug=False)
 
+
+# ## Test Set
+
+# In[32]:
+
+
+ax = sns.scatterplot(
+    x="Disease_mention_count", 
+    y="Gene_mention_count", 
+    data=
+    (
+        filtered_total_candidates_df
+        .query("split==2")
+        .drop_duplicates("sentence_id")
+        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
+        .reset_index()
+        .rename(index=str, columns={0:"size"})
+        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
+    ),
+    hue="natural_log_size",
+    palette='viridis'
+)
+ax.set_title("Sentence Distribution of Total Test Dataset")
+
+
+# In[33]:
+
+
+test_dataset_df = pd.read_excel("sentence_labels_test.xlsx").query("curated_dsh.notnull()")
+
+
+# In[34]:
+
+
+test_candidates_stats_df = (
+    filtered_total_candidates_df
+    .query("split==2")
+    .merge(test_dataset_df[["candidate_id", "curated_dsh"]], on="candidate_id")
+)
+print("Total number of positives (1) and negatives (0): \n{}".format(test_candidates_stats_df.curated_dsh.value_counts()))
+
+
+# In[35]:
+
+
+ax = sns.scatterplot(
+    x="Disease_mention_count", 
+    y="Gene_mention_count", 
+    data=
+    (
+        test_candidates_stats_df
+        .drop_duplicates("sentence_id")
+        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
+        .reset_index()
+        .rename(index=str, columns={0:"size"})
+        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
+    ),
+    hue="natural_log_size",
+    palette='viridis'
+)
+ax.set_title("Sentence Distribution of Hand Labeled Dev Dataset")
+
+
+# In[36]:
+
+
+sns.distplot(test_candidates_stats_df["sen_length"], rug=False)
+
+
+# In conclusion, it is important to analyze one's dataset before undergoing the journey of training deep learning model.  Sentence length is an important cutoff, when it comes to filtering the dataset; otherwise, a significant amount of problems will arise when it comes to training machine learning algorithms. Optimal cutoff point in this case would be: **84** tokens/words or smaller depending on algorithm performance.
