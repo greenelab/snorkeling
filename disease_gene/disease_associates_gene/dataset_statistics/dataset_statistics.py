@@ -65,7 +65,7 @@ from utils.notebook_utils.dataframe_helper import write_candidates_to_excel
 # In[ ]:
 
 
-sql = '''
+sql= '''
 select id, text, (
     char_length(regexp_replace(CAST(words AS TEXT), '[\u0080-\u00ff]', '', 'g')) - 
     char_length(regexp_replace(regexp_replace(CAST(words AS TEXT), '[\u0080-\u00ff]', '', 'g'), ',', '','g'))
@@ -90,7 +90,8 @@ entity_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False, compr
 # In[ ]:
 
 
-sentence_df[["id", "text", "sen_length"]].to_csv("data/sentence_stats.tsv.xz", sep="\t", index=False, compression="xz")
+header = ["id", "text", "sen_length"]
+sentence_df[header].to_csv("data/sentence_stats.tsv.xz", sep="\t", index=False, compression="xz")
 
 
 # # Sentence Counts and Statistics
@@ -239,7 +240,7 @@ sns.distplot(total_candidates_df["sen_length"], rug=False)
 total_candidates_df["sen_length"].describe().astype(int)
 
 
-# Something seems fishy about this distribution. The number of tokens for one given sentence is in the thousands range. Intuitively that doesn't make sense, since an average number of tokens for a given sentence is 37. Possible reason for this abnormality is parsing error. Lets take a look at this 1120 token sentence.
+# Something seems fishy about this distribution. The number of words (tokens) for a given sentence is in the thousands range. Intuitively, that doesn't make sense, since the average number of words for a given sentence is 37. Possible reason for this abnormality is a parsing error. Lets take a look at this 1120 word sentence.
 
 # In[19]:
 
@@ -247,7 +248,7 @@ total_candidates_df["sen_length"].describe().astype(int)
 total_candidates_df.query("sen_length==1120").iloc[0]["text"]
 
 
-# The above uspicion was correct. This is a parsing error where the list of authors are combined with the title of their work for a winter symposium. The following can be found at this id link: [27090254](https://www.ncbi.nlm.nih.gov/pubmed/27090254). The goal here is to take these parsing errors into account and determine an optimal cutoff point for these sentences. Using common statsitic rules any point that is greater than two standard deviations away from the mean will be removed.
+# The above suspicion was correct. This is a parsing error where the list of authors are combined with the title of their work for a winter symposium. The following can be found at this id link: [27090254](https://www.ncbi.nlm.nih.gov/pubmed/27090254). The goal here is to take these parsing errors into account and determine an optimal cutoff point for these sentences. Using common statsitic rules any point that is greater than two standard deviations away from the mean will be removed.
 
 # In[20]:
 
@@ -488,4 +489,4 @@ ax.set_title("Sentence Distribution of Hand Labeled Dev Dataset")
 sns.distplot(test_candidates_stats_df["sen_length"], rug=False)
 
 
-# In conclusion, it is important to analyze one's dataset before undergoing the journey of training deep learning model.  Sentence length is an important cutoff, when it comes to filtering the dataset; otherwise, a significant amount of problems will arise when it comes to training machine learning algorithms. Optimal cutoff point in this case would be: **84** tokens/words or smaller depending on algorithm performance.
+# In conclusion, the optimal cutoff point in this case would be: **84** tokens/words or smaller depending on algorithm performance. Another important lesson is to analyze one's dataset before undergoing the journey of training a deep learning model. Sentence length is an important factor, when it comes to filtering out the dataset. If ignored, a significant amount of problems will arise. For example, when training a long short term memory network (LSTM), sequence length dictates how many steps the LSTM needs to traverse in order to ultimately calculate the probability of a sentence mentioning a relationship. If the LSTM were to be fed a sentence that contains 1120 words, then the network has 1120 steps to parse through. This takes a significant amount of time (~34 hours+). Plus during backpropogation, the gradient will become very small that the network cannot learn anything useful ([Backpropogation through time](https://en.wikipedia.org/wiki/Backpropagation_through_time)). 
