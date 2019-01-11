@@ -62,14 +62,14 @@ from utils.notebook_utils.dataframe_helper import write_candidates_to_excel
 
 # The cells below will read every sentence that contains a gene and disease entity from the sentence table in our postgres database. For time sake majority of the data has already been processed and save as files mentioned below.
 
-# In[ ]:
+# In[5]:
 
 
 sql= '''
-select id, text, (
+select id as sentence_id, text, (
     char_length(regexp_replace(CAST(words AS TEXT), '[\u0080-\u00ff]', '', 'g')) - 
     char_length(regexp_replace(regexp_replace(CAST(words AS TEXT), '[\u0080-\u00ff]', '', 'g'), ',', '','g'))
-) as sen_length, entity_cids, entity_types 
+) as sen_length, entity_types 
 from sentence 
 where entity_types::text like '%%Gene%%' or entity_types::text like '%%Disease%%';
 '''
@@ -77,21 +77,78 @@ sentence_df = pd.read_sql(sql, database_str)
 sentence_df.head(2)
 
 
-# In[ ]:
+# In[8]:
 
 
-entity_counts = Counter()
+entity_data = []
+tagging_error_ids = set({})
+
+#skip tagging error
+skip_tag_error = False
 for index, row in tqdm_notebook(sentence_df.iterrows()):
-    entity_counts.update([x for x in row['entity_cids'] if x!='O'])
-entity_stats_df = pd.DataFrame.from_dict(records).fillna(0)
-entity_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False, compression="xz")
+    
+    #create dictionay for mapping entity types
+    entity_mapper = {"sentence_id": row['sentence_id']}
+    
+    #Keep track of previous entity
+    previous_entity = 'o'
+    
+    #For all entitys in a given sentence decide what is tagged
+    for entity in row['entity_types']:
+        entity = entity.lower()
+
+        #Non-O tag
+        if entity != 'o' and previous_entity =='o':
+            #If entity not seen before instanciate it
+            if entity not in entity_mapper:
+                entity_mapper[entity] =0
+            entity_mapper[entity] += 1
+
+        # If previous tag was non-O and the current tag does not equal previous
+        # Then tagging error. e.x. Disease, Gene, Disease instead of Disease, O, Disease
+        elif entity != previous_entity and entity != 'o':
+            tagging_error_ids.add(row['sentence_id'])
+            skip_tag_error = True
+            break
+
+        previous_entity = entity
+    
+    # Do not add errors to dataframe
+    # They will be thrown out
+    if not skip_tag_error:
+        entity_data.append(entity_mapper)
+
+    skip_tag_error=False
+    
+entity_stats_df = pd.DataFrame.from_dict(entity_data).fillna(0)
+entity_stats_df.head(2)
 
 
-# In[ ]:
+# In[9]:
 
 
-header = ["id", "text", "sen_length"]
+tagging_error_df = pd.Series(sorted(list(tagging_error_ids)))
+tagging_error_df.to_csv("data/tagging_error_ids.tsv.xz", sep="\t",  index=False, compression="xz")
+tagging_error_df.head(2)
+
+
+# In[14]:
+
+
+print(
+    "Total Number of IOB Tagging Errors: {}. Percentage of sentences affected: {:.2f}".format(
+        tagging_error_df.shape[0],
+        100*tagging_error_df.shape[0]/sentence_df.shape[0]
+    )
+)
+
+
+# In[13]:
+
+
+header = ["sentence_id", "text", "sen_length"]
 sentence_df[header].to_csv("data/sentence_stats.tsv.xz", sep="\t", index=False, compression="xz")
+entity_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False, compression="xz")
 
 
 # # Sentence Counts and Statistics
@@ -100,28 +157,28 @@ sentence_df[header].to_csv("data/sentence_stats.tsv.xz", sep="\t", index=False, 
 
 # ## Load and Merge DataFrames
 
-# In[5]:
+# In[15]:
 
 
 entity_level_df = pd.read_csv("../disease_gene_pairs_association.csv.xz")
 entity_level_df.head(2)
 
 
-# In[6]:
+# In[16]:
 
 
 entity_stats_df = pd.read_table("data/entity_stats.tsv.xz")
 entity_stats_df.head(2)
 
 
-# In[7]:
+# In[17]:
 
 
-sentence_count_df = pd.read_table("data/sentence_stats.tsv.xz").rename(index=str, columns={"id":"sentence_id"})
+sentence_count_df = pd.read_table("data/sentence_stats.tsv.xz")
 sentence_count_df.head(2)
 
 
-# In[8]:
+# In[18]:
 
 
 sentence_sql = '''
@@ -133,21 +190,21 @@ where split={}
 '''
 
 
-# In[9]:
+# In[39]:
 
 
 train_candidate_df = pd.read_sql(sentence_sql.format(0), database_str)
 train_candidate_df.head(2)
 
 
-# In[10]:
+# In[40]:
 
 
 dev_candidate_df = pd.read_sql(sentence_sql.format(1), database_str)
 test_candidate_df = pd.read_sql(sentence_sql.format(2), database_str)
 
 
-# In[11]:
+# In[41]:
 
 
 clean_up_df = lambda x: (
@@ -155,9 +212,9 @@ clean_up_df = lambda x: (
         .merge(sentence_count_df, on="sentence_id")
         .merge(x, on="sentence_id")
         .rename(index=str, columns={
-            "Disease":"Disease_mention_count", 
-            "Gene":"Gene_mention_count", 
-            "Compound":"Compound_mention_count",
+            "disease":"disease_mention_count", 
+            "gene":"gene_mention_count", 
+            "compound":"compound_mention_count",
             "cand_id": "candidate_id",
             "Disease_cid": "doid_id",
             "Gene_cid": "entrez_gene_id"
@@ -166,21 +223,21 @@ clean_up_df = lambda x: (
     )
 
 
-# In[12]:
+# In[42]:
 
 
 train_candidate_df = clean_up_df(train_candidate_df)
 train_candidate_df.head(2)
 
 
-# In[13]:
+# In[43]:
 
 
 dev_candidate_df = clean_up_df(dev_candidate_df)
 test_candidate_df = clean_up_df(test_candidate_df)
 
 
-# In[14]:
+# In[44]:
 
 
 training_set_df = (
@@ -194,7 +251,7 @@ training_set_df = (
 training_set_df.head(2)
 
 
-# In[15]:
+# In[45]:
 
 
 dev_set_df = (
@@ -216,7 +273,7 @@ test_set_df = (
 )
 
 
-# In[16]:
+# In[46]:
 
 
 total_candidates_df = (
@@ -228,13 +285,13 @@ total_candidates_df = (
 
 # ## Distribution of Sentence Length
 
-# In[17]:
+# In[47]:
 
 
 sns.distplot(total_candidates_df["sen_length"], rug=False)
 
 
-# In[18]:
+# In[48]:
 
 
 total_candidates_df["sen_length"].describe().astype(int)
@@ -242,7 +299,7 @@ total_candidates_df["sen_length"].describe().astype(int)
 
 # Something seems fishy about this distribution. The number of words (tokens) for a given sentence is in the thousands range. Intuitively, that doesn't make sense, since the average number of words for a given sentence is 37. Possible reason for this abnormality is a parsing error. Lets take a look at this 1120 word sentence.
 
-# In[19]:
+# In[49]:
 
 
 total_candidates_df.query("sen_length==1120").iloc[0]["text"]
@@ -250,13 +307,13 @@ total_candidates_df.query("sen_length==1120").iloc[0]["text"]
 
 # The above suspicion was correct. This is a parsing error where the list of authors are combined with the title of their work for a winter symposium. The following can be found at this id link: [27090254](https://www.ncbi.nlm.nih.gov/pubmed/27090254). The goal here is to take these parsing errors into account and determine an optimal cutoff point for these sentences. Using common statsitic rules any point that is greater than two standard deviations away from the mean will be removed.
 
-# In[20]:
+# In[50]:
 
 
 sns.distplot(total_candidates_df.query("sen_length < 83+1")["sen_length"], rug=False)
 
 
-# In[21]:
+# In[51]:
 
 
 total_candidates_df.query("sen_length < 83+1")["sen_length"].describe().astype(int)
@@ -264,7 +321,7 @@ total_candidates_df.query("sen_length < 83+1")["sen_length"].describe().astype(i
 
 # This distribution looks a bit more reasonable compared to the above distribution. After filtering out the outliers, we still have a pleathora of sentences on the order of 3.6 million. (removed 146841 sentences).
 
-# In[22]:
+# In[52]:
 
 
 before_filter = set([tuple(line) for line in total_candidates_df[["entrez_gene_id", "doid_id"]].values])
@@ -277,13 +334,13 @@ print(
 print("Total number of entity candidates being thrown out: {}".format(len(before_filter.difference(after_filter))))
 
 
-# In[23]:
+# In[53]:
 
 
 filtered_total_candidates_df = total_candidates_df.query("sen_length < 83+1")
 
 
-# In[24]:
+# In[54]:
 
 
 venn2(
@@ -298,17 +355,17 @@ plt.title("# of Unique Sentences in Entire Dataset with Co-Mention Pair in/not i
 
 # This next block contains a visualization about the number of mentions a sentence may contain.
 
-# In[25]:
+# In[56]:
 
 
 ax = sns.scatterplot(
-    x="Disease_mention_count", 
-    y="Gene_mention_count", 
+    x="disease_mention_count", 
+    y="gene_mention_count", 
     data=
     (
         filtered_total_candidates_df
         .drop_duplicates("sentence_id")
-        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
+        .groupby(["disease_mention_count", "gene_mention_count"]).size()
         .reset_index()
         .rename(index=str, columns={0:"size"})
         .assign(natural_log_size= lambda x: pd.np.log(x['size']))
@@ -329,18 +386,18 @@ ax.set_title("Mention Distribution of Entire Dataset")
 
 # Here the training set covers majority of the characterisitics are the entire dataset. This isn't surprising because a stratified sort was used to allocate candidates.
 
-# In[26]:
+# In[57]:
 
 
 ax = sns.scatterplot(
-    x="Disease_mention_count", 
-    y="Gene_mention_count", 
+    x="disease_mention_count", 
+    y="gene_mention_count", 
     data=
     (
         filtered_total_candidates_df
         .query("split==0")
         .drop_duplicates("sentence_id")
-        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
+        .groupby(["disease_mention_count", "gene_mention_count"]).size()
         .reset_index()
         .rename(index=str, columns={0:"size"})
         .assign(natural_log_size= lambda x: pd.np.log(x['size']))
@@ -355,18 +412,18 @@ ax.set_title("Distribution of Sentences in Subsampled Training Set")
 
 # This block contains information on the development set (aka tuning set).
 
-# In[27]:
+# In[58]:
 
 
 ax = sns.scatterplot(
-    x="Disease_mention_count", 
-    y="Gene_mention_count", 
+    x="disease_mention_count", 
+    y="gene_mention_count", 
     data=
     (
         filtered_total_candidates_df
         .query("split==1")
         .drop_duplicates("sentence_id")
-        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
+        .groupby(["disease_mention_count", "gene_mention_count"]).size()
         .reset_index()
         .rename(index=str, columns={0:"size"})
         .assign(natural_log_size= lambda x: pd.np.log(x['size']))
@@ -377,13 +434,13 @@ ax = sns.scatterplot(
 ax.set_title("Sentence Distribution of Total Dev Dataset")
 
 
-# In[28]:
+# In[59]:
 
 
 dev_dataset_df = pd.read_excel("sentence_labels_dev.xlsx").query("curated_dsh.notnull()")
 
 
-# In[29]:
+# In[60]:
 
 
 dev_candidates_stats_df = (
@@ -394,17 +451,17 @@ dev_candidates_stats_df = (
 print("Total number of positives (1) and negatives (0): \n{}".format(dev_candidates_stats_df.curated_dsh.value_counts()))
 
 
-# In[30]:
+# In[62]:
 
 
 ax = sns.scatterplot(
-    x="Disease_mention_count", 
-    y="Gene_mention_count", 
+    x="disease_mention_count", 
+    y="gene_mention_count", 
     data=
     (
         dev_candidates_stats_df
         .drop_duplicates("sentence_id")
-        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
+        .groupby(["disease_mention_count", "gene_mention_count"]).size()
         .reset_index()
         .rename(index=str, columns={0:"size"})
         .assign(natural_log_size= lambda x: pd.np.log(x['size']))
@@ -415,7 +472,7 @@ ax = sns.scatterplot(
 ax.set_title("Sentence Distribution of Hand Labeled Dev Dataset")
 
 
-# In[31]:
+# In[63]:
 
 
 sns.distplot(dev_candidates_stats_df["sen_length"], rug=False)
@@ -423,18 +480,18 @@ sns.distplot(dev_candidates_stats_df["sen_length"], rug=False)
 
 # ## Test Set
 
-# In[32]:
+# In[64]:
 
 
 ax = sns.scatterplot(
-    x="Disease_mention_count", 
-    y="Gene_mention_count", 
+    x="disease_mention_count", 
+    y="gene_mention_count", 
     data=
     (
         filtered_total_candidates_df
         .query("split==2")
         .drop_duplicates("sentence_id")
-        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
+        .groupby(["disease_mention_count", "gene_mention_count"]).size()
         .reset_index()
         .rename(index=str, columns={0:"size"})
         .assign(natural_log_size= lambda x: pd.np.log(x['size']))
@@ -445,13 +502,13 @@ ax = sns.scatterplot(
 ax.set_title("Sentence Distribution of Total Test Dataset")
 
 
-# In[33]:
+# In[65]:
 
 
 test_dataset_df = pd.read_excel("sentence_labels_test.xlsx").query("curated_dsh.notnull()")
 
 
-# In[34]:
+# In[66]:
 
 
 test_candidates_stats_df = (
@@ -462,17 +519,17 @@ test_candidates_stats_df = (
 print("Total number of positives (1) and negatives (0): \n{}".format(test_candidates_stats_df.curated_dsh.value_counts()))
 
 
-# In[35]:
+# In[67]:
 
 
 ax = sns.scatterplot(
-    x="Disease_mention_count", 
-    y="Gene_mention_count", 
+    x="disease_mention_count", 
+    y="gene_mention_count", 
     data=
     (
         test_candidates_stats_df
         .drop_duplicates("sentence_id")
-        .groupby(["Disease_mention_count", "Gene_mention_count"]).size()
+        .groupby(["disease_mention_count", "gene_mention_count"]).size()
         .reset_index()
         .rename(index=str, columns={0:"size"})
         .assign(natural_log_size= lambda x: pd.np.log(x['size']))
@@ -483,7 +540,7 @@ ax = sns.scatterplot(
 ax.set_title("Sentence Distribution of Hand Labeled Dev Dataset")
 
 
-# In[36]:
+# In[68]:
 
 
 sns.distplot(test_candidates_stats_df["sen_length"], rug=False)
