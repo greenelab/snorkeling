@@ -131,7 +131,7 @@ def label_candidates_db(labeler, cids_query, label_functions, apply_existing=Fal
 
     labeler - the labeler object
     cids_query - the query make for extracting candidate objects
-    label_functions - a list of label functions to generate annotations
+    label_functions - a list of label functions to generate annotationslf_stats
     """
     if apply_existing:
         return labeler.apply_existing(cids_query=cids_query, parllelistm=5, clear=False)
