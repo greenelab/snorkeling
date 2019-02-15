@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from scipy import sparse
-from sklearn.metrics import roc_curve, auc, f1_score, precision_recall_curve
+from sklearn.metrics import roc_curve, auc, f1_score, precision_recall_curve, accuracy_score
 from tqdm import tqdm_notebook
 
 
@@ -80,7 +80,7 @@ DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 # In[5]:
 
 
-quick_load = False
+quick_load = True
 
 
 # ## Load the Data and Label the  Sentences
@@ -98,6 +98,7 @@ total_candidates_df.head(2)
 
 
 spreadsheet_names = {
+    'train': 'data/sentences/sentence_labels_train.xlsx',
     'dev': 'data/sentences/sentence_labels_dev.xlsx',
     'test': 'data/sentences/sentence_labels_test.xlsx'
 }
@@ -226,13 +227,27 @@ else:
 # Important Note Snorkel Metal uses a different coding scheme
 # than the label functions output. (2 for negative instead of -1).
 # This step corrects this problem by converting -1s to 2
+
+train_ids = label_matricies['train'].candidate_id.isin(candidate_dfs['train'].candidate_id)
+
 correct_L = plusminus_to_categorical(
     label_matricies['train']
     .sort_values("candidate_id")
+    [train_ids == False]
     .drop("candidate_id", axis=1)
     .to_coo()
     .toarray()
 )
+
+correct_L_train = plusminus_to_categorical(
+    label_matricies['train']
+    .sort_values("candidate_id")
+    [train_ids]
+    .drop("candidate_id", axis=1)
+    .to_coo()
+    .toarray()
+)
+
 correct_L_dev = plusminus_to_categorical(
     label_matricies['dev']
     .sort_values("candidate_id")
@@ -240,6 +255,7 @@ correct_L_dev = plusminus_to_categorical(
     .to_coo()
     .toarray()
 )
+
 correct_L_test = plusminus_to_categorical(
     label_matricies['test']
     .sort_values("candidate_id")
@@ -296,7 +312,105 @@ lf_summary(
 
 # Here in this section we are using the distant superivion paradigm to label our candidate sentences.
 
+# ## Grid Search
+
 # In[18]:
+
+
+regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=15), 2)
+
+
+# In[19]:
+
+
+grid_results = {}
+label_model = LabelModel(k=2)
+for param in tqdm_notebook(regularization_grid):
+    label_model.train_model(correct_L[:,0:7], n_epochs=1000, print_every=200, seed=100, lr=0.01, l2=param)
+    grid_results[str(param)] = label_model.predict_proba(correct_L_train[:,0:7])
+
+
+# In[20]:
+
+
+acc_results = defaultdict(list)
+
+for key in grid_results:
+    acc_results[key].append(
+        accuracy_score(
+            candidate_dfs['train']['curated_dsh'].fillna(0),
+            list(map(lambda x: 1 if x > 0.5 else 0, grid_results[key][:,0]))
+        )
+    )
+acc_df = pd.DataFrame(acc_results)
+acc_df.head(2)
+
+
+# In[21]:
+
+
+acc_df.transpose().sort_values(0, ascending=False).head(5)
+
+
+# In[22]:
+
+
+plt.figure(figsize=(20,6))
+plt.plot(list(acc_df.transpose().index), acc_df.transpose()[0],"bo-", label="DaG", )
+plt.legend()
+
+
+# In[23]:
+
+
+label_model.train_model(correct_L[:, 0:7], n_epochs=1000, print_every=200, seed=100, lr=0.01, l2=1.08)
+label_model.score(
+    (correct_L_train[:, 0:7], candidate_dfs['train']['curated_dsh'].apply(lambda x: 1 if x > 0 else 2).values)
+)
+
+
+# In[24]:
+
+
+lf_stats = zip(lf_names, range(0,label_model.mu.detach().clone().numpy().shape[0],2))
+estimated_param = pd.np.clip(label_model.mu.detach().clone().numpy(), 0.01, 0.99)
+value_type = ["P(L=1|Y=1)", "P(L=1|Y=2)", "P(L=2|Y=1)", "P(L=2|Y=2)"]
+data = []
+
+for lf_name, lf_index in lf_stats:
+    data+=list(zip([lf_name] * len(value_type), estimated_param[lf_index:lf_index+2, :].flatten(), value_type))
+    
+label_function_weight_df = pd.DataFrame(data, columns=["label_function", "weight", "type"])
+ax=sns.catplot(
+    y="label_function", x="weight", col="type", 
+    data=label_function_weight_df, orient="h", kind="bar",
+    height=8, aspect=0.55
+)
+
+
+# In[25]:
+
+
+dev_pred_ds_grid_df = pd.DataFrame(
+    label_model.predict_proba(correct_L_dev[:, 0:7]),
+    columns=["pos_class_marginal", "neg_class_marginal"]
+).assign(candidate_id=label_matricies['dev'].candidate_id.tolist())
+dev_pred_ds_grid_df.head(2)
+
+
+# In[26]:
+
+
+test_pred_ds_grid_df = pd.DataFrame(
+    label_model.predict_proba(correct_L_test[:,0:7]),
+    columns=["pos_class_marginal", "neg_class_marginal"]
+).assign(candidate_id=label_matricies['test'].candidate_id.tolist())
+test_pred_ds_grid_df.head(2)
+
+
+# ## Bayesian Optimization
+
+# In[27]:
 
 
 def hyperparam_optimize(space, model, X, dev_X, dev_Y,lf_names, iterations=300):
@@ -346,7 +460,7 @@ def hyperparam_optimize(space, model, X, dev_X, dev_Y,lf_names, iterations=300):
     )
 
 
-# In[19]:
+# In[28]:
 
 
 search_space = {
@@ -355,133 +469,17 @@ search_space = {
     }
 distant_supervision_reg_df, ds_trials = hyperparam_optimize(
     search_space, LabelModel(k=2),
-    X=correct_L[:,0:7], dev_X=correct_L_dev[:,0:7],
-    dev_Y=candidate_dfs['dev'].curated_dsh.apply(lambda x: 1 if x > 0 else 2).values,
-    lf_names=lf_names[0:7], iterations=500
+    X=correct_L[:,0:7], dev_X=correct_L_train[:,0:7],
+    dev_Y=candidate_dfs['train'].curated_dsh.apply(lambda x: 1 if x > 0 else 2).values,
+    lf_names=lf_names[0:7], iterations=1000
 )
 distant_supervision_reg_df.head(2)
 
 
-# In[112]:
+# In[29]:
 
 
 ax = sns.barplot(y="label_function", x="regularization", data=distant_supervision_reg_df)
-ax.set_title("L2 Param for Each Label Function")
-
-
-# In[21]:
-
-
-data = []
-sampled_values = []
-for trial in ds_trials.trials:
-    data.append((trial['tid'], -trial['result']['loss']))
-    sampled_values.append(list(map(lambda x: (trial['tid'], int(x[0]), x[1][0]), trial['misc']['vals'].items())))
-
-sampled_values_df = pd.DataFrame(list(chain(*sampled_values)), columns=['iterations', 'param','value'])
-trial_results_df = pd.DataFrame(data, columns=['iterations', 'acc'])
-trial_results_df = (
-    trial_results_df
-    .assign(
-        hue=trial_results_df.acc.apply(lambda x: True if x==trial_results_df.acc.max() else False).values
-    )
-)
-trial_results_df.head(2)
-
-
-# In[22]:
-
-
-ax = sns.scatterplot(x='iterations', y='acc', hue='hue', data=trial_results_df, legend=None)
-ax.set_title("Bayeisan Op Trial Results")
-
-
-# In[23]:
-
-
-g = sns.FacetGrid(sampled_values_df.sort_values("param"), col='param', height=4, aspect=0.9, col_wrap=5)
-g.map(plt.scatter, "iterations", "value").add_legend()
-
-
-# In[24]:
-
-
-# Train best model
-label_model = LabelModel(k=2)
-label_model.train_model(
-        correct_L[:, 0:7], n_epochs=1000, 
-        print_every=200, seed=100, lr=0.01, 
-        l2=distant_supervision_reg_df.regularization.values.astype(pd.np.float32)
-    )
-
-
-# In[25]:
-
-
-lf_stats = zip(lf_names[0:7], range(0,label_model.mu.detach().clone().numpy().shape[0],2))
-estimated_param = pd.np.clip(label_model.mu.detach().clone().numpy(), 0.01, 0.99)
-value_type = ["P(L=1|Y=1)", "P(L=1|Y=2)", "P(L=2|Y=1)", "P(L=2|Y=2)"]
-data = []
-
-for lf_name, lf_index in lf_stats:
-    data+=list(zip([lf_name] * len(value_type), estimated_param[lf_index:lf_index+2, :].flatten(), value_type))
-    
-label_function_weight_df = pd.DataFrame(data, columns=["label_function", "weight", "type"])
-ax=sns.catplot(
-    y="label_function", x="weight", col="type", 
-    data=label_function_weight_df, orient="h", kind="bar",
-    height=4, aspect=0.9
-)
-
-
-# The graph above shows the particular weights each label function has. Based on the polarity of each label function there are four categories: probability of a lf outputing a pos label given the true class is positive $P(L=1 \mid Y=1)$,  probability of a lf outputing a pos label given the true class is negative $P(L=1 \mid Y=2)$, probability of a lf outputing a neg label given the true class is positive $P(L=2 \mid Y=1)$ and probability of a lf outputting a neg label given the true class is negative $P(L=2 \mid Y=2)$. So far the weights look relatively logical; however, some of the positive label functions are providing evidence for the wrong class. This isn't a significant problem since the weights for wrong class are low, but this is a good sanity check in case undesired results arise. 
-
-# In[26]:
-
-
-dev_pred_ds_df = pd.DataFrame(
-    label_model.predict_proba(correct_L_dev[:, 0:7]),
-    columns=["pos_class_marginal", "neg_class_marginal"]
-).assign(candidate_id=label_matricies['dev'].candidate_id.tolist())
-dev_pred_ds_df.head(2)
-
-
-# In[27]:
-
-
-test_pred_ds_df = pd.DataFrame(
-    label_model.predict_proba(correct_L_test[:,0:7]),
-    columns=["pos_class_marginal", "neg_class_marginal"]
-).assign(candidate_id=label_matricies['test'].candidate_id.tolist())
-test_pred_ds_df.head(2)
-
-
-# # Distant Supervision With Text Patterns
-
-# Here in this section we incorporate more information such as text patterns, sentence context and other rules to sift through some of the noise caused by the general distant supervision approach.
-
-# In[28]:
-
-
-search_space = {
-        str(key):hp.uniform(str(key), 0, 10)
-        for key in range(len(lf_names)*2)
-    }
-ds_text_reg_df, ds_text_trials = hyperparam_optimize(
-    search_space, LabelModel(k=2),
-    X=correct_L, dev_X=correct_L_dev,
-    dev_Y=candidate_dfs['dev'].curated_dsh.apply(lambda x: 1 if x > 0 else 2).values,
-    lf_names=lf_names, iterations=500
-)
-ds_text_reg_df.head(2)
-
-
-# In[111]:
-
-
-fig, ax = plt.subplots()
-fig.set_size_inches(19,20)
-sns.barplot(y="label_function", x="regularization", data=ds_text_reg_df, ax=ax)
 ax.set_title("L2 Param for Each Label Function")
 
 
@@ -490,7 +488,7 @@ ax.set_title("L2 Param for Each Label Function")
 
 data = []
 sampled_values = []
-for trial in ds_text_trials.trials:
+for trial in ds_trials.trials:
     data.append((trial['tid'], -trial['result']['loss']))
     sampled_values.append(list(map(lambda x: (trial['tid'], int(x[0]), x[1][0]), trial['misc']['vals'].items())))
 
@@ -525,16 +523,118 @@ g.map(plt.scatter, "iterations", "value").add_legend()
 # Train best model
 label_model = LabelModel(k=2)
 label_model.train_model(
-        correct_L, n_epochs=1000, 
+        correct_L[:, 0:7], n_epochs=1000, 
         print_every=200, seed=100, lr=0.01, 
-        l2=ds_text_reg_df.regularization.values.astype(pd.np.float32)
+        l2=distant_supervision_reg_df.regularization.values.astype(pd.np.float32)
     )
 label_model.score(
-    (correct_L_dev, candidate_dfs['dev'].curated_dsh.apply(lambda x: 1 if x > 0 else 2).values)
+    (correct_L_train[:, 0:7], candidate_dfs['train']['curated_dsh'].apply(lambda x: 1 if x > 0 else 2).values)
 )
 
 
-# In[116]:
+# In[34]:
+
+
+lf_stats = zip(lf_names[0:7], range(0,label_model.mu.detach().clone().numpy().shape[0],2))
+estimated_param = pd.np.clip(label_model.mu.detach().clone().numpy(), 0.01, 0.99)
+value_type = ["P(L=1|Y=1)", "P(L=1|Y=2)", "P(L=2|Y=1)", "P(L=2|Y=2)"]
+data = []
+
+for lf_name, lf_index in lf_stats:
+    data+=list(zip([lf_name] * len(value_type), estimated_param[lf_index:lf_index+2, :].flatten(), value_type))
+    
+label_function_weight_df = pd.DataFrame(data, columns=["label_function", "weight", "type"])
+ax=sns.catplot(
+    y="label_function", x="weight", col="type", 
+    data=label_function_weight_df, orient="h", kind="bar",
+    height=4, aspect=0.9
+)
+
+
+# The graph above shows the particular weights each label function has. Based on the polarity of each label function there are four categories: probability of a lf outputing a pos label given the true class is positive $P(L=1 \mid Y=1)$,  probability of a lf outputing a pos label given the true class is negative $P(L=1 \mid Y=2)$, probability of a lf outputing a neg label given the true class is positive $P(L=2 \mid Y=1)$ and probability of a lf outputting a neg label given the true class is negative $P(L=2 \mid Y=2)$. So far the weights look relatively logical; however, some of the positive label functions are providing evidence for the wrong class. This isn't a significant problem since the weights for wrong class are low, but this is a good sanity check in case undesired results arise. 
+
+# In[35]:
+
+
+dev_pred_ds_df = pd.DataFrame(
+    label_model.predict_proba(correct_L_dev[:, 0:7]),
+    columns=["pos_class_marginal", "neg_class_marginal"]
+).assign(candidate_id=label_matricies['dev'].candidate_id.tolist())
+dev_pred_ds_df.head(2)
+
+
+# In[36]:
+
+
+test_pred_ds_df = pd.DataFrame(
+    label_model.predict_proba(correct_L_test[:,0:7]),
+    columns=["pos_class_marginal", "neg_class_marginal"]
+).assign(candidate_id=label_matricies['test'].candidate_id.tolist())
+test_pred_ds_df.head(2)
+
+
+# # Distant Supervision With Text Patterns
+
+# Here in this section we incorporate more information such as text patterns, sentence context and other rules to sift through some of the noise caused by the general distant supervision approach.
+
+# ## Grid Search
+
+# In[37]:
+
+
+regularization_grid = pd.np.round(pd.np.linspace(0.01, 1, num=15), 2)
+
+
+# In[38]:
+
+
+grid_results = {}
+label_model = LabelModel(k=2)
+for param in tqdm_notebook(regularization_grid):
+    label_model.train_model(correct_L, n_epochs=1000, print_every=200, seed=100, lr=0.01, l2=param)
+    grid_results[str(param)] = label_model.predict_proba(correct_L_train)
+
+
+# In[39]:
+
+
+acc_results = defaultdict(list)
+
+for key in grid_results:
+    acc_results[key].append(
+        accuracy_score(
+            candidate_dfs['train']['curated_dsh'].fillna(0),
+            list(map(lambda x: 1 if x > 0.5 else 0, grid_results[key][:,0]))
+        )
+    )
+acc_df = pd.DataFrame(acc_results)
+acc_df.head(2)
+
+
+# In[40]:
+
+
+acc_df.transpose().sort_values(0, ascending=False).head(5)
+
+
+# In[41]:
+
+
+plt.figure(figsize=(20,6))
+plt.plot(list(acc_df.transpose().index), acc_df.transpose()[0],"bo-", label="DaG", )
+plt.legend()
+
+
+# In[42]:
+
+
+label_model.train_model(correct_L, n_epochs=1000, print_every=200, seed=100, lr=0.01, l2=0.01)
+label_model.score(
+    (correct_L_train, candidate_dfs['train']['curated_dsh'].apply(lambda x: 1 if x > 0 else 2).values)
+)
+
+
+# In[43]:
 
 
 lf_stats = zip(lf_names, range(0,label_model.mu.detach().clone().numpy().shape[0],2))
@@ -553,7 +653,122 @@ ax=sns.catplot(
 )
 
 
-# In[35]:
+# In[44]:
+
+
+dev_pred_ds_txt_grid_df = pd.DataFrame(
+    label_model.predict_proba(correct_L_dev),
+    columns=["pos_class_marginal", "neg_class_marginal"]
+).assign(candidate_id=label_matricies['dev'].candidate_id.tolist())
+dev_pred_ds_txt_grid_df.head(2)
+
+
+# In[45]:
+
+
+test_pred_ds_txt_grid_df = pd.DataFrame(
+    label_model.predict_proba(correct_L_test),
+    columns=["pos_class_marginal", "neg_class_marginal"]
+).assign(candidate_id=label_matricies['test'].candidate_id.tolist())
+test_pred_ds_txt_grid_df.head(2)
+
+
+# ## Bayesian Optimization
+
+# In[46]:
+
+
+search_space = {
+        str(key):hp.uniform(str(key), 0, 10)
+        for key in range(len(lf_names)*2)
+    }
+ds_text_reg_df, ds_text_trials = hyperparam_optimize(
+    search_space, LabelModel(k=2),
+    X=correct_L, dev_X=correct_L_train,
+    dev_Y=candidate_dfs['train'].curated_dsh.apply(lambda x: 1 if x > 0 else 2).values,
+    lf_names=lf_names, iterations=1000
+)
+ds_text_reg_df.head(2)
+
+
+# In[47]:
+
+
+fig, ax = plt.subplots()
+fig.set_size_inches(19,20)
+sns.barplot(y="label_function", x="regularization", data=ds_text_reg_df, ax=ax)
+ax.set_title("L2 Param for Each Label Function")
+
+
+# In[48]:
+
+
+data = []
+sampled_values = []
+for trial in ds_text_trials.trials:
+    data.append((trial['tid'], -trial['result']['loss']))
+    sampled_values.append(list(map(lambda x: (trial['tid'], int(x[0]), x[1][0]), trial['misc']['vals'].items())))
+
+sampled_values_df = pd.DataFrame(list(chain(*sampled_values)), columns=['iterations', 'param','value'])
+trial_results_df = pd.DataFrame(data, columns=['iterations', 'acc'])
+trial_results_df = (
+    trial_results_df
+    .assign(
+        hue=trial_results_df.acc.apply(lambda x: True if x==trial_results_df.acc.max() else False).values
+    )
+)
+trial_results_df.head(2)
+
+
+# In[49]:
+
+
+ax = sns.scatterplot(x='iterations', y='acc', hue='hue', data=trial_results_df, legend=None)
+ax.set_title("Bayeisan Op Trial Results")
+
+
+# In[50]:
+
+
+g = sns.FacetGrid(sampled_values_df.sort_values("param"), col='param', height=4, aspect=0.9, col_wrap=5)
+g.map(plt.scatter, "iterations", "value").add_legend()
+
+
+# In[51]:
+
+
+# Train best model
+label_model = LabelModel(k=2)
+label_model.train_model(
+        correct_L, n_epochs=1000, 
+        print_every=200, seed=100, lr=0.01, 
+        l2=ds_text_reg_df.regularization.values.astype(pd.np.float32)
+    )
+label_model.score(
+    (correct_L_train, candidate_dfs['train'].curated_dsh.apply(lambda x: 1 if x > 0 else 2).values)
+)
+
+
+# In[52]:
+
+
+lf_stats = zip(lf_names, range(0,label_model.mu.detach().clone().numpy().shape[0],2))
+estimated_param = pd.np.clip(label_model.mu.detach().clone().numpy(), 0.01, 0.99)
+value_type = ["P(L=1|Y=1)", "P(L=1|Y=2)", "P(L=2|Y=1)", "P(L=2|Y=2)"]
+data = []
+
+for lf_name, lf_index in lf_stats:
+    data+=list(zip([lf_name] * len(value_type), estimated_param[lf_index:lf_index+2, :].flatten(), value_type))
+    
+label_function_weight_df = pd.DataFrame(data, columns=["label_function", "weight", "type"])
+ax=sns.catplot(
+    y="label_function", x="weight", col="type", 
+    data=label_function_weight_df, orient="h", kind="bar",
+    height=8, aspect=0.55
+)
+
+
+# In[53]:
 
 
 dev_pred_ds_txt_df = pd.DataFrame(
@@ -563,7 +778,7 @@ dev_pred_ds_txt_df = pd.DataFrame(
 dev_pred_ds_txt_df.head(2)
 
 
-# In[36]:
+# In[54]:
 
 
 test_pred_ds_txt_df = pd.DataFrame(
@@ -573,14 +788,18 @@ test_pred_ds_txt_df = pd.DataFrame(
 test_pred_ds_txt_df.head(2)
 
 
-# In[37]:
+# # Model Performance
+
+# In[55]:
 
 
 aucs=plot_curve(
     (
         dev_pred_ds_df[["pos_class_marginal"]]
         .rename(index=str, columns={"pos_class_marginal":"Distant Supervision (DS)"})
-        .assign(**{"DS+Text Patterns":dev_pred_ds_txt_df.pos_class_marginal.values})
+        .assign(**{"DS_text_bayes":dev_pred_ds_txt_df.pos_class_marginal.values,
+                  "DS_grid": dev_pred_ds_grid_df.pos_class_marginal.values,
+                  "DS_text_grid": dev_pred_ds_txt_grid_df.pos_class_marginal.values})
     ),
     candidate_dfs['dev'].curated_dsh, 
     plot_title="Tune Set PRC", 
@@ -588,14 +807,16 @@ aucs=plot_curve(
 )
 
 
-# In[38]:
+# In[56]:
 
 
 aucs=plot_curve(
     (
         dev_pred_ds_df[["pos_class_marginal"]]
-        .rename(index=str, columns={"pos_class_marginal":"Distant Supervision (DS)"})
-        .assign(**{"DS+Text Patterns":dev_pred_ds_txt_df.pos_class_marginal.values})
+        .rename(index=str, columns={"pos_class_marginal":"DS_bayes"})
+        .assign(**{"DS_text_bayes":dev_pred_ds_txt_df.pos_class_marginal.values,
+                  "DS_grid": dev_pred_ds_grid_df.pos_class_marginal.values,
+                  "DS_text_grid": dev_pred_ds_txt_grid_df.pos_class_marginal.values})
     ),
     candidate_dfs['dev'].curated_dsh, 
     plot_title="Tune Set ROC", 
@@ -604,7 +825,7 @@ aucs=plot_curve(
 )
 
 
-# In[39]:
+# In[57]:
 
 
 get_auc_significant_stats(
@@ -613,14 +834,16 @@ get_auc_significant_stats(
 )
 
 
-# In[40]:
+# In[58]:
 
 
 aucs=plot_curve(
     (
         test_pred_ds_df[["pos_class_marginal"]]
-        .rename(index=str, columns={"pos_class_marginal":"Distant Supervision (DS)"})
-        .assign(**{"DS+Text Patterns":test_pred_ds_txt_df.pos_class_marginal.values})
+        .rename(index=str, columns={"pos_class_marginal":"DS_bayes"})
+        .assign(**{"DS_text_bayes":test_pred_ds_txt_df.pos_class_marginal.values,
+                  "DS_grid": test_pred_ds_grid_df.pos_class_marginal.values,
+                  "DS_text_grid": test_pred_ds_txt_grid_df.pos_class_marginal.values})
     ),
     candidate_dfs['test'].curated_dsh, 
     plot_title="Test Set PRC", 
@@ -628,14 +851,16 @@ aucs=plot_curve(
 )
 
 
-# In[41]:
+# In[59]:
 
 
 aucs=plot_curve(
     (
         test_pred_ds_df[["pos_class_marginal"]]
-        .rename(index=str, columns={"pos_class_marginal":"Distant Supervision (DS)"})
-        .assign(**{"DS+Text Patterns":test_pred_ds_txt_df.pos_class_marginal.values})
+        .rename(index=str, columns={"pos_class_marginal":"DS_bayes"})
+        .assign(**{"DS_text_bayes":test_pred_ds_txt_df.pos_class_marginal.values,
+                  "DS_grid": test_pred_ds_grid_df.pos_class_marginal.values,
+                  "DS_text_grid": test_pred_ds_txt_grid_df.pos_class_marginal.values})
     ),
     candidate_dfs['test'].curated_dsh, 
     plot_title="Test Set ROC", 
@@ -644,7 +869,7 @@ aucs=plot_curve(
 )
 
 
-# In[42]:
+# In[60]:
 
 
 get_auc_significant_stats(
@@ -653,19 +878,65 @@ get_auc_significant_stats(
 )
 
 
+# In[61]:
+
+
+grid_dist_df = (
+    candidate_dfs['dev'][["candidate_id", "curated_dsh"]]
+    .merge(dev_pred_ds_txt_grid_df[["candidate_id", "pos_class_marginal"]])
+    .assign(outcome=lambda x: x.curated_dsh==x.pos_class_marginal.apply(lambda x: 1 if x > 0.5 else 0))
+)
+grid_dist_df.head(2)
+
+
+# In[62]:
+
+
+bayes_dist_df = (
+    candidate_dfs['dev'][["candidate_id", "curated_dsh"]]
+    .merge(dev_pred_ds_txt_df[["candidate_id", "pos_class_marginal"]])
+    .assign(outcome=lambda x: x.curated_dsh==x.pos_class_marginal.apply(lambda x: 1 if x > 0.5 else 0))
+)
+bayes_dist_df.head(2)
+
+
+# In[64]:
+
+
+plt.hist(
+    [
+        bayes_dist_df.query("outcome==False").pos_class_marginal.values,
+        grid_dist_df.query("outcome==False").pos_class_marginal.values
+    ], 
+    label=["bayes", "grid"]
+)
+plt.legend()
+plt.xlabel("Likelihood of Positive Class")
+plt.ylabel("Count")
+plt.title("Distribution of False Predictions")
+
+
 # ## Train Best Model and Output Marginals 
 
-# In[43]:
+# In[65]:
 
 
 label_model.train_model(
         correct_L, n_epochs=1000, 
         print_every=200, seed=100, lr=0.01, 
-        l2=ds_text_reg_df.regularization.values.astype(pd.np.float32)
+        l2=0.01
 )
 
 training_marginals_df = pd.DataFrame(
-    label_model.predict_proba(correct_L), 
+    label_model.predict_proba(
+        plusminus_to_categorical(
+            label_matricies['train']
+            .sort_values("candidate_id")
+            .drop("candidate_id", axis=1)
+            .to_coo()
+            .toarray()
+        )
+    ), 
     columns=["pos_class_marginal", "neg_class_marginal"]
 )
 training_marginals_df['candidate_id'] = (
@@ -679,14 +950,14 @@ training_marginals_df.to_csv("data/training_marginals.tsv", sep="\t", index=Fals
 training_marginals_df.head(2)
 
 
-# In[104]:
+# In[66]:
 
 
 ax = sns.distplot(training_marginals_df.pos_class_marginal, bins=10, kde=False, axlabel="Likelihood of Positive Class")
 ax.set_title("Histogram of Predicted Likelihoods")
 
 
-# In[110]:
+# In[67]:
 
 
 spreadsheet_name = "data/sentence_gen_dev_error_analysis.xlsx"
@@ -714,7 +985,7 @@ writer.close()
 
 # This notebook block contains word vectors to be used for the deep learning models. Using facebook's fasttext model, we trained a skipgram model using the sentences in the training set. Each word vector contains 300 dimensions. A validation check for these word embeddings is produced below with the top ten most similar words for diabetes.
 
-# In[45]:
+# In[68]:
 
 
 if os.path.isfile("data/training_word_vectors.bin"):
@@ -733,13 +1004,13 @@ else:
     )
 
 
-# In[46]:
+# In[69]:
 
 
 model.most_similar("diabetes")
 
 
-# In[47]:
+# In[70]:
 
 
 from sklearn.manifold import TSNE
@@ -749,7 +1020,7 @@ tsne = TSNE(n_components=2)
 tsne_df = pd.DataFrame(tsne.fit_transform(X), index=vocab, columns=["comp_1", "comp_2"])
 
 
-# In[97]:
+# In[71]:
 
 
 fig, ax = plt.subplots()
@@ -777,7 +1048,7 @@ for word, pos in tsne_df.loc[sample_words].iterrows():
 ax.set_title("t-SNE Plot of Generated Word Vectors")
 
 
-# In[63]:
+# In[ ]:
 
 
 word_dict_df = pd.DataFrame(
@@ -790,14 +1061,14 @@ word_dict = {word:index for word, index in word_dict_df[["word", "index"]].value
 word_dict_df.head(2)
 
 
-# In[64]:
+# In[ ]:
 
 
 def embed_word_to_index(cand):
     return [word_dict[word] if word in word_dict else 1 for word in cand]
 
 
-# In[65]:
+# In[ ]:
 
 
 def generate_embedded_df(candidates):
@@ -818,7 +1089,7 @@ def generate_embedded_df(candidates):
     return embed_df
 
 
-# In[69]:
+# In[ ]:
 
 
 # Code to validate that the embedded rows align with the candidates
@@ -856,7 +1127,7 @@ for words in correct_embedded_words:
         assert pair[0] == pair[1]
 
 
-# In[70]:
+# In[ ]:
 
 
 training_data_df = generate_embedded_df(
@@ -875,7 +1146,7 @@ training_data_df.to_csv("data/training_dataframe.tsv.xz", sep="\t", compression=
 training_data_df.head(2)
 
 
-# In[71]:
+# In[ ]:
 
 
 dev_data_df = generate_embedded_df(
@@ -892,7 +1163,7 @@ dev_data_df.to_csv("data/dev_dataframe.tsv.xz", sep="\t", compression="xz", inde
 dev_data_df.head(2)
 
 
-# In[72]:
+# In[ ]:
 
 
 test_data_df = generate_embedded_df(
