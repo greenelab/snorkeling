@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import re
+import os
 
 import numpy as np
 import pandas as pd
@@ -89,43 +90,40 @@ def get_network_results(model_paths, end_model, dev_X, test_X):
     loss_fn - the loss function 
     """
     learning_rate = []
-    dev_predictions = []
-    test_predictions = []
     train_loss = []
     val_loss = []
-    f1_score = []
+    acc_score = []
     for model in tqdm_notebook(model_paths):
         params = torch.load(model, map_location="cpu")
         learning_rate.append(params['optimizer']['param_groups'][0]['lr'])
         train_loss.append(params['train_loss'])
         val_loss.append(params['val_loss'])
-        f1_score.append(params['score'])
-        
-        fixed_model = OrderedDict([(re.sub(r'module\.', '', key), data) for key, data in params['model'].items()])
-        end_model.load_state_dict(fixed_model)
-        end_model.eval()
-        
-        dev_predictions.append(end_model.predict_proba(dev_X)[:,0])
-        test_predictions.append(end_model.predict_proba(test_X)[:,0])
+        acc_score.append(params['score'])
+
+    params = torch.load(os.path.dirname(model)+"/best_model.pth", map_location="cpu")
+    fixed_model = OrderedDict([(re.sub(r'module\.', '', key), data) for key, data in params['model'].items()])
+    end_model.load_state_dict(fixed_model)
+    end_model.eval()
 
     loss_df = (
         pd.DataFrame(
             pd.np.stack([
                 list(range(len(train_loss))), train_loss, 
                 val_loss, learning_rate,
-                f1_score
+                acc_score
             ], axis=1), 
-            columns = ["epoch", "train_loss", "val_loss", "lr", "f1"]
+            columns = ["epoch", "train_loss", "val_loss", "lr", "acc"]
         )
     )
+
     dev_predictions_df = (
-        pd.DataFrame(
-            pd.np.stack(dev_predictions, axis=1)
+        pd.Series(
+           end_model.predict_proba(dev_X)[:,0]
         )
     )
     test_predictions_df = (
-        pd.DataFrame(
-            pd.np.stack(test_predictions, axis=1)
+        pd.Series(
+            end_model.predict_proba(test_X)[:,0]
         )
     )
     return loss_df, dev_predictions_df, test_predictions_df, params['best_iteration']

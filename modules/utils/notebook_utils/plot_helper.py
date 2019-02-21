@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib import cm
 import seaborn as sns
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 import scipy.sparse as sparse
@@ -168,7 +169,7 @@ def plot_label_matrix_heatmap(L, plot_title="Label Matrix", figsize=(10,6), colo
 
     plt.figure(figsize=figsize)
     L = L.todense() if sparse.issparse(L) else L
-    plt.imshow(L, aspect="auto")
+    plt.imshow(L, aspect="auto", cmap=cm.viridis)
     plt.title(plot_title)
 
     if "xaxis_tick_labels" in kwargs:

@@ -483,14 +483,21 @@ ax = sns.barplot(y="label_function", x="regularization", data=distant_supervisio
 ax.set_title("L2 Param for Each Label Function")
 
 
-# In[30]:
+# In[106]:
 
 
 data = []
 sampled_values = []
 for trial in ds_trials.trials:
     data.append((trial['tid'], -trial['result']['loss']))
-    sampled_values.append(list(map(lambda x: (trial['tid'], int(x[0]), x[1][0]), trial['misc']['vals'].items())))
+    sampled_values.append(
+        list(
+            map(
+                lambda x: (trial['tid'], distant_supervision_reg_df.label_function.tolist()[int(x[0])], x[1][0]),
+                trial['misc']['vals'].items()
+            )
+        )
+    )
 
 sampled_values_df = pd.DataFrame(list(chain(*sampled_values)), columns=['iterations', 'param','value'])
 trial_results_df = pd.DataFrame(data, columns=['iterations', 'acc'])
@@ -510,11 +517,11 @@ ax = sns.scatterplot(x='iterations', y='acc', hue='hue', data=trial_results_df, 
 ax.set_title("Bayeisan Op Trial Results")
 
 
-# In[32]:
+# In[125]:
 
 
-g = sns.FacetGrid(sampled_values_df.sort_values("param"), col='param', height=4, aspect=0.9, col_wrap=5)
-g.map(plt.scatter, "iterations", "value").add_legend()
+g = sns.FacetGrid(sampled_values_df.sort_values("param"), col='param', height=4, aspect=1.5, col_wrap=3)
+g.map(plt.scatter, "iterations", "value", alpha=0.2).add_legend()
 
 
 # In[33]:
@@ -623,6 +630,8 @@ acc_df.transpose().sort_values(0, ascending=False).head(5)
 plt.figure(figsize=(20,6))
 plt.plot(list(acc_df.transpose().index), acc_df.transpose()[0],"bo-", label="DaG", )
 plt.legend()
+#TODO L2 Norm axis title
+#TODO L2 go lower for regularization
 
 
 # In[42]:
@@ -634,14 +643,14 @@ label_model.score(
 )
 
 
-# In[43]:
+# In[132]:
 
 
 lf_stats = zip(lf_names, range(0,label_model.mu.detach().clone().numpy().shape[0],2))
 estimated_param = pd.np.clip(label_model.mu.detach().clone().numpy(), 0.01, 0.99)
 value_type = ["P(L=1|Y=1)", "P(L=1|Y=2)", "P(L=2|Y=1)", "P(L=2|Y=2)"]
 data = []
-
+sns.set(font_scale=1.3)
 for lf_name, lf_index in lf_stats:
     data+=list(zip([lf_name] * len(value_type), estimated_param[lf_index:lf_index+2, :].flatten(), value_type))
     
@@ -700,14 +709,21 @@ sns.barplot(y="label_function", x="regularization", data=ds_text_reg_df, ax=ax)
 ax.set_title("L2 Param for Each Label Function")
 
 
-# In[48]:
+# In[126]:
 
 
 data = []
 sampled_values = []
 for trial in ds_text_trials.trials:
     data.append((trial['tid'], -trial['result']['loss']))
-    sampled_values.append(list(map(lambda x: (trial['tid'], int(x[0]), x[1][0]), trial['misc']['vals'].items())))
+    sampled_values.append(
+        list(
+            map(
+                lambda x: (trial['tid'], ds_text_reg_df.label_function.tolist()[int(x[0])], x[1][0]),
+                trial['misc']['vals'].items()
+            )
+        )
+    )
 
 sampled_values_df = pd.DataFrame(list(chain(*sampled_values)), columns=['iterations', 'param','value'])
 trial_results_df = pd.DataFrame(data, columns=['iterations', 'acc'])
@@ -727,11 +743,11 @@ ax = sns.scatterplot(x='iterations', y='acc', hue='hue', data=trial_results_df, 
 ax.set_title("Bayeisan Op Trial Results")
 
 
-# In[50]:
+# In[127]:
 
 
-g = sns.FacetGrid(sampled_values_df.sort_values("param"), col='param', height=4, aspect=0.9, col_wrap=5)
-g.map(plt.scatter, "iterations", "value").add_legend()
+g = sns.FacetGrid(sampled_values_df.sort_values("param"), col='param', height=4, aspect=1.5, col_wrap=3)
+g.map(plt.scatter, "iterations", "value", alpha=0.3).add_legend()
 
 
 # In[51]:
@@ -900,7 +916,7 @@ bayes_dist_df = (
 bayes_dist_df.head(2)
 
 
-# In[64]:
+# In[128]:
 
 
 plt.hist(
@@ -960,7 +976,7 @@ ax.set_title("Histogram of Predicted Likelihoods")
 # In[67]:
 
 
-spreadsheet_name = "data/sentence_gen_dev_error_analysis.xlsx"
+spreadsheet_name = "data/sentences/sentence_gen_dev_error_analysis.xlsx"
 writer = pd.ExcelWriter(spreadsheet_name)
 
 (
@@ -971,6 +987,30 @@ writer = pd.ExcelWriter(spreadsheet_name)
         "notes_dsh"
     ]]
     .assign(gen_model=dev_pred_ds_txt_df.pos_class_marginal.values)
+    .to_excel(writer, sheet_name='sentences', index=False)
+)
+
+if writer.engine == 'xlsxwriter':
+    for sheet in writer.sheets.values():
+        sheet.freeze_panes(1, 0)
+
+writer.close()
+
+
+# In[83]:
+
+
+spreadsheet_name = "data/sentences/sentence_gen_test_error_analysis.xlsx"
+writer = pd.ExcelWriter(spreadsheet_name)
+
+(
+    candidate_dfs['test'][[
+        "candidate_id", "disease", 
+        "gene", "doid_id", "entrez_gene_id",
+        "sentence_id", "sentence", "curated_dsh",
+        "notes_dsh"
+    ]]
+    .assign(gen_model=test_pred_ds_txt_df.pos_class_marginal.values)
     .to_excel(writer, sheet_name='sentences', index=False)
 )
 
