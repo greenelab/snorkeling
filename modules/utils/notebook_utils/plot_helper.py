@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib import cm
 import seaborn as sns
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 import scipy.sparse as sparse
@@ -46,7 +47,7 @@ def plot_curve(marginals_df, true_labels, plot_title="ROC", model_type='scatterp
     if metric=="ROC":
         #Get marginals
         model_rates = {
-            model:roc_curve(true_labels, marginals_df[model])
+            model:roc_curve(true_labels, marginals_df[model], pos_label=pos_label)
             for model in marginals_df.columns
         }
     
@@ -57,7 +58,7 @@ def plot_curve(marginals_df, true_labels, plot_title="ROC", model_type='scatterp
     elif metric=="PR":
         #Get marginals
         model_rates = {
-            model:precision_recall_curve(true_labels, marginals_df[model])
+            model:precision_recall_curve(true_labels, marginals_df[model], pos_label=pos_label)
             for model in marginals_df.columns
         }
     
@@ -168,7 +169,7 @@ def plot_label_matrix_heatmap(L, plot_title="Label Matrix", figsize=(10,6), colo
 
     plt.figure(figsize=figsize)
     L = L.todense() if sparse.issparse(L) else L
-    plt.imshow(L, aspect="auto")
+    plt.imshow(L, aspect="auto", cmap=cm.viridis)
     plt.title(plot_title)
 
     if "xaxis_tick_labels" in kwargs:
@@ -202,3 +203,5 @@ def plot_generative_model_weights(gen_model, lf_names, plot_title="Gen Model Wei
     sns.barplot(x="weights", y="label_functions", data=lf_df)
     plt.title(plot_title)
     return
+
+    

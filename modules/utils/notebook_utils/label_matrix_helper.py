@@ -131,7 +131,7 @@ def label_candidates_db(labeler, cids_query, label_functions, apply_existing=Fal
 
     labeler - the labeler object
     cids_query - the query make for extracting candidate objects
-    label_functions - a list of label functions to generate annotations
+    label_functions - a list of label functions to generate annotationslf_stats
     """
     if apply_existing:
         return labeler.apply_existing(cids_query=cids_query, parllelistm=5, clear=False)
@@ -139,7 +139,7 @@ def label_candidates_db(labeler, cids_query, label_functions, apply_existing=Fal
         return labeler.apply(cids_query=cids_query, parallelism=5)
 
 
-def label_candidates(session, candidate_ids, lfs, multitask=False, num_threads=4, batch_size=10):
+def label_candidates(session, candidate_ids, lfs, lf_names, multitask=False, num_threads=4, batch_size=10):
     """
     This function returns a sparse matrix in memory. Helps bypass using a static database to store annotations
     Only catch is that this structure doesn't contain the names of label functions
@@ -151,6 +151,8 @@ def label_candidates(session, candidate_ids, lfs, multitask=False, num_threads=4
     num_threads - the number of threads to execute
     batch_size - the batch size to prevent a memory overload
     """
+    if multitask == True:
+        raise Exception("Must Fix index error for multitask version")
     iteration = 0
     started = False
     
@@ -159,7 +161,8 @@ def label_candidates(session, candidate_ids, lfs, multitask=False, num_threads=4
     threading.Thread(target=_label_candidates_multithread, args=(lfs, multitask))
     for t in range(num_threads) 
     ]
-
+    
+    candidate_map = {}
     with tqdm_notebook(total=len(candidate_ids)) as pbar:
         while iteration < len(candidate_ids):
             candidate_batch = candidate_ids[iteration:iteration + batch_size]
@@ -169,6 +172,7 @@ def label_candidates(session, candidate_ids, lfs, multitask=False, num_threads=4
             candidates = session.query(Candidate).filter(Candidate.id.in_(candidate_batch)).all()
             for row_index, cand_obj in zip(row_indicies, candidates):
                 candidate_queue.put((row_index, cand_obj))
+                candidate_map[row_index] = cand_obj.id
 
             #Only start the threads once
             if not(started):
@@ -189,34 +193,51 @@ def label_candidates(session, candidate_ids, lfs, multitask=False, num_threads=4
         multirow  = [[] for i in lfs]
         multicol = [[] for i in lfs]
         multidata = [[] for i in lfs]
+        candidate_entries = []
 
         while not(data_queue.empty()):
             entry = data_queue.get()
             multirow[entry[0]].append(entry[1])
             multicol[entry[0]].append(entry[2])
             multidata[entry[0]].append(entry[3])
+            if entry[4] not in candidate_entries:
+                candidate_entries.append(entry[4])
 
         L_data = [
+            pd.SparseDataFrame(
         sparse.csr_matrix(
             (
                 multidata[task_index], (multirow[task_index], multicol[task_index])),
                 shape=(len(candidate_ids), max([len(lf) for lf in lfs]))
-            )
+            ))
         for task_index in range(len(lfs))
         ]
+        L_data[0]['candidate_id'] = candidate_entries
+        L_data[1]['candidate_id'] = candidate_entries
+        L_data[2]['candidate_id'] = candidate_entries
         return L_data
     else:
         row = []
         data =[]
         col = []
 
+        candidate_entries = (
+            pd.DataFrame(list(candidate_map.items()), columns=["row_index", "candidate_id"])
+            .sort_values("row_index")
+        )
+
         while not(data_queue.empty()):
             entry = data_queue.get()
+
             row.append(entry[0])
             col.append(entry[1])
             data.append(entry[2])
 
-        return sparse.csr_matrix((data, (row, col)), shape=(len(candidate_ids),len(lfs)))
+        label_matrix = sparse.csr_matrix((data, (row, col)), shape=(len(candidate_ids),len(lfs)))
+        label_matrix_df = pd.SparseDataFrame(label_matrix, columns=lf_names)
+        label_matrix_df['candidate_id'] = candidate_entries['candidate_id'].values.tolist()
+        
+        return label_matrix_df
 
 def _label_candidates_multithread(lfs, multitask):
     """
