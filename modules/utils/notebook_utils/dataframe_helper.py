@@ -43,7 +43,45 @@ def create_disc_marginal_df(models, test_data):
         .rename(index=str, columns=columns)
         )
 
+# Taken from hazyresearch/snorkel repository
+# https://github.com/HazyResearch/snorkel/blob/2866e45f03b363032cd11117f59f99803233c739/snorkel/learning/pytorch/rnn/utils.py
+def scrub(s):
+    return ''.join(c for c in s if ord(c) < 128)
 
+# Taken from hazyresearch/snorkel repository
+# https://github.com/HazyResearch/snorkel/blob/2866e45f03b363032cd11117f59f99803233c739/snorkel/learning/pytorch/rnn/utils.py
+def candidate_to_tokens(candidate, token_type='words'):
+    tokens = candidate.get_parent().__dict__[token_type]
+    return [scrub(w).lower() for w in tokens]
+
+# Taken from hazyresearch/snorkel repository
+# https://github.com/HazyResearch/snorkel/blob/2866e45f03b363032cd11117f59f99803233c739/snorkel/learning/pytorch/rnn/rnn_base.py
+def mark(l, h, idx):
+    """Produce markers based on argument positions
+    
+    :param l: sentence position of first word in argument
+    :param h: sentence position of last word in argument
+    :param idx: argument index (1 or 2)
+    """
+    return [(l, "{}{}".format('~~[[', idx)), (h+1, "{}{}".format(idx, ']]~~'))]
+
+# Taken from hazyresearch/snorkel repository
+# https://github.com/HazyResearch/snorkel/blob/2866e45f03b363032cd11117f59f99803233c739/snorkel/learning/pytorch/rnn/rnn_base.py
+def mark_sentence(s, args):
+    """Insert markers around relation arguments in word sequence
+    
+    :param s: list of tokens in sentence
+    :param args: list of triples (l, h, idx) as per @_mark(...) corresponding
+               to relation arguments
+    
+    Example: Then Barack married Michelle.  
+         ->  Then ~~[[1 Barack 1]]~~ married ~~[[2 Michelle 2]]~~.
+    """
+    marks = sorted([y for m in args for y in mark(*m)], reverse=True)
+    x = list(s)
+    for k, v in marks:
+        x.insert(k, v)
+    return x
 
 def make_sentence_df(candidates):
     """ 
@@ -56,6 +94,11 @@ def make_sentence_df(candidates):
     """
     rows = list()
     for c in tqdm_notebook(candidates):
+        args = [
+                (c[0].get_word_start(), c[0].get_word_end(), 1),
+                (c[1].get_word_start(), c[1].get_word_end(), 2)
+            ]
+        sen = " ".join(mark_sentence(candidate_to_tokens(c), args))
         if hasattr(c, 'Disease_cid') and hasattr(c, 'Gene_cid'):
             row = OrderedDict()
             row['candidate_id'] = c.id
@@ -63,17 +106,15 @@ def make_sentence_df(candidates):
             row['gene'] = c[1].get_span()
             row['doid_id'] = c.Disease_cid
             row['entrez_gene_id'] = c.Gene_cid
-            row['sentence'] = c.get_parent().text
-            rows.append(row)
+            row['sentence'] = sen
         elif hasattr(c, 'Gene1_cid') and hasattr(c, 'Gene2_cid'):
             row = OrderedDict()
             row['candidate_id'] = c.id
             row['gene1'] = c[0].get_span()
             row['gene2'] = c[1].get_span()
-            row['entrez_gene_id'] = c.Gene_cid
-            row['entrez_gene_id'] = c.Gene_cid
-            row['sentence'] = c.get_parent().text
-            rows.append(row)
+            row['gene1_id'] = c.Gene1_cid
+            row['gene2_id'] = c.Gene2_cid
+            row['sentence'] = sen
         elif hasattr(c, 'Compound_cid') and hasattr(c, 'Gene_cid'):
             row = OrderedDict()
             row['candidate_id'] = c.id
@@ -81,8 +122,7 @@ def make_sentence_df(candidates):
             row['gene'] = c[1].get_span()
             row['drugbank_id'] = c.Compound_cid
             row['entrez_gene_id'] = c.Gene_cid
-            row['sentence'] = c.get_parent().text
-            rows.append(row)
+            row['sentence'] = sen
         elif hasattr(c, 'Compound_cid') and hasattr(c, 'Disease_cid'):
             row = OrderedDict()
             row['candidate_id'] = c.id
@@ -90,8 +130,8 @@ def make_sentence_df(candidates):
             row['disease'] = c[1].get_span()
             row['drugbank_id'] = c.Compound_cid
             row['doid_id'] = c.Disease_cid
-            row['sentence'] = c.get_parent().text
-            rows.append(row)
+            row['sentence'] = sen
+        rows.append(row)
     return pd.DataFrame(rows)
         
 
@@ -115,13 +155,12 @@ def write_candidates_to_excel(candidate_df, spreadsheet_name):
     writer.close()
     return
 
-def load_candidate_dataframes(filename):
+def load_candidate_dataframes(filename, curated_field):
     """
     This function reads in the candidates excel files to preform analyses.
 
     dataframe - the path of the dataframe to load
     """
     data_df = pd.read_excel(filename)
-    if "curated_dsh" in data_df.columns:
-        data_df = data_df.query("curated_dsh.notnull()")
+    data_df = data_df.query("{}.notnull()".format(curated_field))
     return data_df.sort_values('candidate_id')
