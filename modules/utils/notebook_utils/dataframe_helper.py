@@ -112,8 +112,8 @@ def make_sentence_df(candidates):
             row['candidate_id'] = c.id
             row['gene1'] = c[0].get_span()
             row['gene2'] = c[1].get_span()
-            row['entrez_gene_id'] = c.Gene_cid
-            row['entrez_gene_id'] = c.Gene_cid
+            row['gene1_id'] = c.Gene1_cid
+            row['gene2_id'] = c.Gene2_cid
             row['sentence'] = sen
         elif hasattr(c, 'Compound_cid') and hasattr(c, 'Gene_cid'):
             row = OrderedDict()
@@ -155,13 +155,12 @@ def write_candidates_to_excel(candidate_df, spreadsheet_name):
     writer.close()
     return
 
-def load_candidate_dataframes(filename):
+def load_candidate_dataframes(filename, curated_field):
     """
     This function reads in the candidates excel files to preform analyses.
 
     dataframe - the path of the dataframe to load
     """
     data_df = pd.read_excel(filename)
-    if "curated_dsh" in data_df.columns:
-        data_df = data_df.query("curated_dsh.notnull()")
+    data_df = data_df.query("{}.notnull()".format(curated_field))
     return data_df.sort_values('candidate_id')
