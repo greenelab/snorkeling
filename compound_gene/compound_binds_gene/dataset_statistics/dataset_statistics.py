@@ -153,7 +153,12 @@ entity_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False, compr
 
 # # Sentence Counts and Statistics
 
-# Below is the block of code that contains information about the full distribution of sentences tied to each candidate pair. Multiple sentences can contain more than one co-occuring pair, which results in some sentences being counted more than once.
+# Below is the block of code that contains information about the full distribution of sentences tied to each candidate pair. Multiple sentences can contain more than one co-occuring pair, which results in some sentences being counted more than once. For example
+# ```
+# To assess the importance of the consensus amino acid sequence in [elf-4a G] for [atp G] binding, we mutated the consensus amino-proximal [glycine C] and [lysine C] to isoleucine and asparagine, respectively.
+# ```
+# 
+# In this sentence there are multiple mentions of genes and compounds, where some compounds are artificial proteins. 
 
 # ## Load and Merge DataFrames
 
@@ -395,9 +400,10 @@ filtered_total_candidates_df = total_candidates_df.query("sen_length < 83+1")
 # In[26]:
 
 
+ids =filtered_total_candidates_df.query("hetionet==1").sentence_id.values
 venn2(
     [
-        set(filtered_total_candidates_df.query("hetionet==0").sentence_id),
+        set(filtered_total_candidates_df.query("hetionet==0&sentence_id not in @ids").sentence_id),
         set(filtered_total_candidates_df.query("hetionet==1").sentence_id)
     ], set_labels=["Not In Hetionet", "In Hetionet"])
 plt.title("# of Unique Sentences in Entire Dataset with Co-Mention Pair in/not in hetionet")

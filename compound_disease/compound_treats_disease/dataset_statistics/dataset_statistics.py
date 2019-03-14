@@ -399,9 +399,10 @@ filtered_total_candidates_df = total_candidates_df.query("sen_length < 83+1")
 # In[26]:
 
 
+ids =filtered_total_candidates_df.query("hetionet==1").sentence_id.values
 venn2(
     [
-        set(filtered_total_candidates_df.query("hetionet==0").sentence_id),
+        set(filtered_total_candidates_df.query("hetionet==0&sentence_id not in @ids").sentence_id),
         set(filtered_total_candidates_df.query("hetionet==1").sentence_id)
     ], set_labels=["Not In Hetionet", "In Hetionet"])
 plt.title("# of Unique Sentences in Entire Dataset with Co-Mention Pair in/not in hetionet")

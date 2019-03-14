@@ -153,7 +153,12 @@ entity_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False, compr
 
 # # Sentence Counts and Statistics
 
-# Below is the block of code that contains information about the full distribution of sentences tied to each candidate pair. Multiple sentences can contain more than one co-occuring pair, which results in some sentences being counted more than once.
+# Below is the block of code that contains information about the full distribution of sentences tied to each candidate pair. Multiple sentences can contain more than one co-occuring pair, which results in some sentences being counted more than once. For example:
+# ```
+# Thus, [insulin] and proinsulin appear to inhibit [insulin] release, but not [insulin] synthesis.
+# ```
+# 
+# This sentence mentions insulin three differnt times and each tagged insulin is considered its own entity.
 
 # ## Load and Merge DataFrames
 
@@ -394,9 +399,10 @@ filtered_total_candidates_df = total_candidates_df.query("sen_length < 83+1")
 # In[24]:
 
 
+ids =filtered_total_candidates_df.query("hetionet==1").sentence_id.values
 venn2(
     [
-        set(filtered_total_candidates_df.query("hetionet==0").sentence_id),
+        set(filtered_total_candidates_df.query("hetionet==0&sentence_id not in @ids").sentence_id),
         set(filtered_total_candidates_df.query("hetionet==1").sentence_id)
     ], set_labels=["Not In Hetionet", "In Hetionet"])
 plt.title("# of Unique Sentences in Entire Dataset with Co-Mention Pair in/not in hetionet")

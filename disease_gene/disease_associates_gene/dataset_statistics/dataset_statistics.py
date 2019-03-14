@@ -157,28 +157,28 @@ entity_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False, compr
 
 # ## Load and Merge DataFrames
 
-# In[15]:
+# In[5]:
 
 
 entity_level_df = pd.read_csv("../disease_gene_pairs_association.csv.xz")
 entity_level_df.head(2)
 
 
-# In[16]:
+# In[6]:
 
 
 entity_stats_df = pd.read_table("data/entity_stats.tsv.xz")
 entity_stats_df.head(2)
 
 
-# In[17]:
+# In[7]:
 
 
 sentence_count_df = pd.read_table("data/sentence_stats.tsv.xz")
 sentence_count_df.head(2)
 
 
-# In[18]:
+# In[8]:
 
 
 sentence_sql = '''
@@ -190,21 +190,21 @@ where split={}
 '''
 
 
-# In[39]:
+# In[9]:
 
 
 train_candidate_df = pd.read_sql(sentence_sql.format(0), database_str)
 train_candidate_df.head(2)
 
 
-# In[40]:
+# In[10]:
 
 
 dev_candidate_df = pd.read_sql(sentence_sql.format(1), database_str)
 test_candidate_df = pd.read_sql(sentence_sql.format(2), database_str)
 
 
-# In[41]:
+# In[11]:
 
 
 clean_up_df = lambda x: (
@@ -223,21 +223,21 @@ clean_up_df = lambda x: (
     )
 
 
-# In[42]:
+# In[12]:
 
 
 train_candidate_df = clean_up_df(train_candidate_df)
 train_candidate_df.head(2)
 
 
-# In[43]:
+# In[13]:
 
 
 dev_candidate_df = clean_up_df(dev_candidate_df)
 test_candidate_df = clean_up_df(test_candidate_df)
 
 
-# In[44]:
+# In[14]:
 
 
 training_set_df = (
@@ -251,7 +251,7 @@ training_set_df = (
 training_set_df.head(2)
 
 
-# In[45]:
+# In[15]:
 
 
 dev_set_df = (
@@ -273,7 +273,7 @@ test_set_df = (
 )
 
 
-# In[46]:
+# In[16]:
 
 
 total_candidates_df = (
@@ -285,13 +285,13 @@ total_candidates_df = (
 
 # ## Distribution of Sentence Length
 
-# In[47]:
+# In[17]:
 
 
 sns.distplot(total_candidates_df["sen_length"], rug=False)
 
 
-# In[48]:
+# In[18]:
 
 
 total_candidates_df["sen_length"].describe().astype(int)
@@ -299,7 +299,7 @@ total_candidates_df["sen_length"].describe().astype(int)
 
 # Something seems fishy about this distribution. The number of words (tokens) for a given sentence is in the thousands range. Intuitively, that doesn't make sense, since the average number of words for a given sentence is 37. Possible reason for this abnormality is a parsing error. Lets take a look at this 1120 word sentence.
 
-# In[49]:
+# In[19]:
 
 
 total_candidates_df.query("sen_length==1120").iloc[0]["text"]
@@ -307,13 +307,13 @@ total_candidates_df.query("sen_length==1120").iloc[0]["text"]
 
 # The above suspicion was correct. This is a parsing error where the list of authors are combined with the title of their work for a winter symposium. The following can be found at this id link: [27090254](https://www.ncbi.nlm.nih.gov/pubmed/27090254). The goal here is to take these parsing errors into account and determine an optimal cutoff point for these sentences. Using common statsitic rules any point that is greater than two standard deviations away from the mean will be removed.
 
-# In[50]:
+# In[20]:
 
 
 sns.distplot(total_candidates_df.query("sen_length < 83+1")["sen_length"], rug=False)
 
 
-# In[51]:
+# In[21]:
 
 
 total_candidates_df.query("sen_length < 83+1")["sen_length"].describe().astype(int)
@@ -321,31 +321,37 @@ total_candidates_df.query("sen_length < 83+1")["sen_length"].describe().astype(i
 
 # This distribution looks a bit more reasonable compared to the above distribution. After filtering out the outliers, we still have a pleathora of sentences on the order of 3.6 million. (removed 146841 sentences).
 
-# In[52]:
+# In[22]:
 
 
 before_filter = set([tuple(line) for line in total_candidates_df[["entrez_gene_id", "doid_id"]].values])
 after_filter = set([tuple(line) for line in total_candidates_df.query("sen_length < 83+1")[["entrez_gene_id", "doid_id"]].values])
 print(
-    "Total number of entity candidates before filter: {}".format(
+    "Total number of unique candidates before filter: {}".format(
         total_candidates_df[["entrez_gene_id", "doid_id"]].drop_duplicates().shape[0]
     )
 )
-print("Total number of entity candidates being thrown out: {}".format(len(before_filter.difference(after_filter))))
+print(
+    "Total number of unique candidates after filter: {}".format(
+        total_candidates_df.query("sen_length < 83+1")[["entrez_gene_id", "doid_id"]].drop_duplicates().shape[0]
+    )
+)
+print("Total number of unique candidates being thrown out: {}".format(len(before_filter.difference(after_filter))))
 
 
-# In[53]:
+# In[23]:
 
 
 filtered_total_candidates_df = total_candidates_df.query("sen_length < 83+1")
 
 
-# In[54]:
+# In[24]:
 
 
+ids =filtered_total_candidates_df.query("hetionet==1").sentence_id.values
 venn2(
     [
-        set(filtered_total_candidates_df.query("hetionet==0").sentence_id),
+        set(filtered_total_candidates_df.query("hetionet==0&sentence_id not in @ids").sentence_id),
         set(filtered_total_candidates_df.query("hetionet==1").sentence_id)
     ], set_labels=["Not In Hetionet", "In Hetionet"])
 plt.title("# of Unique Sentences in Entire Dataset with Co-Mention Pair in/not in hetionet")
@@ -405,7 +411,7 @@ ax = sns.scatterplot(
     hue="natural_log_size",
     palette='viridis'
 )
-ax.set_title("Distribution of Sentences in Subsampled Training Set")
+ax.set_title("Distribution of Sentences in Entire Training Set")
 
 
 # ## Dev Set
@@ -519,7 +525,7 @@ test_candidates_stats_df = (
 print("Total number of positives (1) and negatives (0): \n{}".format(test_candidates_stats_df.curated_dsh.value_counts()))
 
 
-# In[67]:
+# In[118]:
 
 
 ax = sns.scatterplot(
@@ -537,7 +543,7 @@ ax = sns.scatterplot(
     hue="natural_log_size",
     palette='viridis'
 )
-ax.set_title("Sentence Distribution of Hand Labeled Dev Dataset")
+ax.set_title("Sentence Distribution of Hand Labeled Test Dataset")
 
 
 # In[68]:
