@@ -34,7 +34,7 @@ def get_columns(session, L_data, lf_hash, lf_name):
     )
 
 
-def get_auc_significant_stats(data_df, model_aucs):
+def get_auc_significant_stats(data_df, model_aucs, class_df):
     """
     This function is designed test the hypothesis that 
     given aurocs are greater than 0.5 (random)
@@ -49,11 +49,12 @@ def get_auc_significant_stats(data_df, model_aucs):
 
     model_aucs - dictionary that contains the names of models as the key
         and the auroc score as the values.
+        
+    class_df - the number of negatives (1st) and positives (2nd).  (can be tuple or a pandas series)
 
     returns a dataframe with the provided statsitics
     """
 
-    class_df = data_df.curated_dsh.value_counts()
     n1 = class_df[0]
     n2 = class_df[1]
     mu = (n1*n2)/2

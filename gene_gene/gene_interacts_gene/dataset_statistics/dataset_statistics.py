@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# # Dataset Statistics for Disease Gene Sentences
+# # Dataset Statistics for Gene Gene Sentences
 
 # This notebook is designed to show statistics on the data extracted from pubmed. The following cells below here are needed to set up the environment.
 
@@ -49,20 +49,20 @@ session = SnorkelSession()
 
 
 from snorkel.models import candidate_subclass, Candidate
-DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
+GeneGene = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
 
 
 # In[4]:
 
 
-from utils.notebook_utils.dataframe_helper import write_candidates_to_excel
+from utils.notebook_utils.dataframe_helper import write_candidates_to_excel, make_sentence_df
 
 
 # # Read Full Sentence Table
 
 # The cells below will read every sentence that contains a gene and disease entity from the sentence table in our postgres database. For time sake majority of the data has already been processed and save as files mentioned below.
 
-# In[5]:
+# In[ ]:
 
 
 sql= '''
@@ -71,13 +71,13 @@ select id as sentence_id, text, (
     char_length(regexp_replace(regexp_replace(CAST(words AS TEXT), '[\u0080-\u00ff]', '', 'g'), ',', '','g'))
 ) as sen_length, entity_types 
 from sentence 
-where entity_types::text like '%%Gene%%' or entity_types::text like '%%Disease%%';
+where entity_types::text like '%%Gene%%' or entity_types::text like '%%Gene%%';
 '''
 sentence_df = pd.read_sql(sql, database_str)
 sentence_df.head(2)
 
 
-# In[8]:
+# In[ ]:
 
 
 entity_data = []
@@ -124,7 +124,7 @@ entity_stats_df = pd.DataFrame.from_dict(entity_data).fillna(0)
 entity_stats_df.head(2)
 
 
-# In[9]:
+# In[ ]:
 
 
 tagging_error_df = pd.Series(sorted(list(tagging_error_ids)))
@@ -132,7 +132,7 @@ tagging_error_df.to_csv("data/tagging_error_ids.tsv.xz", sep="\t",  index=False,
 tagging_error_df.head(2)
 
 
-# In[14]:
+# In[ ]:
 
 
 print(
@@ -143,7 +143,7 @@ print(
 )
 
 
-# In[13]:
+# In[ ]:
 
 
 header = ["sentence_id", "text", "sen_length"]
@@ -153,14 +153,19 @@ entity_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False, compr
 
 # # Sentence Counts and Statistics
 
-# Below is the block of code that contains information about the full distribution of sentences tied to each candidate pair. Multiple sentences can contain more than one co-occuring pair, which results in some sentences being counted more than once.
+# Below is the block of code that contains information about the full distribution of sentences tied to each candidate pair. Multiple sentences can contain more than one co-occuring pair, which results in some sentences being counted more than once. For example:
+# ```
+# Thus, [insulin] and proinsulin appear to inhibit [insulin] release, but not [insulin] synthesis.
+# ```
+# 
+# This sentence mentions insulin three differnt times and each tagged insulin is considered its own entity.
 
 # ## Load and Merge DataFrames
 
 # In[5]:
 
 
-entity_level_df = pd.read_csv("../disease_gene_pairs_association.csv.xz")
+entity_level_df = pd.read_table("../gene_interacts_gene.tsv.xz")
 entity_level_df.head(2)
 
 
@@ -182,26 +187,27 @@ sentence_count_df.head(2)
 
 
 sentence_sql = '''
-select cand_id, "Disease_cid", "Gene_cid", sentence_id from (
-select disease_gene.id as "cand_id", disease_gene."Disease_id",  disease_gene."Disease_cid", disease_gene."Gene_cid", candidate.split from disease_gene 
-inner join candidate on disease_gene.id=candidate.id 
-where split={}
-) as candidate_splits inner join span on candidate_splits."Disease_id"=span.id;
+select cand_id, "Gene1_cid" as gene1_id, "Gene2_cid" as gene2_id, sentence_id from (
+    select gene_gene.id as "cand_id", gene_gene."Gene1_id",
+    gene_gene."Gene1_cid", gene_gene."Gene2_cid", candidate.split from gene_gene 
+    inner join candidate on gene_gene.id=candidate.id 
+    where split={}
+) as candidate_splits inner join span on candidate_splits."Gene1_id"=span.id;
 '''
 
 
 # In[9]:
 
 
-train_candidate_df = pd.read_sql(sentence_sql.format(0), database_str)
+train_candidate_df = pd.read_sql(sentence_sql.format(3), database_str)
 train_candidate_df.head(2)
 
 
 # In[10]:
 
 
-dev_candidate_df = pd.read_sql(sentence_sql.format(1), database_str)
-test_candidate_df = pd.read_sql(sentence_sql.format(2), database_str)
+dev_candidate_df = pd.read_sql(sentence_sql.format(4), database_str)
+test_candidate_df = pd.read_sql(sentence_sql.format(5), database_str)
 
 
 # In[11]:
@@ -215,11 +221,8 @@ clean_up_df = lambda x: (
             "disease":"disease_mention_count", 
             "gene":"gene_mention_count", 
             "compound":"compound_mention_count",
-            "cand_id": "candidate_id",
-            "Disease_cid": "doid_id",
-            "Gene_cid": "entrez_gene_id"
+            "cand_id": "candidate_id"
         })
-        .astype({"entrez_gene_id": int})
     )
 
 
@@ -242,10 +245,10 @@ test_candidate_df = clean_up_df(test_candidate_df)
 
 training_set_df = (
     entity_level_df
-    .query("split==0&has_sentence==1")
+    .query("split==3&has_sentence==1")
     .merge(
-        train_candidate_df, 
-        on=["entrez_gene_id", "doid_id"]
+        train_candidate_df.astype({"gene1_id":int, "gene2_id":int}), 
+        on=["gene1_id", "gene2_id"]
     )
 )
 training_set_df.head(2)
@@ -256,19 +259,19 @@ training_set_df.head(2)
 
 dev_set_df = (
     entity_level_df
-    .query("split==1&has_sentence==1")
+    .query("split==4&has_sentence==1")
     .merge(
-        dev_candidate_df, 
-        on=["entrez_gene_id", "doid_id"]
+        dev_candidate_df.astype({"gene1_id":int, "gene2_id":int}), 
+        on=["gene1_id", "gene2_id"]
     )
 )
 
 test_set_df = (
     entity_level_df
-    .query("split==2&has_sentence==1")
+    .query("split==5&has_sentence==1")
     .merge(
-        test_candidate_df, 
-        on=["entrez_gene_id", "doid_id"]
+        test_candidate_df.astype({"gene1_id":int, "gene2_id":int}), 
+        on=["gene1_id", "gene2_id"]
     )
 )
 
@@ -280,7 +283,57 @@ total_candidates_df = (
     training_set_df
     .append(dev_set_df)
     .append(test_set_df)
+    .drop_duplicates("candidate_id")
 )
+
+
+# In[ ]:
+
+
+dev_candidates = (
+    session
+    .query(GeneGene)
+    .filter(
+        GeneGene.id.in_(
+            total_candidates_df
+            .query("split==4")
+            .sample(10000, random_state=100)
+            .candidate_id
+            .tolist()
+        )
+    )
+    .all()
+)
+dev_df = make_sentence_df(dev_candidates)
+dev_df.head(2)
+
+
+# In[ ]:
+
+
+test_candidates = (
+    session
+    .query(GeneGene)
+    .filter(
+        GeneGene.id.in_(
+            total_candidates_df
+            .query("split==5")
+            .sample(10000, random_state=120)
+            .candidate_id
+            .tolist()
+        )
+    )
+    .all()
+)
+test_df = make_sentence_df(test_candidates)
+test_df.head(2)
+
+
+# In[ ]:
+
+
+write_candidates_to_excel(dev_df, "data/sentence_labels_dev.xlsx")
+write_candidates_to_excel(test_df, "data/sentence_labels_test.xlsx")
 
 
 # ## Distribution of Sentence Length
@@ -305,8 +358,6 @@ total_candidates_df["sen_length"].describe().astype(int)
 total_candidates_df.query("sen_length==1120").iloc[0]["text"]
 
 
-# The above suspicion was correct. This is a parsing error where the list of authors are combined with the title of their work for a winter symposium. The following can be found at this id link: [27090254](https://www.ncbi.nlm.nih.gov/pubmed/27090254). The goal here is to take these parsing errors into account and determine an optimal cutoff point for these sentences. Using common statsitic rules any point that is greater than two standard deviations away from the mean will be removed.
-
 # In[20]:
 
 
@@ -319,21 +370,21 @@ sns.distplot(total_candidates_df.query("sen_length < 83+1")["sen_length"], rug=F
 total_candidates_df.query("sen_length < 83+1")["sen_length"].describe().astype(int)
 
 
-# This distribution looks a bit more reasonable compared to the above distribution. After filtering out the outliers, we still have a pleathora of sentences on the order of 3.6 million. (removed 146841 sentences).
+# This distribution looks a bit more reasonable compared to the above distribution. After filtering out the outliers, we still have a pleathora of sentences on the order of 12.9 million.
 
 # In[22]:
 
 
-before_filter = set([tuple(line) for line in total_candidates_df[["entrez_gene_id", "doid_id"]].values])
-after_filter = set([tuple(line) for line in total_candidates_df.query("sen_length < 83+1")[["entrez_gene_id", "doid_id"]].values])
+before_filter = set([tuple(line) for line in total_candidates_df[["gene1_id", "gene2_id"]].values])
+after_filter = set([tuple(line) for line in total_candidates_df.query("sen_length < 83+1")[["gene1_id", "gene2_id"]].values])
 print(
     "Total number of unique candidates before filter: {}".format(
-        total_candidates_df[["entrez_gene_id", "doid_id"]].drop_duplicates().shape[0]
+        total_candidates_df[["gene1_id", "gene2_id"]].drop_duplicates().shape[0]
     )
 )
 print(
     "Total number of unique candidates after filter: {}".format(
-        total_candidates_df.query("sen_length < 83+1")[["entrez_gene_id", "doid_id"]].drop_duplicates().shape[0]
+        total_candidates_df.query("sen_length < 83+1")[["gene1_id", "gene2_id"]].drop_duplicates().shape[0]
     )
 )
 print("Total number of unique candidates being thrown out: {}".format(len(before_filter.difference(after_filter))))
@@ -361,28 +412,25 @@ plt.title("# of Unique Sentences in Entire Dataset with Co-Mention Pair in/not i
 
 # This next block contains a visualization about the number of mentions a sentence may contain.
 
-# In[56]:
+# In[25]:
 
 
-ax = sns.scatterplot(
-    x="disease_mention_count", 
-    y="gene_mention_count", 
-    data=
-    (
-        filtered_total_candidates_df
-        .drop_duplicates("sentence_id")
-        .groupby(["disease_mention_count", "gene_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
+sns.distplot(
+    filtered_total_candidates_df
+    .drop_duplicates("sentence_id")["gene_mention_count"], 
+    kde=False, 
+    rug=False,
+    bins=20
 )
-ax.set_title("Mention Distribution of Entire Dataset")
 
 
-# In the above graph every point is group of possible mention counts sentences could contain. For example one group has sentences containing one gene mention and one disease mention (indicated in the bottom left in yellow). Overall this graph is acceptable in terms of the spread between mentions; however, when getting ready to train the deep learning models one has to make sure the algorithm can detect which co-mention pair the candidate is referring to.
+# In[26]:
+
+
+filtered_total_candidates_df.drop_duplicates("sentence_id")["gene_mention_count"].value_counts()
+
+
+# The above graph shows the distribution of gene mentions per sentence. Looking above majority of the sentences contain only two unique gene mentions, while a select number of sentences can contain a total of 25 gene mentions. Overall, this is an acceptable distribution, since majority of sentences will have just two mention pairs.
 
 # # Subsampled Set Distributions
 
@@ -392,164 +440,87 @@ ax.set_title("Mention Distribution of Entire Dataset")
 
 # Here the training set covers majority of the characterisitics are the entire dataset. This isn't surprising because a stratified sort was used to allocate candidates.
 
-# In[57]:
+# In[27]:
 
 
-ax = sns.scatterplot(
-    x="disease_mention_count", 
-    y="gene_mention_count", 
-    data=
-    (
-        filtered_total_candidates_df
-        .query("split==0")
-        .drop_duplicates("sentence_id")
-        .groupby(["disease_mention_count", "gene_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
+sns.distplot(
+    filtered_total_candidates_df
+    .query("split==3")
+    .drop_duplicates("sentence_id")["gene_mention_count"], 
+    kde=False, 
+    rug=False,
+    bins=20
 )
-ax.set_title("Distribution of Sentences in Entire Training Set")
+
+
+# In[28]:
+
+
+filtered_total_candidates_df.query("split==3").drop_duplicates("sentence_id")["gene_mention_count"].value_counts()
+
+
+# In[29]:
+
+
+sns.distplot(filtered_total_candidates_df.query("split==3")["sen_length"], rug=False)
 
 
 # ## Dev Set
 
 # This block contains information on the development set (aka tuning set).
 
-# In[58]:
+# In[30]:
 
 
-ax = sns.scatterplot(
-    x="disease_mention_count", 
-    y="gene_mention_count", 
-    data=
-    (
-        filtered_total_candidates_df
-        .query("split==1")
-        .drop_duplicates("sentence_id")
-        .groupby(["disease_mention_count", "gene_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
-)
-ax.set_title("Sentence Distribution of Total Dev Dataset")
-
-
-# In[59]:
-
-
-dev_dataset_df = pd.read_excel("sentence_labels_dev.xlsx").query("curated_dsh.notnull()")
-
-
-# In[60]:
-
-
-dev_candidates_stats_df = (
+sns.distplot(
     filtered_total_candidates_df
-    .query("split==1")
-    .merge(dev_dataset_df[["candidate_id", "curated_dsh"]], on="candidate_id")
+    .query("split==4")
+    .drop_duplicates("sentence_id")["gene_mention_count"], 
+    kde=False, 
+    rug=False,
+    bins=20
 )
-print("Total number of positives (1) and negatives (0): \n{}".format(dev_candidates_stats_df.curated_dsh.value_counts()))
 
 
-# In[62]:
+# In[31]:
 
 
-ax = sns.scatterplot(
-    x="disease_mention_count", 
-    y="gene_mention_count", 
-    data=
-    (
-        dev_candidates_stats_df
-        .drop_duplicates("sentence_id")
-        .groupby(["disease_mention_count", "gene_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
-)
-ax.set_title("Sentence Distribution of Hand Labeled Dev Dataset")
+filtered_total_candidates_df.query("split==4").drop_duplicates("sentence_id")["gene_mention_count"].value_counts()
 
 
-# In[63]:
+# In[32]:
 
 
-sns.distplot(dev_candidates_stats_df["sen_length"], rug=False)
+sns.distplot(filtered_total_candidates_df.query("split==4")["sen_length"], rug=False)
 
 
 # ## Test Set
 
-# In[64]:
+# This block contains information on the test set.
+
+# In[33]:
 
 
-ax = sns.scatterplot(
-    x="disease_mention_count", 
-    y="gene_mention_count", 
-    data=
-    (
-        filtered_total_candidates_df
-        .query("split==2")
-        .drop_duplicates("sentence_id")
-        .groupby(["disease_mention_count", "gene_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
-)
-ax.set_title("Sentence Distribution of Total Test Dataset")
-
-
-# In[65]:
-
-
-test_dataset_df = pd.read_excel("sentence_labels_test.xlsx").query("curated_dsh.notnull()")
-
-
-# In[66]:
-
-
-test_candidates_stats_df = (
+sns.distplot(
     filtered_total_candidates_df
-    .query("split==2")
-    .merge(test_dataset_df[["candidate_id", "curated_dsh"]], on="candidate_id")
+    .query("split==5")
+    .drop_duplicates("sentence_id")["gene_mention_count"], 
+    kde=False, 
+    rug=False,
+    bins=20
 )
-print("Total number of positives (1) and negatives (0): \n{}".format(test_candidates_stats_df.curated_dsh.value_counts()))
 
 
-# In[118]:
+# In[34]:
 
 
-ax = sns.scatterplot(
-    x="disease_mention_count", 
-    y="gene_mention_count", 
-    data=
-    (
-        test_candidates_stats_df
-        .drop_duplicates("sentence_id")
-        .groupby(["disease_mention_count", "gene_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
-)
-ax.set_title("Sentence Distribution of Hand Labeled Test Dataset")
+filtered_total_candidates_df.query("split==5").drop_duplicates("sentence_id")["gene_mention_count"].value_counts()
 
 
-# In[68]:
+# In[35]:
 
 
-sns.distplot(test_candidates_stats_df["sen_length"], rug=False)
+sns.distplot(filtered_total_candidates_df.query("split==5")["sen_length"], rug=False)
 
 
 # In conclusion, the optimal cutoff point in this case would be: **84** tokens/words or smaller depending on algorithm performance. Another important lesson is to analyze one's dataset before undergoing the journey of training a deep learning model. Sentence length is an important factor, when it comes to filtering out the dataset. If ignored, a significant amount of problems will arise. For example, when training a long short term memory network (LSTM), sequence length dictates how many steps the LSTM needs to traverse in order to ultimately calculate the probability of a sentence mentioning a relationship. If the LSTM were to be fed a sentence that contains 1120 words, then the network has 1120 steps to parse through. This takes a significant amount of time (~34 hours+). Plus during backpropogation, the gradient will become very small that the network cannot learn anything useful ([Backpropogation through time](https://en.wikipedia.org/wiki/Backpropagation_through_time)). 
