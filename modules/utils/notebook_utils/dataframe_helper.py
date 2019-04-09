@@ -1,4 +1,7 @@
 from collections import OrderedDict
+import operator
+
+from sklearn.metrics import roc_curve, auc, f1_score, precision_recall_curve, accuracy_score
 from tqdm import tqdm_notebook
 import pandas as pd
 import numpy as np
@@ -164,3 +167,33 @@ def load_candidate_dataframes(filename, curated_field):
     data_df = pd.read_excel(filename)
     data_df = data_df.query("{}.notnull()".format(curated_field))
     return data_df.sort_values('candidate_id')
+
+def generate_results_df(grid_results, curated_labels):
+    performance_dict = {}
+    for lf_sample in grid_results:
+        model_param_per = {}
+        if isinstance(grid_results[lf_sample], pd.np.ndarray):
+            predict_proba = grid_results[lf_sample][:,0]
+            precision, recall, _ = precision_recall_curve(
+                curated_labels, 
+                predict_proba
+            )
+            fpr, tpr, _ = roc_curve(
+                curated_labels, 
+                predict_proba
+            )
+            model_param_per[lf_sample] = [auc(recall, precision), auc(fpr, tpr)]
+        else:
+            for param, predictions in grid_results[lf_sample].items():
+                predict_proba = predictions[:,0]
+                precision, recall, _ = precision_recall_curve(
+                    curated_labels, 
+                    predict_proba
+                )
+                fpr, tpr, _ = roc_curve(
+                    curated_labels, 
+                    predict_proba
+                )
+            model_param_per[param] = [auc(recall, precision), auc(fpr, tpr)]
+        performance_dict[lf_sample] = max(model_param_per.items(), key=operator.itemgetter(1))[1]
+    return pd.DataFrame.from_dict(performance_dict, orient="index")
