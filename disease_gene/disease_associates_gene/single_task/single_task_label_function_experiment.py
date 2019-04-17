@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# # Transfer Learning to Predict Disease Associates Gene Relations
+# # Using Labels from Different Relation Types to Predict Disease Associates Gene Sentences
 
 # This notebook is designed to predict the disease associates gene (DaG) relation. The first step in this process is to label our train, dev, and test sentences (split = 0,1,2). We will label these sentences using all of our handcrafted label functions. The working hypothesis here is there are shared information between different relations, which in turn should aid in predicting disease associates gene relations. After the labeling process, the next step is to train a generative model that will estimate the likelihood of the positive class ($\hat{Y}$) given our annotated label matrix. **Note**: This process doesn't involve any sentence context, so the only information used here are categorical output.
 
@@ -10,9 +10,9 @@
 # In[1]:
 
 
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().magic(u'load_ext autoreload')
+get_ipython().magic(u'autoreload 2')
+get_ipython().magic(u'matplotlib inline')
 
 from collections import defaultdict
 import os
@@ -346,7 +346,7 @@ test_baseline=test_ds_grid.query("l2_param==@best_param").to_dict('records')
 test_baseline[0].update({"num_lfs": 0})
 
 
-# ## Disease Gene LFS Only
+# # Disease Associates Gene LFS Only
 
 # This block is designed to determine how many label functions are needed to achieve decent results.
 
@@ -392,6 +392,8 @@ dev_dag_df = dev_dag_df.append(dev_results_df, sort=True)
 test_dag_df = test_dag_df.append(test_results_df, sort=True)
 
 
+# ## Dev Set Performance (AUPRC, AUROC)
+
 # In[22]:
 
 
@@ -399,6 +401,8 @@ fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
 sns.pointplot(x="num_lfs", y="AUPRC", data=dev_dag_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_dag_df, ax=axs[1])
 
+
+# ## Test Set Performance (AUPRC, AUROC)
 
 # In[23]:
 
@@ -422,7 +426,7 @@ test_dag_df.to_csv(
 )
 
 
-# # Compound Treats Disease vs Disease Gene DS
+# # Using Compound Treats Disease Label Functions to Predict Disease Associates Gene Relations
 
 # This sections determines how well CtD label functions can predict the Disease Associates Gene Relations.
 
@@ -468,6 +472,8 @@ dev_ctd_df = dev_ctd_df.append(dev_results_df, sort=True)
 test_ctd_df = test_ctd_df.append(test_results_df, sort=True)
 
 
+# ## Dev Set Performance (AUPRC, AUROC)
+
 # In[47]:
 
 
@@ -475,6 +481,8 @@ fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
 sns.pointplot(x="num_lfs", y="AUPRC", data=dev_ctd_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_ctd_df, ax=axs[1])
 
+
+# ## Test Set Performance (AUPRC, AUROC)
 
 # In[48]:
 
@@ -498,7 +506,7 @@ test_ctd_df.to_csv(
 )
 
 
-# # Compound binds Gene vs Disease Gene DS
+# # Using Compound Binds Gene Label Functions to Predict Disease Associates Gene Relations
 
 # This sections determines how well CbG label functions can predict Disease Gene Associations relations.
 
@@ -544,6 +552,8 @@ dev_cbg_df = dev_cbg_df.append(dev_results_df, sort=True)
 test_cbg_df = test_cbg_df.append(test_results_df, sort=True)
 
 
+# ## Dev Set Performance (AUPRC, AUROC)
+
 # In[22]:
 
 
@@ -551,6 +561,8 @@ fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
 sns.pointplot(x="num_lfs", y="AUPRC", data=dev_cbg_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_cbg_df, ax=axs[1])
 
+
+# ## Test Set Performance (AUPRC, AUROC)
 
 # In[23]:
 
@@ -574,7 +586,7 @@ test_cbg_df.to_csv(
 )
 
 
-# # Gene interacts Gene vs Disease Gene DS
+# # Using Gene Interacts Gene Label Functions to Predict Disease Associates Gene Relations
 
 # This sections determines how well GiG label functions can predict Disease Gene Associations relations.
 
@@ -620,6 +632,8 @@ dev_gig_df = dev_gig_df.append(dev_results_df, sort=True)
 test_gig_df = test_gig_df.append(test_results_df, sort=True)
 
 
+# ## Dev Set Performance (AUPRC, AUROC)
+
 # In[37]:
 
 
@@ -627,6 +641,8 @@ fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
 sns.pointplot(x="num_lfs", y="AUPRC", data=dev_gig_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_gig_df, ax=axs[1])
 
+
+# ## Test Set Performance (AUPRC, AUROC)
 
 # In[38]:
 
@@ -650,7 +666,7 @@ test_gig_df.to_csv(
 )
 
 
-# # All (DaG, GiG, CbG, CtD) Sources
+# # All (DaG, GiG, CbG, CtD) Label Functions to Predict Disease Associates Gene Relations
 
 # This section determines how well all label functions can predict Disease Associates Gene relations.
 
@@ -693,6 +709,8 @@ all_dev_result_df = all_dev_result_df.append(dev_results_df, sort=True)
 all_test_result_df = all_test_result_df.append(test_results_df, sort=True)
 
 
+# ## Dev Set Performance (AUPRC, AUROC)
+
 # In[42]:
 
 
@@ -700,6 +718,8 @@ fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
 sns.pointplot(x="num_lfs", y="AUPRC", data=all_dev_result_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=all_dev_result_df, ax=axs[1])
 
+
+# ## Test Set Performance (AUPRC, AUROC)
 
 # In[43]:
 

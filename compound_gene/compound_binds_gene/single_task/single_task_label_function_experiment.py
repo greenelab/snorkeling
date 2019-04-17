@@ -10,9 +10,9 @@
 # In[1]:
 
 
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '2')
-get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().magic(u'load_ext autoreload')
+get_ipython().magic(u'autoreload 2')
+get_ipython().magic(u'matplotlib inline')
 
 from collections import defaultdict
 import os
@@ -331,7 +331,7 @@ test_baseline=test_ds_grid.query("l2_param==@best_param").to_dict('records')
 test_baseline[0].update({"num_lfs": 0})
 
 
-# ## Compound-Gene LFS Only
+# # Compound Binds Gene LFS Only
 
 # This block is designed to determine how many label functions are needed to achieve decent results.
 
@@ -377,6 +377,8 @@ dev_cbg_df = dev_cbg_df.append(dev_results_df, sort=True)
 test_cbg_df = test_cbg_df.append(test_results_df, sort=True)
 
 
+# ## Dev Set Performance (AUPRC, AUROC)
+
 # In[24]:
 
 
@@ -384,6 +386,8 @@ fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
 sns.pointplot(x="num_lfs", y="AUPRC", data=dev_cbg_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_cbg_df, ax=axs[1])
 
+
+# ## Test Set Performance (AUPRC, AUROC)
 
 # In[25]:
 
@@ -407,7 +411,7 @@ test_cbg_df.to_csv(
 )
 
 
-# # Disease Associates Gene vs Compound Gene DS
+# # Using Disease Associates Gene Label Functions to Predict Compound Binds Gene Relations
 
 # This section determines how well disease associates gene label functions can predict compound binds gene relations.
 
@@ -453,6 +457,8 @@ dev_dag_df = dev_dag_df.append(dev_results_df, sort=True)
 test_dag_df = test_dag_df.append(test_results_df, sort=True)
 
 
+# ## Dev Set Performance (AUPRC, AUROC)
+
 # In[29]:
 
 
@@ -460,6 +466,8 @@ fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
 sns.pointplot(x="num_lfs", y="AUPRC", data=dev_dag_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_dag_df, ax=axs[1])
 
+
+# ## Test Set Performance (AUPRC, AUROC)
 
 # In[30]:
 
@@ -483,7 +491,7 @@ test_dag_df.to_csv(
 )
 
 
-# # Compound Treats Disease vs Compound Gene DS
+# # Using Compound Treats Disease Label Functions to Predict Compound Binds Gene Relations
 
 # This section determines how well compound treats disease label functions can predict compound binds gene relations.
 
@@ -494,7 +502,7 @@ num_of_samples = 50
 regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=10), 2)
 
 
-# In[33]:
+# In[ ]:
 
 
 dev_ctd_df = pd.DataFrame(dev_baseline)
@@ -529,6 +537,8 @@ dev_ctd_df = dev_ctd_df.append(dev_results_df, sort=True)
 test_ctd_df = test_ctd_df.append(test_results_df, sort=True)
 
 
+# ## Dev Set Performance (AUPRC, AUROC)
+
 # In[34]:
 
 
@@ -536,6 +546,8 @@ fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
 sns.pointplot(x="num_lfs", y="AUPRC", data=dev_ctd_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_ctd_df, ax=axs[1])
 
+
+# ## Test Set Performance (AUPRC, AUROC)
 
 # In[35]:
 
@@ -559,7 +571,7 @@ test_ctd_df.to_csv(
 )
 
 
-# # Gene Interacts Gene vs Compound Gene DS
+# # Using Gene Interacts Gene Label Functions to Predict Compound Binds Gene Relations
 
 # This section determines how well gene interacts gene label functions can predict compound binds gene relations.
 
@@ -605,6 +617,8 @@ dev_gig_df = dev_gig_df.append(dev_results_df, sort=True)
 test_gig_df = test_gig_df.append(test_results_df, sort=True)
 
 
+# ## Dev Set Performance (AUPRC, AUROC)
+
 # In[39]:
 
 
@@ -612,6 +626,8 @@ fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
 sns.pointplot(x="num_lfs", y="AUPRC", data=dev_gig_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_gig_df, ax=axs[1])
 
+
+# ## Test Set Performance (AUPRC, AUROC)
 
 # In[40]:
 
@@ -635,7 +651,7 @@ test_gig_df.to_csv(
 )
 
 
-# # All (DaG, GiG, CbG, CtD) Sources
+# # All (DaG, GiG, CbG, CtD) Label Functions to Predict Compound Binds Gene Relations
 
 # This section determines how well all label functions can predict compound binds gene relations.
 
@@ -678,6 +694,8 @@ all_dev_result_df = all_dev_result_df.append(dev_results_df, sort=True)
 all_test_result_df = all_test_result_df.append(test_results_df, sort=True)
 
 
+# ## Dev Set Performance (AUPRC, AUROC)
+
 # In[44]:
 
 
@@ -685,6 +703,8 @@ fig, axs = plt.subplots(ncols=2, figsize=(13, 5))
 sns.pointplot(x="num_lfs", y="AUPRC", data=all_dev_result_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=all_dev_result_df, ax=axs[1])
 
+
+# ## Test Set Performance (AUPRC, AUROC)
 
 # In[45]:
 

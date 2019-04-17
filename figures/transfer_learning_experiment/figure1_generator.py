@@ -50,8 +50,9 @@ def plot_performance_graph(metric='AUROC', evaluation_set='dev', title="", file_
             tick.set_fontsize(14)
 
     fig.text(0.5, 0.04, 'Number of Additional Label Functions', ha='center')
-    fig.text(0.04, 0.5, 'Predicted Relations', va='center', rotation='vertical')
+    fig.text(0.04, 0.5, f'Predicted Relations ({metric})', va='center', rotation='vertical')
     fig.suptitle(title)
+    fig.text(0.7, 0.02, '0-Only uses relation specific databases. (Distant Supervision)', fontsize=14)
     plt.savefig(file_name, format='png')
 
 
