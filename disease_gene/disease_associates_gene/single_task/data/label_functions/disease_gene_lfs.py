@@ -732,8 +732,18 @@ def LF_DG_CONTEXT_SWITCH(c):
 """
 Bi-Clustering LFs
 """
-path = pathlib.Path(__file__).joinpath("../../../../../biclustering/disease_gene_bicluster_results.tsv.xz").resolve()
+path = pathlib.Path(__file__).joinpath("../../../../../../dependency_cluster/disease_gene_bicluster_results.tsv.xz").resolve()
 bicluster_dep_df = pd.read_table(path)
+causal_mutations_base = set([tuple(x) for x in bicluster_dep_df.query("U>0")[["pubmed_id", "sentence_num"]].values])
+mutations_base = set([tuple(x) for x in bicluster_dep_df.query("Ud>0")[["pubmed_id", "sentence_num"]].values])
+drug_targets_base = set([tuple(x) for x in bicluster_dep_df.query("D>0")[["pubmed_id", "sentence_num"]].values])
+pathogenesis_base = set([tuple(x) for x in bicluster_dep_df.query("J>0")[["pubmed_id", "sentence_num"]].values])
+therapeutic_base = set([tuple(x) for x in bicluster_dep_df.query("Te>0")[["pubmed_id", "sentence_num"]].values])
+polymorphisms_base = set([tuple(x) for x in bicluster_dep_df.query("Y>0")[["pubmed_id", "sentence_num"]].values])
+progression_base = set([tuple(x) for x in bicluster_dep_df.query("G>0")[["pubmed_id", "sentence_num"]].values])
+biomarkers_base = set([tuple(x) for x in bicluster_dep_df.query("Md>0")[["pubmed_id", "sentence_num"]].values])
+overexpression_base = set([tuple(x) for x in bicluster_dep_df.query("X>0")[["pubmed_id", "sentence_num"]].values])
+regulation_base = set([tuple(x) for x in bicluster_dep_df.query("L>0")[["pubmed_id", "sentence_num"]].values])
 
 def LF_DG_BICLUSTER_CASUAL_MUTATIONS(c):
     """
@@ -741,11 +751,9 @@ def LF_DG_BICLUSTER_CASUAL_MUTATIONS(c):
     A global network of biomedical relationships
     """
     sen_pos = c.get_parent().position
-    pubmed_id = c.get_parent().document.name
-    query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
-    if not(query.empty):
-        if query["U"].sum() > 0.0:
-            return 1
+    pubmed_id = int(c.get_parent().document.name)
+    if (pubmed_id, sen_pos) in causal_mutations_base:
+        return 1
     return 0
 
 def LF_DG_BICLUSTER_MUTATIONS(c):
@@ -754,11 +762,9 @@ def LF_DG_BICLUSTER_MUTATIONS(c):
     A global network of biomedical relationships
     """
     sen_pos = c.get_parent().position
-    pubmed_id = c.get_parent().document.name
-    query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
-    if not(query.empty):
-        if query["Ud"].sum() > 0.0:
-            return 1
+    pubmed_id = int(c.get_parent().document.name)
+    if (pubmed_id, sen_pos) in mutations_base:
+        return 1
     return 0
 
 def LF_DG_BICLUSTER_DRUG_TARGETS(c):
@@ -767,11 +773,9 @@ def LF_DG_BICLUSTER_DRUG_TARGETS(c):
     A global network of biomedical relationships
     """
     sen_pos = c.get_parent().position
-    pubmed_id = c.get_parent().document.name
-    query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
-    if not(query.empty):
-        if query["D"].sum() > 0.0:
-            return 1
+    pubmed_id = int(c.get_parent().document.name)
+    if (pubmed_id, sen_pos) in drug_targets_base:
+        return 1
     return 0
 
 def LF_DG_BICLUSTER_PATHOGENESIS(c):
@@ -780,11 +784,9 @@ def LF_DG_BICLUSTER_PATHOGENESIS(c):
     A global network of biomedical relationships
     """
     sen_pos = c.get_parent().position
-    pubmed_id = c.get_parent().document.name
-    query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
-    if not(query.empty):
-        if query["J"].sum() > 0.0:
-            return 1
+    pubmed_id = int(c.get_parent().document.name)
+    if (pubmed_id, sen_pos) in pathogenesis_base:
+        return 1
     return 0
 
 def LF_DG_BICLUSTER_THERAPEUTIC(c):
@@ -793,11 +795,9 @@ def LF_DG_BICLUSTER_THERAPEUTIC(c):
     A global network of biomedical relationships
     """
     sen_pos = c.get_parent().position
-    pubmed_id = c.get_parent().document.name
-    query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
-    if not(query.empty):
-        if query["Te"].sum() > 0.0:
-            return 1
+    pubmed_id = int(c.get_parent().document.name)
+    if (pubmed_id, sen_pos) in therapeutic_base:
+        return 1
     return 0
 
 def LF_DG_BICLUSTER_POLYMORPHISMS(c):
@@ -806,11 +806,9 @@ def LF_DG_BICLUSTER_POLYMORPHISMS(c):
     A global network of biomedical relationships
     """
     sen_pos = c.get_parent().position
-    pubmed_id = c.get_parent().document.name
-    query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
-    if not(query.empty):
-        if query["Y"].sum() > 0.0:
-            return 1
+    pubmed_id = int(c.get_parent().document.name)
+    if (pubmed_id, sen_pos) in polymorphisms_base:
+        return 1
     return 0
 
 def LF_DG_BICLUSTER_PROGRESSION(c):
@@ -819,11 +817,9 @@ def LF_DG_BICLUSTER_PROGRESSION(c):
     A global network of biomedical relationships
     """
     sen_pos = c.get_parent().position
-    pubmed_id = c.get_parent().document.name
-    query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
-    if not(query.empty):
-        if query["G"].sum() > 0.0:
-            return 1
+    pubmed_id = int(c.get_parent().document.name)
+    if (pubmed_id, sen_pos) in progression_base:
+        return 1
     return 0
 
 def LF_DG_BICLUSTER_BIOMARKERS(c):
@@ -832,11 +828,9 @@ def LF_DG_BICLUSTER_BIOMARKERS(c):
     A global network of biomedical relationships
     """
     sen_pos = c.get_parent().position
-    pubmed_id = c.get_parent().document.name
-    query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
-    if not(query.empty):
-        if query["Md"].sum() > 0.0:
-            return 1
+    pubmed_id = int(c.get_parent().document.name)
+    if (pubmed_id, sen_pos) in biomarkers_base:
+        return 1
     return 0
 
 def LF_DG_BICLUSTER_OVEREXPRESSION(c):
@@ -845,11 +839,9 @@ def LF_DG_BICLUSTER_OVEREXPRESSION(c):
     A global network of biomedical relationships
     """
     sen_pos = c.get_parent().position
-    pubmed_id = c.get_parent().document.name
-    query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
-    if not(query.empty):
-        if query["X"].sum() > 0.0:
-            return 1
+    pubmed_id = int(c.get_parent().document.name)
+    if (pubmed_id, sen_pos) in overexpression_base:
+        return 1
     return 0
 
 def LF_DG_BICLUSTER_REGULATION(c):
@@ -858,11 +850,9 @@ def LF_DG_BICLUSTER_REGULATION(c):
     A global network of biomedical relationships
     """
     sen_pos = c.get_parent().position
-    pubmed_id = c.get_parent().document.name
-    query = bicluster_dep_df.query("pubmed_id==@pubmed_id&sentence_num==@sen_pos")
-    if not(query.empty):
-        if query["L"].sum() > 0.0:
-            return 1
+    pubmed_id = int(c.get_parent().document.name)
+    if (pubmed_id, sen_pos) in regulation_base:
+        return 1
     return 0
 
 """
@@ -899,6 +889,16 @@ DG_LFS = {
         "LF_DG_NO_VERB": LF_DG_NO_VERB,
         "LF_DG_MULTIPLE_ENTITIES":LF_DG_MULTIPLE_ENTITIES,
         "LF_DG_CONTEXT_SWITCH":LF_DG_CONTEXT_SWITCH,
+        "LF_DG_BICLUSTER_CASUAL_MUTATIONS":LF_DG_BICLUSTER_CASUAL_MUTATIONS,
+        "LF_DG_BICLUSTER_MUTATIONS":LF_DG_BICLUSTER_MUTATIONS,
+        "LF_DG_BICLUSTER_DRUG_TARGETS":LF_DG_BICLUSTER_DRUG_TARGETS,
+        "LF_DG_BICLUSTER_PATHOGENESIS":LF_DG_BICLUSTER_PATHOGENESIS,
+        "LF_DG_BICLUSTER_THERAPEUTIC":LF_DG_BICLUSTER_THERAPEUTIC,
+        "LF_DG_BICLUSTER_POLYMORPHISMS":LF_DG_BICLUSTER_POLYMORPHISMS,
+        "LF_DG_BICLUSTER_PROGRESSION":LF_DG_BICLUSTER_PROGRESSION,
+        "LF_DG_BICLUSTER_BIOMARKERS":LF_DG_BICLUSTER_BIOMARKERS,
+        "LF_DG_BICLUSTER_OVEREXPRESSION":LF_DG_BICLUSTER_OVEREXPRESSION,
+        "LF_DG_BICLUSTER_REGULATION":LF_DG_BICLUSTER_REGULATION,
     }),
     "DuG":
     OrderedDict({
