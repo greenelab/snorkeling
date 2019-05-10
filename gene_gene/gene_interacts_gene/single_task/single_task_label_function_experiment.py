@@ -10,9 +10,9 @@
 # In[1]:
 
 
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 from collections import defaultdict
 import os
@@ -296,8 +296,12 @@ regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=5), 2)
 
 dev_ds_grid, test_ds_grid = train_baseline_model(
     correct_L, correct_L_dev, correct_L_test,
-    list(range(ds_start, ds_end)), regularization_grid
+    list(range(ds_start, ds_end)), regularization_grid,
+    train_marginal_dir="data/random_sampling/GiG/marginals/"
 )
+
+dev_baseline_marginals = list(dev_ds_grid.values())[0][:,0]
+test_baseline_marginals = list(test_ds_grid.values())[0][:,0]
 
 dev_ds_grid = (
     generate_results_df(
@@ -333,22 +337,37 @@ test_baseline=test_ds_grid.query("l2_param==@best_param").to_dict('records')
 test_baseline[0].update({"num_lfs": 0})
 
 
+# In[20]:
+
+
+dev_baseline_marginals = list(zip(dev_baseline_marginals, candidate_dfs['dev'].curated_gig.values))
+test_baseline_marginals = list(zip(test_baseline_marginals, candidate_dfs['test'].curated_gig.values))
+
+
+# In[21]:
+
+
+count_fraction_correct = lambda x: 1 if (x.marginals > 0.5 and x.label==1) or (x.marginals < 0.5 and x.label==0) else 0
+
+
 # # Gene Interacts Gene LFS Only
 
 # This block is designed to determine how many label functions are needed to achieve decent results.
 
-# In[20]:
+# In[23]:
 
 
 num_of_samples = 50
 regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=5), 2)
 
 
-# In[21]:
+# In[24]:
 
 
 dev_gig_df = pd.DataFrame(dev_baseline)
 test_gig_df = pd.DataFrame(test_baseline)
+dev_gig_marginals_df = pd.DataFrame(dev_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
+test_gig_marginals_df = pd.DataFrame(test_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
 
 gig_start = ds_end
 gig_end = 37
@@ -357,7 +376,7 @@ range_of_sample_sizes = (
     [correct_L[:,gig_start:gig_end].shape[1]]
 )
 
-lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
+lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_marginals_df = run_random_additional_lfs(
     range_of_sample_sizes=range_of_sample_sizes, 
     range_of_lf_indicies = list(range(gig_start, gig_end+1)),
     size_of_sample_pool=gig_end-gig_start, 
@@ -376,11 +395,49 @@ lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
 
 dev_gig_df = dev_gig_df.append(dev_results_df, sort=True)
 test_gig_df = test_gig_df.append(test_results_df, sort=True)
+dev_gig_marginals_df = dev_gig_marginals_df.append(dev_marginals_df, sort=True)
+test_gig_marginals_df = test_gig_marginals_df.append(test_marginals_df, sort=True)
+
+
+# In[25]:
+
+
+dev_gig_marginals_df = (
+     dev_gig_marginals_df
+     .assign(
+        frac_correct=(
+            dev_gig_marginals_df
+            .apply(count_fraction_correct,axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+ )
+
+
+# In[26]:
+
+
+test_gig_marginals_df = (
+    test_gig_marginals_df
+    .assign(
+        frac_correct=(
+            test_gig_marginals_df
+            .apply(count_fraction_correct, axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
 
 
 # ## Dev Set Performance (AUPRC, AUROC)
 
-# In[22]:
+# In[27]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -388,9 +445,15 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=dev_gig_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_gig_df, ax=axs[1])
 
 
+# In[28]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=dev_gig_marginals_df, hue="label")
+
+
 # ## Test Set Performance (AUPRC, AUROC)
 
-# In[23]:
+# In[29]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -398,7 +461,13 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=test_gig_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=test_gig_df, ax=axs[1])
 
 
-# In[24]:
+# In[30]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=test_gig_marginals_df, hue="label")
+
+
+# In[31]:
 
 
 dev_gig_df.to_csv(
@@ -412,22 +481,38 @@ test_gig_df.to_csv(
 )
 
 
+# In[32]:
+
+
+dev_gig_marginals_df.to_csv(
+    "data/random_sampling/GiG/results/dev_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+test_gig_marginals_df.to_csv(
+    "data/random_sampling/GiG/results/test_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+
 # # Using Disease Associates Gene Label Functions to Predict Gene Interacts Gene Relations
 
 # This section determines how well disease associates gene label functions can predict gene interacts gene relations.
 
-# In[25]:
+# In[33]:
 
 
 num_of_samples = 50
 regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=10), 2)
 
 
-# In[26]:
+# In[34]:
 
 
 dev_dag_df = pd.DataFrame(dev_baseline)
 test_dag_df = pd.DataFrame(test_baseline)
+dev_dag_marginals_df = pd.DataFrame(dev_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
+test_dag_marginals_df = pd.DataFrame(test_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
 
 dag_start = 37
 dag_end = 67
@@ -437,7 +522,7 @@ range_of_sample_sizes = (
     [correct_L[:,dag_start:dag_end].shape[1]]
 )
 
-lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
+lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_marginals_df = run_random_additional_lfs(
     range_of_sample_sizes=range_of_sample_sizes, 
     range_of_lf_indicies = list(range(dag_start, dag_end+1)),
     size_of_sample_pool=dag_end-dag_start, 
@@ -456,11 +541,49 @@ lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
 
 dev_dag_df = dev_dag_df.append(dev_results_df, sort=True)
 test_dag_df = test_dag_df.append(test_results_df, sort=True)
+dev_dag_marginals_df = dev_dag_marginals_df.append(dev_marginals_df, sort=True)
+test_dag_marginals_df = test_dag_marginals_df.append(test_marginals_df, sort=True)
+
+
+# In[35]:
+
+
+dev_dag_marginals_df = (
+     dev_dag_marginals_df
+     .assign(
+        frac_correct=(
+            dev_dag_marginals_df
+            .apply(count_fraction_correct,axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
+
+
+# In[36]:
+
+
+test_dag_marginals_df = (
+    test_dag_marginals_df
+    .assign(
+        frac_correct=(
+            test_dag_marginals_df
+            .apply(count_fraction_correct, axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
 
 
 # ## Dev Set Performance (AUPRC, AUROC)
 
-# In[27]:
+# In[37]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -468,9 +591,15 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=dev_dag_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_dag_df, ax=axs[1])
 
 
+# In[38]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=dev_dag_marginals_df, hue="label")
+
+
 # ## Test Set Performance (AUPRC, AUROC)
 
-# In[28]:
+# In[39]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -478,7 +607,13 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=test_dag_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=test_dag_df, ax=axs[1])
 
 
-# In[29]:
+# In[40]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=test_dag_marginals_df, hue="label")
+
+
+# In[41]:
 
 
 dev_dag_df.to_csv(
@@ -492,22 +627,38 @@ test_dag_df.to_csv(
 )
 
 
+# In[42]:
+
+
+dev_dag_marginals_df.to_csv(
+    "data/random_sampling/DaG/results/dev_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+test_dag_marginals_df.to_csv(
+    "data/random_sampling/DaG/results/test_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+
 # # Using Compound Treats Disease Label Functions to Predict Gene Interacts Gene Relations
 
 # This section determines how well compound treats disease label functions can predict gene interacts gene relations.
 
-# In[30]:
+# In[43]:
 
 
 num_of_samples = 50
 regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=10), 2)
 
 
-# In[31]:
+# In[ ]:
 
 
 dev_ctd_df = pd.DataFrame(dev_baseline)
 test_ctd_df = pd.DataFrame(test_baseline)
+dev_ctd_marginals_df = pd.DataFrame(dev_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
+test_ctd_marginals_df = pd.DataFrame(test_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
 
 ctd_start = 67
 ctd_end = 89
@@ -517,7 +668,7 @@ range_of_sample_sizes = (
     [correct_L[:,ctd_start:ctd_end].shape[1]]
 )
 
-lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
+lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_marginals_df = run_random_additional_lfs(
     range_of_sample_sizes=range_of_sample_sizes, 
     range_of_lf_indicies = list(range(ctd_start, ctd_end+1)),
     size_of_sample_pool=ctd_end-ctd_start,
@@ -536,11 +687,49 @@ lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
 
 dev_ctd_df = dev_ctd_df.append(dev_results_df, sort=True)
 test_ctd_df = test_ctd_df.append(test_results_df, sort=True)
+dev_ctd_marginals_df = dev_ctd_marginals_df.append(dev_marginals_df, sort=True)
+test_ctd_marginals_df = test_ctd_marginals_df.append(test_marginals_df, sort=True)
+
+
+# In[ ]:
+
+
+dev_ctd_marginals_df = (
+     dev_ctd_marginals_df
+     .assign(
+        frac_correct=(
+            dev_ctd_marginals_df
+            .apply(count_fraction_correct,axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+ )
+
+
+# In[ ]:
+
+
+test_ctd_marginals_df = (
+    test_ctd_marginals_df
+    .assign(
+        frac_correct=(
+            test_ctd_marginals_df
+            .apply(count_fraction_correct, axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
 
 
 # ## Dev Set Performance (AUPRC, AUROC)
 
-# In[32]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -548,9 +737,15 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=dev_ctd_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_ctd_df, ax=axs[1])
 
 
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=dev_ctd_marginals_df, hue="label")
+
+
 # ## Test Set Performance (AUPRC, AUROC)
 
-# In[33]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -558,7 +753,13 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=test_ctd_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=test_ctd_df, ax=axs[1])
 
 
-# In[34]:
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=test_ctd_marginals_df, hue="label")
+
+
+# In[ ]:
 
 
 dev_ctd_df.to_csv(
@@ -572,22 +773,38 @@ test_ctd_df.to_csv(
 )
 
 
+# In[ ]:
+
+
+dev_ctd_marginals_df.to_csv(
+    "data/random_sampling/CtD/results/dev_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+test_ctd_marginals_df.to_csv(
+    "data/random_sampling/CtD/results/test_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+
 # # Using Compound Binds Gene Label Functions to Predict Gene Interacts Gene Relations
 
 # This section determines how well compound binds gene label functions can predict gene interacts gene relations.
 
-# In[35]:
+# In[ ]:
 
 
 num_of_samples = 50
 regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=10), 2)
 
 
-# In[36]:
+# In[ ]:
 
 
 dev_cbg_df = pd.DataFrame(dev_baseline)
 test_cbg_df = pd.DataFrame(test_baseline)
+dev_cbg_marginals_df = pd.DataFrame(dev_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
+test_cbg_marginals_df = pd.DataFrame(test_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
 
 cbg_start = 89
 cbg_end = 109
@@ -597,7 +814,7 @@ range_of_sample_sizes = (
     [correct_L[:,cbg_start:cbg_end].shape[1]]
 )
 
-lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
+lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_marginals_df = run_random_additional_lfs(
     range_of_sample_sizes=range_of_sample_sizes, 
     range_of_lf_indicies = list(range(cbg_start, cbg_end+1)),
     size_of_sample_pool=cbg_end-cbg_start,
@@ -616,11 +833,49 @@ lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
 
 dev_cbg_df = dev_cbg_df.append(dev_results_df, sort=True)
 test_cbg_df = test_cbg_df.append(test_results_df, sort=True)
+dev_cbg_marginals_df = dev_cbg_marginals_df.append(dev_marginals_df, sort=True)
+test_cbg_marginals_df = test_cbg_marginals_df.append(test_marginals_df, sort=True)
+
+
+# In[ ]:
+
+
+dev_cbg_marginals_df = (
+     dev_cbg_marginals_df
+     .assign(
+        frac_correct=(
+            dev_cbg_marginals_df
+            .apply(count_fraction_correct,axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
+
+
+# In[ ]:
+
+
+test_cbg_marginals_df = (
+    test_cbg_marginals_df
+    .assign(
+        frac_correct=(
+            test_cbg_marginals_df
+            .apply(count_fraction_correct, axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
 
 
 # ## Dev Set Performance (AUPRC, AUROC)
 
-# In[37]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -628,9 +883,15 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=dev_cbg_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_cbg_df, ax=axs[1])
 
 
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=dev_cbg_marginals_df, hue="label")
+
+
 # ## Test Set Performance (AUPRC, AUROC)
 
-# In[38]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -638,7 +899,13 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=test_cbg_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=test_cbg_df, ax=axs[1])
 
 
-# In[39]:
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=test_cbg_marginals_df, hue="label")
+
+
+# In[ ]:
 
 
 dev_cbg_df.to_csv(
@@ -652,29 +919,45 @@ test_cbg_df.to_csv(
 )
 
 
+# In[ ]:
+
+
+dev_cbg_marginals_df.to_csv(
+    "data/random_sampling/CbG/results/dev_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+test_cbg_marginals_df.to_csv(
+    "data/random_sampling/CbG/results/test_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+
 # # All (DaG, GiG, CbG, CtD) Label Functions to Predict Gene Interacts Gene Relations
 
 # This section determines how well all label functions can predict gene interacts gene relations.
 
-# In[40]:
+# In[22]:
 
 
 num_of_samples = 50
 regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=5), 2)
 
 
-# In[41]:
+# In[23]:
 
 
 all_dev_result_df = pd.DataFrame(dev_baseline)
 all_test_result_df = pd.DataFrame(test_baseline)
+dev_all_marginals_df = pd.DataFrame(dev_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
+test_all_marginals_df = pd.DataFrame(test_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
 
 range_of_sample_sizes = (
     list(range(1, correct_L[:,ds_end:].shape[1], 8)) +
     [correct_L[:,ds_end:].shape[1]]
 )
 
-lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
+lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_marginals_df = run_random_additional_lfs(
     range_of_sample_sizes=range_of_sample_sizes, 
     range_of_lf_indicies = list(range(ds_end, correct_L.shape[1]+1)),
     size_of_sample_pool=correct_L.shape[1]-ds_end,
@@ -693,11 +976,49 @@ lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
 
 all_dev_result_df = all_dev_result_df.append(dev_results_df, sort=True)
 all_test_result_df = all_test_result_df.append(test_results_df, sort=True)
+dev_all_marginals_df = dev_all_marginals_df.append(dev_marginals_df, sort=True)
+test_all_marginals_df = test_all_marginals_df.append(test_marginals_df, sort=True)
+
+
+# In[27]:
+
+
+dev_all_marginals_df = (
+     dev_all_marginals_df
+     .assign(
+        frac_correct=(
+            dev_all_marginals_df
+            .apply(count_fraction_correct,axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+ )
+
+
+# In[28]:
+
+
+test_all_marginals_df = (
+    test_all_marginals_df
+    .assign(
+        frac_correct=(
+            test_all_marginals_df
+            .apply(count_fraction_correct, axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
 
 
 # ## Dev Set Performance (AUPRC, AUROC)
 
-# In[42]:
+# In[29]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -705,9 +1026,15 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=all_dev_result_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=all_dev_result_df, ax=axs[1])
 
 
+# In[30]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=dev_all_marginals_df, hue="label")
+
+
 # ## Test Set Performance (AUPRC, AUROC)
 
-# In[43]:
+# In[31]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -715,7 +1042,13 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=all_test_result_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=all_test_result_df, ax=axs[1])
 
 
-# In[44]:
+# In[32]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=test_all_marginals_df, hue="label")
+
+
+# In[33]:
 
 
 all_dev_result_df.to_csv(
@@ -725,6 +1058,20 @@ all_dev_result_df.to_csv(
 
 all_test_result_df.to_csv(
     "data/random_sampling/all/test_sampled_performance.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+
+# In[34]:
+
+
+dev_all_marginals_df.to_csv(
+    "data/random_sampling/all/dev_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+test_all_marginals_df.to_csv(
+    "data/random_sampling/all/test_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
