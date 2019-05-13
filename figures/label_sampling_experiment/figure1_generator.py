@@ -6,23 +6,34 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-def get_dataframes(result_dir):
+def get_dataframes(result_dir, file_path):
     return {
         # Get the head word of each file that will be parsed
         os.path.splitext(os.path.basename(file))[0].split("_")[0]:
         pd.read_csv(file, sep="\t")
         .assign(num_lfs=lambda x: x['num_lfs'].map(lambda y: y if y != 'baseline' else 'BL'))
-        for file in glob.glob(f"{result_dir}/*.tsv")
+        for file in glob.glob(f"{result_dir}/{file_path}")
     }
 
 
-def plot_performance_graph(metric='AUROC', evaluation_set='dev', title="", file_name=""):
+def plot_performance_graph(metric='AUROC', evaluation_set='dev', title="", file_name="", data=None):
     fig, axes = plt.subplots(len(file_tree), len(file_tree["DaG"]), figsize=(25, 15), sharey='row')
 
-    for row_ind, col in enumerate(data_tree):
-        for col_ind, row in enumerate(data_tree[col]):
+    for row_ind, col in enumerate(data):
+        for col_ind, row in enumerate(data[col]):
 
-            sns.pointplot(x="num_lfs", y=metric, data=data_tree[col][row][evaluation_set], ax=axes[row_ind][col_ind])
+            if metric == "frac_correct":
+                data[col][row][evaluation_set].label.replace([0, 1], ["negative", "positive"], inplace=True)
+                sns.pointplot(
+                    x="num_lfs", y=metric,
+                    data=data[col][row][evaluation_set],
+                    ax=axes[row_ind][col_ind],
+                    hue="label"
+                )
+                axes[row_ind][col_ind].get_legend().remove()
+            else:
+                sns.pointplot(x="num_lfs", y=metric, data=data[col][row][evaluation_set], ax=axes[row_ind][col_ind])
+
             axes[row_ind][col_ind].set_xlabel('')
 
             if row == "All":
@@ -49,9 +60,13 @@ def plot_performance_graph(metric='AUROC', evaluation_set='dev', title="", file_
         for tick in item.get_yticklabels() + item.get_xticklabels():
             tick.set_fontsize(14)
 
-    fig.text(0.5, 0.04, 'Number of Additional Label Functions', ha='center')
-    fig.text(0.04, 0.5, f'Predicted Relations ({metric})', va='center', rotation='vertical')
-    fig.suptitle(title)
+    if metric == "frac_correct":
+        axes.flatten()[4].legend(loc='upper center', bbox_to_anchor=(1.3, 0.5), fontsize=16)
+        metric = "#correct / total"
+
+    fig.text(0.5, 0.04, 'Number of Additional Label Functions', ha='center', fontsize=20)
+    fig.text(0.04, 0.5, f'Predicted Relations ({metric})', va='center', rotation='vertical', fontsize=20)
+    fig.suptitle(title, fontsize=20)
     fig.text(0.7, 0.02, '0-Only uses relation specific databases. (Distant Supervision)', fontsize=14)
     plt.savefig(file_name, format='png')
 
@@ -93,9 +108,9 @@ file_tree = OrderedDict({
 })
 
 
-data_tree = OrderedDict({
+performance_data_tree = OrderedDict({
     key: {
-        sub_key: get_dataframes(file_tree[key][sub_key])
+        sub_key: get_dataframes(file_tree[key][sub_key], "*performance.tsv")
         for sub_key in file_tree[key]
     }
     for key in file_tree
@@ -106,20 +121,42 @@ plt.rcParams.update({'font.size': 22})
 plot_performance_graph(
     metric="AUROC", evaluation_set='dev',
     title="Stepwise Label Function Assessment (Development Set)",
-    file_name="transfer_dev_set_auroc.png"
+    file_name="transfer_dev_set_auroc.png", data=performance_data_tree
 )
 plot_performance_graph(
     metric="AUPRC",  evaluation_set='dev',
     title="Stepwise Label Function Assessment (Development Set)",
-    file_name="transfer_dev_set_auprc.png"
+    file_name="transfer_dev_set_auprc.png", data=performance_data_tree
 )
 plot_performance_graph(
     metric="AUROC", evaluation_set='test',
     title="Stepwise Label Function Assessment (Test Set)",
-    file_name="transfer_test_set_auroc.png"
+    file_name="transfer_test_set_auroc.png", data=performance_data_tree
 )
 plot_performance_graph(
     metric="AUPRC", evaluation_set='test',
     title="Stepwise Label Function Assessment (Test Set)",
-    file_name="transfer_test_set_auprc.png"
+    file_name="transfer_test_set_auprc.png", data=performance_data_tree
+)
+
+
+class_correct_data_tree = OrderedDict({
+    key: {
+        sub_key: get_dataframes(file_tree[key][sub_key], "*marginals.tsv")
+        for sub_key in file_tree[key]
+    }
+    for key in file_tree
+})
+
+
+plot_performance_graph(
+    metric="frac_correct", evaluation_set='dev',
+    title="Individual Class Performance (Dev Set)",
+    file_name="class_correct_dev_set.png", data=class_correct_data_tree
+)
+
+plot_performance_graph(
+    metric="frac_correct", evaluation_set='test',
+    title="Individual Class Performance (Test Set)",
+    file_name="class_correct_test_set.png", data=class_correct_data_tree
 )

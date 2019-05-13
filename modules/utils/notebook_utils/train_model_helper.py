@@ -1,6 +1,7 @@
 from collections import OrderedDict, defaultdict
 import re
 import os
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -165,7 +166,14 @@ def train_model_random_lfs(randomly_sampled_lfs, train_matrix, dev_matrix, test_
         
     return train_grid_results, dev_grid_results, test_grid_results
 
-def train_baseline_model(train_matrix, dev_matrix, test_matrix, lf_indicies, regularization_grid):
+def train_baseline_model(
+    train_matrix, 
+    dev_matrix, 
+    test_matrix, 
+    lf_indicies, 
+    regularization_grid, 
+    train_marginal_dir
+):
     grid_results = {}
     dev_grid_results = {}
     test_grid_results = {}
@@ -183,6 +191,10 @@ def train_baseline_model(train_matrix, dev_matrix, test_matrix, lf_indicies, reg
             train_matrix[:,lf_indicies], n_epochs=1000, 
             log_train_every=200, seed=50, lr=0.01, l2=best_param,
             verbose=False
+    )
+    (
+        pd.DataFrame(label_model.predict_proba(train_matrix[:,lf_indicies]), columns=["pos_class_marginals", "neg_class_marginals"])
+        .to_csv(f"{train_marginal_dir}baseline_marginals.tsv.xz", compression="xz", index=False, sep="\t")
     )
     dev_grid_results[best_param] = label_model.predict_proba(dev_matrix[:,lf_indicies])
     test_grid_results[best_param] = label_model.predict_proba(test_matrix[:,lf_indicies])
@@ -239,6 +251,8 @@ def run_random_additional_lfs(
     """
     dev_result_df = pd.DataFrame([], columns=["AUPRC", "AUROC", "num_lfs"])
     test_result_df = pd.DataFrame([], columns=["AUPRC", "AUROC", "num_lfs"])
+    dev_marginals_df = pd.DataFrame([], columns=["marginals", "label", "num_lfs"])
+    test_marginals_df = pd.DataFrame([], columns=["marginals", "label", "num_lfs"])
     lf_sample_keeper = {}
 
     for sample_size in range_of_sample_sizes:
@@ -280,12 +294,30 @@ def run_random_additional_lfs(
                     .values
                 )
             )
-            .to_csv(
-                f"{train_marginal_dir}/{sample_size}_sampled_lfs.tsv.xz",
-                sep="\t", index=False, compression='xz'
-            )
+            #.to_csv(
+            #    f"{train_marginal_dir}/{sample_size}_sampled_lfs.tsv.xz",
+            #    sep="\t", index=False, compression='xz'
+            #)
         )
-
+        
+        dev_marginals_df = dev_marginals_df.append(
+            pd.DataFrame(
+                pd.np.concatenate([list(zip(grid_results[1][key][:,0], dev_labels)) for key in grid_results[1]]),
+                columns=["marginals", "label"]
+            )
+            .assign(num_lfs=sample_size),
+            sort=True
+        )
+        
+        test_marginals_df = test_marginals_df.append(
+            pd.DataFrame(
+                pd.np.concatenate([list(zip(grid_results[1][key][:,0], dev_labels)) for key in grid_results[2]]),
+                columns=["marginals", "label"]
+            )
+            .assign(num_lfs=sample_size),
+            sort=True
+        )
+        
         # Get the development set results
         dev_result_df = dev_result_df.append(
             generate_results_df(
@@ -310,4 +342,4 @@ def run_random_additional_lfs(
             .drop("index", axis=1)
         )
 
-    return lf_sample_keeper, dev_result_df, test_result_df
+    return lf_sample_keeper, dev_result_df, test_result_df, dev_marginals_df, test_marginals_df
