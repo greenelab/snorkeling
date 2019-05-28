@@ -168,7 +168,7 @@ def load_candidate_dataframes(filename, curated_field):
     data_df = data_df.query("{}.notnull()".format(curated_field))
     return data_df.sort_values('candidate_id')
 
-def generate_results_df(grid_results, curated_labels):
+def generate_results_df(grid_results, curated_labels, pos_label=1):
     performance_dict = {}
     for lf_sample in grid_results:
         model_param_per = {}
@@ -176,11 +176,13 @@ def generate_results_df(grid_results, curated_labels):
             predict_proba = grid_results[lf_sample][:,0]
             precision, recall, _ = precision_recall_curve(
                 curated_labels, 
-                predict_proba
+                predict_proba,
+                pos_label=pos_label
             )
             fpr, tpr, _ = roc_curve(
                 curated_labels, 
-                predict_proba
+                predict_proba,
+                pos_label=pos_label
             )
             model_param_per[lf_sample] = [auc(recall, precision), auc(fpr, tpr)]
         else:
@@ -188,11 +190,13 @@ def generate_results_df(grid_results, curated_labels):
                 predict_proba = predictions[:,0]
                 precision, recall, _ = precision_recall_curve(
                     curated_labels, 
-                    predict_proba
+                    predict_proba,
+                    pos_label=pos_label
                 )
                 fpr, tpr, _ = roc_curve(
                     curated_labels, 
-                    predict_proba
+                    predict_proba,
+                    pos_label=pos_label
                 )
             model_param_per[param] = [auc(recall, precision), auc(fpr, tpr)]
         performance_dict[lf_sample] = max(model_param_per.items(), key=operator.itemgetter(1))[1]
