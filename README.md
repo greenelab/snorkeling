@@ -24,15 +24,6 @@ _Note_: If you want to leave the environment, just enter the following command:
 source deactivate 
 ```
 
-## Running The Project
-
-Once the configuration has finished, use the following command below to run the project:
-
-```bash 
-bash run.sh
-```  
-If everything is successful, an internet browser should pop-up with a jupyter homepage.
-
 ## License
 
 This repository is dual licensed as [BSD 3-Clause](LICENSE-BSD.md) and [CC0 1.0](LICENSE-CC0.md), meaning any repository content can be used under either license. This licensing arrangement ensures source code is available under an [OSI-approved License](https://opensource.org/licenses/alphabetical), while non-code content — such as figures, data, and documentation — is maximally reusable under a public domain dedication.
