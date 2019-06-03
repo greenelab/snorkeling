@@ -5,6 +5,8 @@ channels:
 dependencies:
 - backports.lzma==0.0.8
 - beautifulsoup4=4.6.0
+- gensim=3.6.0
+- ipykernel=4.8.2
 - ipywidgets=7.1.0
 - jupyter=1.0.0
 - jupyter_client=5.0.1
@@ -14,16 +16,17 @@ dependencies:
 - lxml==4.1.1
 - matplotlib=2.1.2
 - neo4j-python-driver==1.3.1
+- networkx=2.1
 - nltk=3.2.4
 - numba=0.36.2
 - numpy=1.13.3
-- pandas=0.23.0
+- pandas=0.23.4
 - psycopg2=2.7.3.2
 - python=3.6.4
 - pytorch=0.4
 - py4j=0.10.6
 - requests=2.18.4
-- seaborn=0.8.1
+- seaborn=0.9.0
 - scikit-image=0.13.1
 - scikit-learn=0.19.1
 - scipy=1.0.0 
@@ -31,14 +34,13 @@ dependencies:
 - sqlalchemy=1.1.13
 - sqlite=3.20.1
 - tensorflow==1.4.0
-- tqdm=4.19.5
+- tqdm=4.28.1
 - tika=1.15
 - xlrd=1.1.0
 - xlsxwriter=1.0.4
 - pip:
-    - git+https://github.com/HazyResearch/snorkel@c0a7570e86ed568c5aa07296f1989865db65b970
-    - git+https://github.com/HazyResearch/numbskull@ced435e98788e4c180e877fe83fd3f4cef76bed8
-    - git+https://github.com/HazyResearch/treedlib@15840e2ff8e51763d7d4fb737ca7a04f66cbc3cd
     - hetio==0.2.6
+    - matplotlib-venn=0.11.5
+    - snorkel=0.7.0b0
+    - snorkel-metal=0.3.3
     - spacy==1.10.0
-    - snorkel-metal==0.3.2

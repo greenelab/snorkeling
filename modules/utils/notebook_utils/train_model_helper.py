@@ -135,7 +135,7 @@ def get_network_results(model_paths, end_model, dev_X, test_X):
     return loss_df, dev_predictions_df, test_predictions_df, params['best_iteration']
 
 
-def train_model_random_lfs(randomly_sampled_lfs, train_matrix, dev_matrix, test_matrix, regularization_grid):
+def train_model_random_lfs(randomly_sampled_lfs, train_matrix, dev_matrix, dev_labels, test_matrix, regularization_grid):
     hyper_grid_results = defaultdict(dict)
     train_grid_results = defaultdict(dict)
     dev_grid_results = defaultdict(dict)
@@ -168,7 +168,8 @@ def train_model_random_lfs(randomly_sampled_lfs, train_matrix, dev_matrix, test_
 
 def train_baseline_model(
     train_matrix, 
-    dev_matrix, 
+    dev_matrix,
+    dev_labels,
     test_matrix, 
     lf_indicies, 
     regularization_grid, 
@@ -182,7 +183,7 @@ def train_baseline_model(
         label_model.train_model(
             train_matrix[:,lf_indicies], n_epochs=1000, 
             log_train_every=200, seed=100, lr=0.01, l2=param,
-            verbose=False
+            verbose=False, #Y_dev=dev_labels
         )
         grid_results[str(param)] = label_model.predict_proba(dev_matrix[:,lf_indicies])
     
@@ -190,7 +191,7 @@ def train_baseline_model(
     label_model.train_model(
             train_matrix[:,lf_indicies], n_epochs=1000, 
             log_train_every=200, seed=50, lr=0.01, l2=best_param,
-            verbose=False
+            verbose=False, #Y_dev=dev_labels
     )
     (
         pd.DataFrame(label_model.predict_proba(train_matrix[:,lf_indicies]), columns=["pos_class_marginals", "neg_class_marginals"])
@@ -274,7 +275,7 @@ def run_random_additional_lfs(
 
         grid_results = train_model_random_lfs(
             lf_samples, train,
-            dev, test,
+            dev,  dev_labels, test,
             grid
         )
 
@@ -294,10 +295,10 @@ def run_random_additional_lfs(
                     .values
                 )
             )
-            #.to_csv(
-            #    f"{train_marginal_dir}/{sample_size}_sampled_lfs.tsv.xz",
-            #    sep="\t", index=False, compression='xz'
-            #)
+            .to_csv(
+                f"{train_marginal_dir}/{sample_size}_sampled_lfs.tsv.xz",
+                sep="\t", index=False, compression='xz'
+            )
         )
         
         dev_marginals_df = dev_marginals_df.append(
