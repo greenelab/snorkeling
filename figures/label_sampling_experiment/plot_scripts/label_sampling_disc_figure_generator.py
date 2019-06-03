@@ -207,12 +207,20 @@ if __name__ == '__main__':
         for key in file_tree
     })
 
+    color_names = {
+        "turquoise": pd.np.array([27, 158, 119])/255,
+        "orange": pd.np.array([217, 95, 2])/255,
+        "purple": pd.np.array([117, 112, 179])/255,
+        "pink": pd.np.array([231, 41, 138])/255,
+        "light-green": pd.np.array([102, 166, 30])/255
+    }
+
     color_map = {
-        "DaG": pd.np.array([27, 158, 119])/255,
-        "CtD": pd.np.array([217, 95, 2])/255,
-        "CbG": pd.np.array([117, 112, 179])/255,
-        "GiG": pd.np.array([231, 41, 138])/255,
-        "All": pd.np.array([102, 166, 30])/255
+        "DaG": color_names["turquoise"]
+        "CtD": color_names["orange"]
+        "CbG": color_names["purple"]
+        "GiG": color_names["pink"]
+        "All": color_names["light-green"]
     }
 
     plot_performance_graph(
