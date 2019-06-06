@@ -201,3 +201,37 @@ def generate_results_df(grid_results, curated_labels, pos_label=1):
             model_param_per[param] = [auc(recall, precision), auc(fpr, tpr)]
         performance_dict[lf_sample] = max(model_param_per.items(), key=operator.itemgetter(1))[1]
     return pd.DataFrame.from_dict(performance_dict, orient="index")
+
+def embed_word_to_index(cand, word_dict):
+    return [word_dict[word] if word in word_dict else 1 for word in cand]
+
+def generate_embedded_df(candidates, word_dict, max_length=83):
+    words_to_embed = [
+        (
+        mark_sentence(
+            candidate_to_tokens(cand), 
+            [
+                    (cand[0].get_word_start(), cand[0].get_word_end(), 1),
+                    (cand[1].get_word_start(), cand[1].get_word_end(), 2)
+            ]
+        ), cand.id)
+        for cand in tqdm_notebook(candidates)
+    ]
+    
+    embed_df = pd.DataFrame(
+        list(
+            map(
+                lambda x: pd.np.pad(
+                    embed_word_to_index(x[0], word_dict),
+                    (0, (max_length-len(x[0]))),
+                    'constant',
+                    constant_values=0
+                ),
+                words_to_embed
+            )
+        ),
+        columns=list(range(max_length))
+    )
+    embed_df['candidate_id'] = list(map(lambda x: x[1], words_to_embed))
+    embed_df['sen_length'] = list(map(lambda x: len(x[0]), words_to_embed))
+    return embed_df

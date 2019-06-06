@@ -65,6 +65,7 @@ def plot_performance_graph(
 
     for row_ind, col in enumerate(data):
         for col_ind, row in enumerate(data[col]):
+
             # plot the graph
             sns.pointplot(
                 x="num_lfs", y=metric,
@@ -75,6 +76,8 @@ def plot_performance_graph(
 
             # remove x axis labels
             axes[row_ind][col_ind].set_xlabel('')
+            if metric == "AUROC":
+                axes[row_ind][col_ind].set_ylim([0.5, 1])
 
             # Not used now because of bad asethetics
             # Set Y axis to have 0.5
@@ -146,7 +149,7 @@ if __name__ == '__main__':
             "CtD": "../../../disease_gene/disease_associates_gene/label_sampling_experiment/results/CtD/results",
             "CbG": "../../../disease_gene/disease_associates_gene/label_sampling_experiment/results/CbG/results",
             "GiG": "../../../disease_gene/disease_associates_gene/label_sampling_experiment/results/GiG/results",
-            "All": "../../../disease_gene/disease_associates_gene/label_sampling_experiment/results/all",
+            "All": "../../../disease_gene/disease_associates_gene/label_sampling_experiment/results/all/results",
         },
         "CtD":
         {
@@ -154,7 +157,7 @@ if __name__ == '__main__':
             "CtD": "../../../compound_disease/compound_treats_disease/label_sampling_experiment/results/CtD/results",
             "CbG": "../../../compound_disease/compound_treats_disease/label_sampling_experiment/results/CbG/results",
             "GiG": "../../../compound_disease/compound_treats_disease/label_sampling_experiment/results/GiG/results",
-            "All": "../../../compound_disease/compound_treats_disease/label_sampling_experiment/results/all",
+            "All": "../../../compound_disease/compound_treats_disease/label_sampling_experiment/results/all/results",
         },
 
         "CbG":
@@ -163,7 +166,7 @@ if __name__ == '__main__':
             "CtD": "../../../compound_gene/compound_binds_gene/label_sampling_experiment/results/CtD/results",
             "CbG": "../../../compound_gene/compound_binds_gene/label_sampling_experiment/results/CbG/results",
             "GiG": "../../../compound_gene/compound_binds_gene/label_sampling_experiment/results/GiG/results",
-            "All": "../../../compound_gene/compound_binds_gene/label_sampling_experiment/results/all",
+            "All": "../../../compound_gene/compound_binds_gene/label_sampling_experiment/results/all/results",
         },
         "GiG":
         {
@@ -171,7 +174,7 @@ if __name__ == '__main__':
             "CtD": "../../../gene_gene/gene_interacts_gene/label_sampling_experiment/results/CtD/results",
             "CbG": "../../../gene_gene/gene_interacts_gene/label_sampling_experiment/results/CbG/results",
             "GiG": "../../../gene_gene/gene_interacts_gene/label_sampling_experiment/results/GiG/results",
-            "All": "../../../gene_gene/gene_interacts_gene/label_sampling_experiment/results/all",
+            "All": "../../../gene_gene/gene_interacts_gene/label_sampling_experiment/results/all/results",
         }
     })
 
@@ -191,7 +194,7 @@ if __name__ == '__main__':
                 file_tree[key][sub_key], "*sampled_performance.tsv",
                 ending_point=end_points[sub_key],
                 # if using all the label functions step by 32 instead of 5
-                step=5 if sub_key !="All" else 32
+                step=5 if sub_key != "All" else 32
             )
             for sub_key in file_tree[key]
         }
@@ -209,10 +212,10 @@ if __name__ == '__main__':
     }
 
     color_map = {
-        "DaG": color_names["turquoise"]
-        "CtD": color_names["orange"]
-        "CbG": color_names["purple"]
-        "GiG": color_names["pink"]
+        "DaG": color_names["turquoise"],
+        "CtD": color_names["orange"],
+        "CbG": color_names["purple"],
+        "GiG": color_names["pink"],
         "All": color_names["light-green"]
     }
 
