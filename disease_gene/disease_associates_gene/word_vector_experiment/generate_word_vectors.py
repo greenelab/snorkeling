@@ -74,11 +74,13 @@ DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 
 # This section loads the dataframe that contains all disease associates gene candidate sentences and their respective dataset assignments.
 
-# In[9]:
+# In[5]:
 
 
+cutoff = 300
 total_candidates_df = (
     pd.read_table("../dataset_statistics/data/all_dg_candidates_map.tsv.xz")
+    .query("sen_length < @cutoff")
 )
 total_candidates_df.head(2)
 
@@ -166,72 +168,4 @@ word_dict_df = (
 )
 word_dict_df.to_csv("results/disease_associates_gene_word_dict.tsv", sep="\t", index=False)
 word_dict_df.head(2)
-
-
-# # Embed All Disease Gene Sentences
-
-# **Note**: Must run this section separately because the kernel cannot handle both training the word vectors and then embedding each DaG sentence.
-# 
-# This section embesd all candidate sentences. For each sentence, we place tags around each mention, tokenized the sentence and then matched each token to their corresponding word index. Any words missing from our vocab receive a index of 1. Lastly, the embedded sentences are exported as a sparse dataframe.
-
-# In[10]:
-
-
-word_dict_df = pd.read_table("results/disease_associates_gene_word_dict.tsv")
-word_dict = {word[0]:word[1] for word in word_dict_df.values.tolist()}
-
-
-# In[11]:
-
-
-limit = 1000000
-total_candidate_count = total_candidates_df.shape[0]
-
-for offset in list(range(0, total_candidate_count, limit)):
-    candidates = (
-        session
-        .query(DiseaseGene)
-        .filter(
-            DiseaseGene.id.in_(
-                total_candidates_df
-                .candidate_id
-                .astype(int)
-                .tolist()
-            )
-        )
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
-    
-    max_length = total_candidates_df.sen_length.max()
-    
-    # if first iteration create the file
-    if offset == 0:
-        (
-            generate_embedded_df(candidates, word_dict, max_length=max_length)
-            .to_sparse()
-            .to_csv(
-                "results/all_embedded_dg_sentences.tsv.xz",
-                index=False, 
-                sep="\t", 
-                compression="xz",
-                mode="w"
-            )
-        )
-        
-    # else append don't overwrite
-    else:
-        (
-            generate_embedded_df(candidates, word_dict, max_length=max_length)
-            .to_sparse()
-            .to_csv(
-                "results/all_embedded_dg_sentences.tsv.xz",
-                index=False, 
-                sep="\t", 
-                compression="xz",
-                mode="a",
-                header=False
-            )
-        )
 

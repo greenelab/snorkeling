@@ -3,7 +3,7 @@
 
 # # Generate Word Vectors For Compound Treats Disease Sentences
 
-# This notebook is designed to generate word vectors for gene interacts gene (CtD) sentences. Using facebooks's fasttext, we trained word vectors using all sentences that contain a disease and gene mention. The model was trained using the following specifications:
+# This notebook is designed to generate word vectors for compound treats disease (CtD) sentences. Using facebooks's fasttext, we trained word vectors using all sentences that contain a disease and gene mention. The model was trained using the following specifications:
 # 
 # | Parameter | Value |
 # | --- | --- |
@@ -169,76 +169,4 @@ word_dict_df = (
 )
 word_dict_df.to_csv("results/compound_treats_disease_word_dict.tsv", sep="\t", index=False)
 word_dict_df.head(2)
-
-
-# # Embed all of Compound Treats Disease Sentences
-
-# **Note**: Must run this section separately because the kernel cannot handle both training the word vectors and then embedding each CtD sentence.
-# 
-# This section embesd all candidate sentences. For each sentence, we place tags around each mention, tokenized the sentence and then matched each token to their corresponding word index. Any words missing from our vocab receive a index of 1. Lastly, the embedded sentences are exported as a sparse dataframe.
-
-# In[17]:
-
-
-word_dict_df = pd.read_table("results/compound_treats_disease_word_dict.tsv")
-word_dict = {word[0]:word[1] for word in word_dict_df.values.tolist()}
-
-
-# In[18]:
-
-
-limit = 1000000
-total_candidate_count = total_candidates_df.shape[0]
-
-for offset in list(range(0, total_candidate_count, limit)):
-    candidates = (
-        session
-        .query(CompoundDisease)
-        .filter(
-            CompoundDisease.id.in_(
-                total_candidates_df
-                .candidate_id
-                .astype(int)
-                .tolist()
-            )
-        )
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
-    
-    max_length = total_candidates_df.sen_length.max()
-    
-    # if first iteration create the file
-    if offset == 0:
-        (
-            generate_embedded_df(candidates, word_dict, max_length=max_length)
-            .to_sparse()
-            .to_csv(
-                "results/all_embedded_cd_sentences.tsv",
-                index=False, 
-                sep="\t", 
-                mode="w"
-            )
-        )
-        
-    # else append don't overwrite
-    else:
-        (
-            generate_embedded_df(candidates, word_dict, max_length=max_length)
-            .to_sparse()
-            .to_csv(
-                "results/all_embedded_cd_sentences.tsv",
-                index=False, 
-                sep="\t", 
-                mode="a",
-                header=False
-            )
-        )
-
-
-# In[ ]:
-
-
-os.system("cd results; xz all_embedded_cd_sentences.tsv")
 
