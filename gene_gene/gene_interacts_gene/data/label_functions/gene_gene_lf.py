@@ -32,7 +32,7 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-path = pathlib.Path(__file__).joinpath('../../../../gene_interacts_gene.tsv.xz').resolve()
+path = pathlib.Path(__file__).joinpath('../../../data/gene_interacts_gene.tsv.xz').resolve()
 pair_df = pd.read_table(path, dtype={"sources": str})
 knowledge_base = set()
 for row in pair_df.itertuples():
@@ -369,7 +369,7 @@ def LF_GG_NO_VERB(c):
 """
 Bi-Clustering LFs
 """
-path = pathlib.Path(__file__).joinpath("../../../../../../dependency_cluster/gene_gene_bicluster_results.tsv.xz").resolve()
+path = pathlib.Path(__file__).joinpath("../../../../../dependency_cluster/gene_gene_bicluster_results.tsv.xz").resolve()
 bicluster_dep_df = pd.read_table(path)
 binding_base = set([tuple(x) for x in bicluster_dep_df.query("B>0")[["pubmed_id", "sentence_num"]].values])
 enhances_base = set([tuple(x) for x in bicluster_dep_df.query("W>0")[["pubmed_id", "sentence_num"]].values])
