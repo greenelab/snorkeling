@@ -5,6 +5,7 @@ from sklearn.metrics import roc_curve, auc, f1_score, precision_recall_curve, ac
 from tqdm import tqdm_notebook
 import pandas as pd
 import numpy as np
+from scipy.sparse import coo_matrix
 
 
 def create_gen_marginal_df(L_data, models, lfs_columns, model_names, candidate_ids):
@@ -217,17 +218,19 @@ def generate_embedded_df(candidates, word_dict, max_length=83):
         ), cand.id)
         for cand in tqdm_notebook(candidates)
     ]
-    
-    embed_df = pd.DataFrame(
-        list(
-            map(
-                lambda x: pd.np.pad(
-                    embed_word_to_index(x[0], word_dict),
-                    (0, (max_length-len(x[0]))),
-                    'constant',
-                    constant_values=0
-                ),
-                words_to_embed
+    print(words_to_embed)
+    embed_df = pd.SparseDataFrame(
+        coo_matrix(
+            list(
+                map(
+                    lambda x: pd.np.pad(
+                        embed_word_to_index(x[0], word_dict),
+                        (0, (max_length-len(x[0]))),
+                        'constant',
+                        constant_values=0
+                    ),
+                    words_to_embed
+                )
             )
         ),
         columns=list(range(max_length))

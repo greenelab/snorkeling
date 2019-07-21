@@ -68,6 +68,9 @@ def plot_performance_graph(
             if metric == "AUROC":
                 axes[row_ind][col_ind].set_ylim([0.5, 1])
 
+            if metric == "AUPRC":
+                axes[row_ind][col_ind].set_ylim([0, 0.7])
+
             # Data Not Available Yet
             if len(data[col][row]) == 0:
                 lower, upper = axes[row_ind][col_ind].get_ylim()
@@ -132,7 +135,7 @@ def plot_performance_graph(
             tick.set_fontsize(23)
 
     if "label" in data["DaG"]["DaG"]["dev"].columns:
-        axes.flatten()[3].legend(loc='upper center', bbox_to_anchor=(2.53, 0.8), fontsize=20)
+        axes.flatten()[3].legend(loc='upper center', bbox_to_anchor=(2.54, 0.8), fontsize=20)
         leg = axes.flatten()[3].get_legend()
         leg.legendHandles[0].set_edgecolor('black')
         leg.legendHandles[0].set_facecolor('white')

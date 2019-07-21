@@ -69,7 +69,7 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-path = pathlib.Path(__file__).joinpath('../../../../compound_treats_disease.tsv.xz').resolve()
+path = pathlib.Path(__file__).joinpath('../../../data/compound_treats_disease.tsv.xz').resolve()
 pair_df = pd.read_table(path, dtype={"sources": str})
 knowledge_base = set()
 for row in pair_df.itertuples():
@@ -394,7 +394,7 @@ def LF_CD_NO_VERB(c):
 """
 Bi-Clustering LFs
 """
-path = pathlib.Path(__file__).joinpath("../../../../../biclustering/compound_disease_bicluster_results.tsv.xz").resolve()
+path = pathlib.Path(__file__).joinpath("../../../../../dependency_cluster/chemical_disease_bicluster_results.tsv.xz").resolve()
 bicluster_dep_df = pd.read_table(path)
 treatment_base = set([tuple(x) for x in bicluster_dep_df.query("T>0")[["pubmed_id", "sentence_num"]].values])
 inhibits_base = set([tuple(x) for x in bicluster_dep_df.query("C>0")[["pubmed_id", "sentence_num"]].values])

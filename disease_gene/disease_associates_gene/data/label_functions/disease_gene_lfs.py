@@ -68,7 +68,7 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-path = pathlib.Path(__file__).joinpath('../../../../disease_gene_pairs_association.csv.xz').resolve()
+path = pathlib.Path(__file__).joinpath('../../disease_associates_gene.csv.xz').resolve()
 pair_df = pd.read_csv(path, dtype={"sources": str})
 knowledge_base = set()
 for row in pair_df.itertuples():
@@ -78,7 +78,7 @@ for row in pair_df.itertuples():
         key = str(row.entrez_gene_id), row.doid_id, source
         knowledge_base.add(key)
         
-path = pathlib.Path(__file__).joinpath('../../../../../disease_downregulates_gene.tsv.xz').resolve()
+path = pathlib.Path(__file__).joinpath('../../../../disease_downregulates_gene/disease_downregulates_gene.tsv.xz').resolve()
 pair_df = pd.read_table(path, dtype={"sources": str})
 for row in pair_df.itertuples():
     if not row.sources or pd.isnull(row.sources):
@@ -87,7 +87,7 @@ for row in pair_df.itertuples():
         key = str(row.entrez_gene_id), row.doid_id, source+'_down'
         knowledge_base.add(key)        
 
-path = pathlib.Path(__file__).joinpath('../../../../../disease_upregulates_gene.tsv.xz').resolve()
+path = pathlib.Path(__file__).joinpath('../../../../disease_upregulates_gene/disease_upregulates_gene.tsv.xz').resolve()
 pair_df = pd.read_table(path, dtype={"sources": str})
 for row in pair_df.itertuples():
     if not row.sources or pd.isnull(row.sources):
@@ -732,7 +732,7 @@ def LF_DG_CONTEXT_SWITCH(c):
 """
 Bi-Clustering LFs
 """
-path = pathlib.Path(__file__).joinpath("../../../../../../dependency_cluster/disease_gene_bicluster_results.tsv.xz").resolve()
+path = pathlib.Path(__file__).joinpath("../../../../../dependency_cluster/disease_gene_bicluster_results.tsv.xz").resolve()
 bicluster_dep_df = pd.read_table(path)
 causal_mutations_base = set([tuple(x) for x in bicluster_dep_df.query("U>0")[["pubmed_id", "sentence_num"]].values])
 mutations_base = set([tuple(x) for x in bicluster_dep_df.query("Ud>0")[["pubmed_id", "sentence_num"]].values])

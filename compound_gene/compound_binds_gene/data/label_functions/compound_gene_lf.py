@@ -68,7 +68,7 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-path = pathlib.Path(__file__).joinpath('../../../../compound_gene_pairs_binds.csv').resolve()
+path = pathlib.Path(__file__).joinpath('../../compound_gene_pairs_binds.csv').resolve()
 pair_df = pd.read_csv(path, dtype={"sources": str})
 knowledge_base = set()
 for row in pair_df.itertuples():
@@ -417,7 +417,7 @@ def LF_CG_PARENTHETICAL_DESC(c):
 """
 Bi-Clustering LFs
 """
-path = pathlib.Path(__file__).joinpath("../../../../../../dependency_cluster/chemical_gene_bicluster_results.tsv.xz").resolve()
+path = pathlib.Path(__file__).joinpath("../../../../../dependency_cluster/chemical_gene_bicluster_results.tsv.xz").resolve()
 bicluster_dep_df = pd.read_table(path)
 
 binds_base = set([tuple(x) for x in bicluster_dep_df.query("B>0")[["pubmed_id", "sentence_num"]].values])

@@ -186,20 +186,22 @@ def train_baseline_model(
             verbose=False, #Y_dev=dev_labels
         )
         grid_results[str(param)] = label_model.predict_proba(dev_matrix[:,lf_indicies])
-    
+
     best_param = float(max(grid_results))
     label_model.train_model(
             train_matrix[:,lf_indicies], n_epochs=1000, 
             log_train_every=200, seed=50, lr=0.01, l2=best_param,
             verbose=False, #Y_dev=dev_labels
     )
+
     (
         pd.DataFrame(label_model.predict_proba(train_matrix[:,lf_indicies]), columns=["pos_class_marginals", "neg_class_marginals"])
         .to_csv(f"{train_marginal_dir}baseline_marginals.tsv.xz", compression="xz", index=False, sep="\t")
     )
+
     dev_grid_results[best_param] = label_model.predict_proba(dev_matrix[:,lf_indicies])
     test_grid_results[best_param] = label_model.predict_proba(test_matrix[:,lf_indicies])
-    
+
     return dev_grid_results, test_grid_results
 
 def indexed_combination(seq, n):

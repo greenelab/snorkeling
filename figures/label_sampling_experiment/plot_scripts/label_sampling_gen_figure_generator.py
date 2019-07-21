@@ -79,6 +79,9 @@ def plot_performance_graph(
             if metric == "AUROC":
                 axes[row_ind][col_ind].set_ylim([0.5, 1])
 
+            if metric == "AUPRC":
+                axes[row_ind][col_ind].set_ylim([0, 0.6])
+
             # Not used now because of bad asethetics
             # Set Y axis to have 0.5
             #if metric=="AUROC":
