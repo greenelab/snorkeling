@@ -3,7 +3,7 @@
 
 # # Compound Binds Gene Edge Prediction
 
-# This notebook is designed to take the next step moving from predicted sentences to edge predictions
+# This notebook is designed to take the next step moving from predicted sentences to edge predictions. After training the discriminator model, each sentences contains a confidence score for the likelihood of mentioning a relationship. Multiple relationships contain multiple sentences, which makes establishing an edge unintuitive. Is taking the max score appropiate for determining existence of an edge? Does taking the mean of each relationship make more sense? The answer towards these questions are shown below.
 
 # In[1]:
 
@@ -35,7 +35,7 @@ total_candidates_df.head(2)
 
 sentence_prediction_df = (
     pd
-    .read_table("results/all_predicted_sentences.tsv")
+    .read_table("results/all_predicted_sentences.tsv.xz")
     .sort_values("candidate_id")
 )
 sentence_prediction_df.head(2)
@@ -44,6 +44,7 @@ sentence_prediction_df.head(2)
 # In[4]:
 
 
+# DataFrame that combines likelihood scores with each candidate sentence
 total_candidates_pred_df = (
     total_candidates_df[[
     "gene1_id", "gene1_name", 
@@ -53,12 +54,18 @@ total_candidates_pred_df = (
     ]]
     .merge(sentence_prediction_df, on="candidate_id")
 )
+total_candidates_pred_df.to_csv(
+    "results/combined_predicted_gig_sentences.tsv.xz", 
+    sep="\t", index=False, compression="xz"
+)
 total_candidates_pred_df.head(2)
 
 
 # In[5]:
 
 
+# DataFrame that groups gene mentions together and takes
+# the max, median and mean of each group
 grouped_candidates_pred_df=(
     total_candidates_pred_df
     .groupby(["gene1_id", "gene2_id"], as_index=False)

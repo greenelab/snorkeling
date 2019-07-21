@@ -3,7 +3,7 @@
 
 # # Compound Binds Gene Edge Prediction
 
-# This notebook is designed to take the next step moving from predicted sentences to edge predictions
+# This notebook is designed to take the next step moving from predicted sentences to edge predictions. After training the discriminator model, each sentences contains a confidence score for the likelihood of mentioning a relationship. Multiple relationships contain multiple sentences, which makes establishing an edge unintuitive. Is taking the max score appropiate for determining existence of an edge? Does taking the mean of each relationship make more sense? The answer towards these questions are shown below.
 
 # In[1]:
 
@@ -24,7 +24,6 @@ from tqdm import tqdm_notebook
 
 total_candidates_df = (
     pd
-    #.read_table("../dataset_statistics/results/all_cg_candidates.tsv.xz")
     .read_table("../dataset_statistics/data/all_cbg_candidates.tsv.xz")
     .sort_values("candidate_id")
 )
@@ -45,6 +44,7 @@ sentence_prediction_df.head(2)
 # In[4]:
 
 
+# DataFrame that combines likelihood scores with each candidate sentence
 total_candidates_pred_df = (
     total_candidates_df[[
     "drugbank_id", "name", 
@@ -55,12 +55,18 @@ total_candidates_pred_df = (
     .rename(index=str, columns={"name": "drug_name"})
     .merge(sentence_prediction_df, on="candidate_id")
 )
+total_candidates_pred_df.to_csv(
+    "results/combined_predicted_cbg_sentences.tsv.xz", 
+    sep="\t", index=False, compression="xz"
+)
 total_candidates_pred_df.head(2)
 
 
 # In[5]:
 
 
+# DataFrame that groups compound and gene mentions together and takes
+# the max, median and mean of each group
 grouped_candidates_pred_df=(
     total_candidates_pred_df
     .groupby(["drugbank_id", "entrez_gene_id"], as_index=False)
