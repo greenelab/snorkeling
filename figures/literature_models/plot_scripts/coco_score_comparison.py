@@ -20,8 +20,6 @@ def plot_performance_graph(
     """
     Plot the graphs onto a multi-subplot grid using seaborn
     Args:
-        metric - the metric to plot for the y axis
-        evaluation_set - whehter to plot the dev set or test set
         title - the main title of the large graph
         file_name - the name of the file to save the graph
         data - the dataframe tree to plot the large graph
@@ -81,6 +79,7 @@ def plot_performance_graph(
         })
 
     performance_df = pd.DataFrame.from_records(data_entry)
+    print(performance_df)
     sns.barplot(x="Edge_Type", y="AUROC", hue="Models", data=performance_df, ax=axes[0])
     sns.barplot(x="Edge_Type", y="AUPR", hue="Models", data=performance_df, ax=axes[1])
     axes[0].set_xlabel('')
@@ -97,7 +96,9 @@ def plot_performance_graph(
         item.xaxis.label.set_fontsize(20)
         for tick in item.get_yticklabels() + item.get_xticklabels():
             tick.set_fontsize(20)
-
+        for tick in item.get_xticklabels():
+            tick.set_color(color_map[tick.get_text()])
+            
     axes.flatten()[1].legend(loc='upper center', bbox_to_anchor=(1.2, 1.0), fontsize=15)
     # Add the subtitles and save the graph
     #fig.text(0.5, 0.89, '', ha='center', fontsize=26)
