@@ -79,7 +79,9 @@ def plot_performance_graph(
         })
 
     performance_df = pd.DataFrame.from_records(data_entry)
+    
     print(performance_df)
+    
     sns.barplot(x="Edge_Type", y="AUROC", hue="Models", data=performance_df, ax=axes[0])
     sns.barplot(x="Edge_Type", y="AUPR", hue="Models", data=performance_df, ax=axes[1])
     axes[0].set_xlabel('')
@@ -96,6 +98,7 @@ def plot_performance_graph(
         item.xaxis.label.set_fontsize(20)
         for tick in item.get_yticklabels() + item.get_xticklabels():
             tick.set_fontsize(20)
+
         for tick in item.get_xticklabels():
             tick.set_color(color_map[tick.get_text()])
             
