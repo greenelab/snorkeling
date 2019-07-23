@@ -3,7 +3,7 @@
 
 # # CoCoScore Implementation
 
-# This notebook consists of implementing the CoCoscore literature model for comparison.
+# This notebook consists of implementing the [CoCoScore](https://www.biorxiv.org/content/10.1101/444398v1) literature model for comparison. We report performance as area under the precision recall curve (AUPR) and area under the receiver operating curve (AUROC). In both cases the greater the area the better the model is.
 
 # In[1]:
 
