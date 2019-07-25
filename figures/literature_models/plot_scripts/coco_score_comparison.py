@@ -11,6 +11,66 @@ import re
 plt.switch_backend('agg')
 
 
+def get_data_frames(file_tree_dict):
+    df_mapper = {}
+
+    for key in file_tree:
+
+        id_keys = (
+            ["doid_id", "entrez_gene_id"] if key == "DaG" else
+            ["doid_id", "drugbank_id"] if key == "CtD" else
+            ["drugbank_id", "entrez_gene_id"] if key == "CbG" else
+            ["gene1_id", "gene2_id"]
+        )
+
+        df_mapper[key] = {
+            "coco_score": (
+                pd.read_csv(
+                    file_tree[key]["coco_score"],
+                    sep="\t"
+                )
+            ),
+            "our_model": (
+                pd.read_csv(
+                    file_tree[key]["our_model"],
+                    sep="\t"
+                )
+            )
+        }
+
+        labels_df = (
+            pd
+            .read_csv(file_tree[key]["labels"], sep="\t")
+            .query(f"split=={file_tree[key]['split']}")
+        )
+
+        df_mapper[key]['coco_score'] = (
+            df_mapper[key]['coco_score']
+            [
+                (
+                    df_mapper[key]['coco_score'][id_keys[0]]
+                    .isin(labels_df[id_keys[0]])
+                ) & (
+                    df_mapper[key]['coco_score'][id_keys[1]]
+                    .isin(labels_df[id_keys[1]])
+                )
+            ]
+        )
+
+        df_mapper[key]['our_model'] = (
+            df_mapper[key]['our_model']
+            [(
+                    df_mapper[key]['our_model'][id_keys[0]]
+                    .isin(labels_df[id_keys[0]])
+                ) & (
+                    df_mapper[key]['our_model'][id_keys[1]]
+                    .isin(labels_df[id_keys[1]])
+                )]
+        )
+
+    return df_mapper
+
+
 def plot_performance_graph(
     title="",
     file_name="",
@@ -26,62 +86,62 @@ def plot_performance_graph(
         color_map - the color coded to plot each point on
     """
     fig, axes = plt.subplots(1, 2, figsize=(18, 8), sharex='row')
-    
+
     data_entry = []
     for edge_type in data:
 
         max_model_df = (
             data[edge_type]["our_model"]
             .groupby(
-                ["doid_id", "entrez_gene_id"] if edge_type == "DaG" else 
-                ["doid_id", "drugbank_id"] if edge_type =="CtD" else 
+                ["doid_id", "entrez_gene_id"] if edge_type == "DaG" else
+                ["doid_id", "drugbank_id"] if edge_type == "CtD" else
                 ["drugbank_id", "entrez_gene_id"] if edge_type == "CbG" else
                 ["gene1_id", "gene2_id"]
             )
             .agg({
-                "model_prediction": 'max', 
+                "model_prediction": 'max',
                 "hetionet": 'max',
             })
         )
-        
+
         fpr, tpr, _ = roc_curve(
+            max_model_df["hetionet"],
+            max_model_df["model_prediction"]
+        )
+
+        precision, recall, _ = precision_recall_curve(
             max_model_df["hetionet"], 
             max_model_df["model_prediction"]
         )
-        
-        precision,recall, _ = precision_recall_curve(
-            max_model_df["hetionet"], 
-            max_model_df["model_prediction"]
-        )
-        
+
         data_entry.append({
-            "AUROC":auc(fpr, tpr),
-            "AUPR":auc(recall, precision),
+            "AUROC": auc(fpr, tpr),
+            "AUPR": auc(recall, precision),
             "Models": "Our Model",
             "Edge_Type": edge_type
         })
-        
+
         fpr, tpr, _ = roc_curve(
-            data[edge_type]["coco_score"]["hetionet"], 
+            data[edge_type]["coco_score"]["hetionet"],
             data[edge_type]["coco_score"]["final_score"]
         )
-        
-        precision,recall, _ = precision_recall_curve(
-            data[edge_type]["coco_score"]["hetionet"], 
+
+        precision, recall, _ = precision_recall_curve(
+            data[edge_type]["coco_score"]["hetionet"],
             data[edge_type]["coco_score"]["final_score"]
         )
-        
+
         data_entry.append({
-            "AUROC":auc(fpr, tpr),
-            "AUPR":auc(recall, precision),
+            "AUROC": auc(fpr, tpr),
+            "AUPR": auc(recall, precision),
             "Models": "CoCoScore",
             "Edge_Type": edge_type
         })
 
     performance_df = pd.DataFrame.from_records(data_entry)
-    
+
     print(performance_df)
-    
+
     sns.barplot(x="Edge_Type", y="AUROC", hue="Models", data=performance_df, ax=axes[0])
     sns.barplot(x="Edge_Type", y="AUPR", hue="Models", data=performance_df, ax=axes[1])
     axes[0].set_xlabel('')
@@ -90,7 +150,7 @@ def plot_performance_graph(
     axes[1].set_ylim([0, 1])
     axes[0].get_legend().remove()
     axes[1].get_legend().remove()
-    
+
     # Change the font for each element of the graph
     for item in axes.flat:
         item.title.set_fontsize(20)
@@ -101,58 +161,57 @@ def plot_performance_graph(
 
         for tick in item.get_xticklabels():
             tick.set_color(color_map[tick.get_text()])
-            
+
     axes.flatten()[1].legend(loc='upper center', bbox_to_anchor=(1.2, 1.0), fontsize=15)
     # Add the subtitles and save the graph
-    #fig.text(0.5, 0.89, '', ha='center', fontsize=26)
+    # fig.text(0.5, 0.89, '', ha='center', fontsize=26)
     fig.text(0.5, 0.02, 'Edge Type', ha='center', fontsize=20)
-    #fig.text(0.04, 0.5, 'Performance Metric', va='center', rotation='vertical', fontsize=20)
+    # fig.text(0.04, 0.5, 'Performance Metric', va='center', rotation='vertical', fontsize=20)
     fig.suptitle(title, fontsize=25)
     plt.subplots_adjust(top=0.85, wspace=0.23, right=0.85)
     plt.savefig(file_name, format='png')
 
 # If running the script itself
 # execute the code below
+
+
 if __name__ == '__main__':
     file_tree = OrderedDict({
         "DaG":
         {
-            "coco_score":"../../../disease_gene/disease_associates_gene/literature_models/coco_score/results/dg_edge_prediction_cocoscore.tsv",
-            "our_model": "../../../disease_gene/disease_associates_gene/edge_prediction_experiment/results/combined_predicted_dag_sentences.tsv.xz"
+            "coco_score": "../../../disease_gene/disease_associates_gene/literature_models/coco_score/results/dg_edge_prediction_cocoscore.tsv",
+            "our_model": "../../../disease_gene/disease_associates_gene/edge_prediction_experiment/results/combined_predicted_dag_sentences.tsv.xz",
+            "labels": "../../../disease_gene/disease_associates_gene/dataset_statistics/results/all_dg_candidates.tsv.xz",
+            "split": 2
         },
         "CtD":
         {
-            "coco_score":"../../../compound_disease/compound_treats_disease/literature_models/coco_score/results/cd_edge_prediction_cocoscore.tsv",
-            "our_model": "../../../compound_disease/compound_treats_disease/edge_prediction_experiment/results/combined_predicted_ctd_sentences.tsv.xz"
+            "coco_score": "../../../compound_disease/compound_treats_disease/literature_models/coco_score/results/cd_edge_prediction_cocoscore.tsv",
+            "our_model": "../../../compound_disease/compound_treats_disease/edge_prediction_experiment/results/combined_predicted_ctd_sentences.tsv.xz",
+            "labels": "../../../compound_disease/compound_treats_disease/dataset_statistics/results/all_ctd_map.tsv.xz",
+            "split": 11
         },
         "CbG":
         {
-            "coco_score":"../../../compound_gene/compound_binds_gene/literature_models/coco_score/results/cg_edge_prediction_cocoscore.tsv",
-            "our_model": "../../../compound_gene/compound_binds_gene/edge_prediction_experiment/results/combined_predicted_cbg_sentences.tsv.xz"
+            "coco_score": "../../../compound_gene/compound_binds_gene/literature_models/coco_score/results/cg_edge_prediction_cocoscore.tsv",
+            "our_model": "../../../compound_gene/compound_binds_gene/edge_prediction_experiment/results/combined_predicted_cbg_sentences.tsv.xz",
+            "labels": "../../../compound_gene/compound_binds_gene/dataset_statistics/data/all_cbg_candidates.tsv.xz",
+            "split": 8
 
         },
         "GiG":
         {
-            "coco_score":"../../../gene_gene/gene_interacts_gene/literature_models/coco_score/results/gg_edge_prediction_cocoscore.tsv",
-            "our_model": "../../../gene_gene/gene_interacts_gene/edge_prediction_experiment/results/combined_predicted_gig_sentences.tsv.xz"
+            "coco_score": "../../../gene_gene/gene_interacts_gene/literature_models/coco_score/results/gg_edge_prediction_cocoscore.tsv",
+            "our_model": "../../../gene_gene/gene_interacts_gene/edge_prediction_experiment/results/combined_predicted_gig_sentences.tsv.xz",
+            "labels": "../../../gene_gene/gene_interacts_gene/dataset_statistics/results/all_gig_candidates.tsv.xz",
+            "split": 5
 
         }
     })
-
 
     # Use the file tree above and graph the appropiate files
-    edge_data_tree = OrderedDict({
-        key: {
-            sub_key:pd.read_csv(
-                file_tree[key][sub_key],
-                sep="\t"
-            )
-            for sub_key in file_tree[key]
-        }
-        for key in file_tree
-    })
+    edge_data_tree = get_data_frames(file_tree)
 
-    
     # Obtained from color brewer 2
     # 5 classes using the supposedly color blind friendly colors
     color_names = {
