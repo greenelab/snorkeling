@@ -50,14 +50,14 @@ total_candidates_pred_df = (
     "gene1_id", "gene1_name", 
     "gene2_id", "gene2_name", 
     "text", "hetionet",
-    "candidate_id"
+    "candidate_id", "split"
     ]]
     .merge(sentence_prediction_df, on="candidate_id")
 )
-total_candidates_pred_df.to_csv(
-    "results/combined_predicted_gig_sentences.tsv.xz", 
-    sep="\t", index=False, compression="xz"
-)
+#total_candidates_pred_df.to_csv(
+#    "results/combined_predicted_gig_sentences.tsv.xz", 
+#    sep="\t", index=False, compression="xz"
+#)
 total_candidates_pred_df.head(2)
 
 
@@ -68,6 +68,7 @@ total_candidates_pred_df.head(2)
 # the max, median and mean of each group
 grouped_candidates_pred_df=(
     total_candidates_pred_df
+    .query("split==5")
     .groupby(["gene1_id", "gene2_id"], as_index=False)
     .agg({
         "model_prediction": ['max', 'mean', 'median'], 
