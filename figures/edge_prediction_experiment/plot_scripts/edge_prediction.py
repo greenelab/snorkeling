@@ -99,7 +99,7 @@ def plot_performance_graph(
 
             axes[row_ind].set_title(row, color=color_map[row])
             axes[row_ind].set(yscale="log")
-            axes[row_ind].set_ylim([10**(-1/8), 10e6])
+            axes[row_ind].set_ylim([10**(-1/8), 10e4])
             axes[row_ind].set_xlim([0, 1.05])
             axes[row_ind].set_ylabel("")
             axes[row_ind].get_legend().remove()
