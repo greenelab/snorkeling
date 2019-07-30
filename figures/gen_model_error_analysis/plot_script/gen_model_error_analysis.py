@@ -59,40 +59,38 @@ def plot_performance_graph(
         data - the dataframe tree to plot the large graph
         color_map - the color coded to plot each point on
     """
-    fig, axes = plt.subplots(len(file_tree["DaG"]), len(file_tree),  figsize=(25, 15), sharey='row')
+    # len(file_tree["DaG"])
+    fig, axes = plt.subplots(1, len(file_tree),  figsize=(20, 10), sharey='row')
 
     for row_ind, col in enumerate(data):
 
-        for col_ind, row in enumerate(data[col]):
+        perform_df = (
+            data[col]['pos'][evaluation_set]
+            .assign(polarity='pos')
+            .append(data[col]['neg'][evaluation_set].assign(polarity='neg'))
+        )
+        perform_df['num_lfs'] = perform_df['num_lfs'] * 100
 
-            perform_df = data[col][row][evaluation_set].copy()
-            perform_df['num_lfs'] = perform_df['num_lfs'] * 100
+        # plot the graph
+        sns.pointplot(
+            x="num_lfs", y=metric,
+            data=perform_df.astype({"num_lfs": int}),
+            ax=axes[row_ind],
+            hue='polarity', scale=1.25
+        )
 
-            # plot the graph
-            sns.pointplot(
-                x="num_lfs", y=metric,
-                data=perform_df.astype({"num_lfs": int}),
-                ax=axes[col_ind][row_ind], ci="sd",
-                scale=1.25
-            )
+        # remove x axis labels
+        axes[row_ind].set_xlabel('')
 
-            # remove x axis labels
-            axes[col_ind][row_ind].set_xlabel('')
+        if metric == "AUROC":
+            axes[row_ind].set_ylim([0, 1])
 
-            if metric == "AUROC":
-                axes[col_ind][row_ind].set_ylim([0, 1])
+        if metric == "AUPRC":
+            axes[row_ind].set_ylim([0, 0.5])
 
-            if metric == "AUPRC":
-                axes[col_ind][row_ind].set_ylim([0, 0.5])
-
-            # only set first column and first row titles
-            if col_ind == 0:
-                axes[col_ind][row_ind].set_title(col, color=color_map[col])
-
-            if row_ind == 0:
-                axes[col_ind][row_ind].set_ylabel(row, fontsize=30)
-            else:
-                axes[col_ind][row_ind].set_ylabel('')
+        axes[row_ind].set_title(col, color=color_map[col])
+        axes[row_ind].set_ylabel('')
+        axes[row_ind].get_legend().remove()
 
     # Change the font for each element of the graph
     for item in axes.flat:
@@ -102,12 +100,13 @@ def plot_performance_graph(
         for tick in item.get_yticklabels() + item.get_xticklabels():
             tick.set_fontsize(23)
 
+    legend = axes.flatten()[3].legend(title="Polarity", loc='upper center', bbox_to_anchor=(1.27, 1.0), fontsize=18)
+    plt.setp(legend.get_title(), fontsize=18)
+
     # Add the subtitles and save the graph
-    fig.text(0.04, 0.5, 'Label Function Polarity', va='center', rotation='vertical', fontsize=26)
-    fig.text(0.5, 0.04, 'Frequency of Emissions (%)', ha='center', fontsize=30)
-    fig.text(0.5, 0.90, f'Predicted Relations ({metric})', ha='center',  fontsize=25)
+    fig.text(0.5, 0.03, 'Frequency of Emissions (%)', ha='center', fontsize=30)
+    fig.text(0.04, 0.5, f'Prediction Performance ({metric})', va='center', rotation='vertical', fontsize=26)
     fig.suptitle(title, fontsize=30)
-    #fig.text(0.69, 0.02, '0-Only Uses Relation Specific Databases.', fontsize=27)
     plt.subplots_adjust(top=0.85)
     plt.savefig(file_name, format='png')
 
