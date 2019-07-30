@@ -50,15 +50,15 @@ total_candidates_pred_df = (
     "drugbank_id", "name", 
     "entrez_gene_id", "gene_symbol", 
     "text", "hetionet",
-    "candidate_id"
+    "candidate_id", "split"
     ]]
     .rename(index=str, columns={"name": "drug_name"})
     .merge(sentence_prediction_df, on="candidate_id")
 )
-total_candidates_pred_df.to_csv(
-    "results/combined_predicted_cbg_sentences.tsv.xz", 
-    sep="\t", index=False, compression="xz"
-)
+#total_candidates_pred_df.to_csv(
+#    "results/combined_predicted_cbg_sentences.tsv.xz", 
+#    sep="\t", index=False, compression="xz"
+#)
 total_candidates_pred_df.head(2)
 
 
@@ -69,6 +69,7 @@ total_candidates_pred_df.head(2)
 # the max, median and mean of each group
 grouped_candidates_pred_df=(
     total_candidates_pred_df
+    .query("split==8")
     .groupby(["drugbank_id", "entrez_gene_id"], as_index=False)
     .agg({
         "model_prediction": ['max', 'mean', 'median'], 

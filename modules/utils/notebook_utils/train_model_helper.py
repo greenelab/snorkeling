@@ -173,7 +173,8 @@ def train_baseline_model(
     test_matrix, 
     lf_indicies, 
     regularization_grid, 
-    train_marginal_dir
+    train_marginal_dir,
+    write_file=False
 ):
     grid_results = {}
     dev_grid_results = {}
@@ -193,11 +194,14 @@ def train_baseline_model(
             log_train_every=200, seed=50, lr=0.01, l2=best_param,
             verbose=False, #Y_dev=dev_labels
     )
-
-    (
-        pd.DataFrame(label_model.predict_proba(train_matrix[:,lf_indicies]), columns=["pos_class_marginals", "neg_class_marginals"])
-        .to_csv(f"{train_marginal_dir}baseline_marginals.tsv.xz", compression="xz", index=False, sep="\t")
-    )
+    if write_file:
+        (
+            pd.DataFrame(
+                label_model.predict_proba(train_matrix[:,lf_indicies]), 
+                columns=["pos_class_marginals", "neg_class_marginals"]
+            )
+            .to_csv(f"{train_marginal_dir}baseline_marginals.tsv.xz", compression="xz", index=False, sep="\t")
+        )
 
     dev_grid_results[best_param] = label_model.predict_proba(dev_matrix[:,lf_indicies])
     test_grid_results[best_param] = label_model.predict_proba(test_matrix[:,lf_indicies])

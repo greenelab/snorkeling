@@ -20,10 +20,65 @@ import pandas as pd
 import seaborn as sns
 from tqdm import tqdm_notebook
 
-from utils.notebook_utils.dataframe_helper import load_candidate_dataframes
+from utils.notebook_utils.dataframe_helper import load_candidate_dataframes, mark_sentence
 
 
 # In[2]:
+
+
+#Set up the environment
+username = "danich1"
+password = "snorkel"
+dbname = "pubmeddb"
+
+#Path subject to change for different os
+database_str = "postgresql+psycopg2://{}:{}@/{}?host=/var/run/postgresql".format(username, password, dbname)
+os.environ['SNORKELDB'] = database_str
+
+from snorkel import SnorkelSession
+session = SnorkelSession()
+
+
+# In[3]:
+
+
+from snorkel.learning.pytorch.rnn.utils import candidate_to_tokens
+from snorkel.models import Candidate, candidate_subclass
+
+
+# In[4]:
+
+
+GeneGene = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
+
+
+# In[5]:
+
+
+def tag_sentence(x):
+    candidates=(
+        session
+        .query(GeneGene)
+        .filter(GeneGene.id.in_(x.candidate_id.astype(int).tolist()))
+        .all()
+    )
+    tagged_sen=[
+         " ".join(
+             mark_sentence(
+                candidate_to_tokens(cand), 
+                [
+                        (cand[0].get_word_start(), cand[0].get_word_end(), 1),
+                        (cand[1].get_word_start(), cand[1].get_word_end(), 2)
+                ]
+            )
+         )
+        for cand in candidates
+    ]
+
+    return tagged_sen
+
+
+# In[6]:
 
 
 spreadsheet_names = {
@@ -33,7 +88,7 @@ spreadsheet_names = {
 }
 
 
-# In[3]:
+# In[7]:
 
 
 candidate_dfs = {
@@ -45,7 +100,7 @@ for key in candidate_dfs:
     print("Size of {} set: {}".format(key, candidate_dfs[key].shape[0]))
 
 
-# In[4]:
+# In[8]:
 
 
 dev_predictions_df = pd.read_table("results/before_28_sampled_lfs.tsv_dev.tsv")
@@ -53,39 +108,87 @@ dev_predictions_df.columns = ["model_predictions", "candidate_id"]
 dev_predictions_df.head(2)
 
 
-# In[5]:
+# In[9]:
 
 
 model_predictions_df = (
     candidate_dfs['dev']
     .merge(dev_predictions_df)
-    [["curated_gig", "model_predictions"]]
+    [["curated_gig", "model_predictions", "candidate_id"]]
     .round(2)
 )
 model_predictions_df.head(2)
 
 
-# In[6]:
+# In[10]:
 
 
 dev_all_predictions_df = pd.read_table("results/after_28_sampled_lfs.tsv_dev.tsv")
-dev_all_predictions_df.columns = ["candidate_id", "model_predictions"]
+dev_all_predictions_df.columns = ["candidate_id", "model_predictions_after"]
 dev_all_predictions_df.head(2)
 
 
-# In[7]:
+# In[11]:
+
+
+total_candidates_df = pd.read_csv("../dataset_statistics/results/all_gig_candidates.tsv.xz", sep="\t")
+total_candidates_df.head(2)
+
+
+# In[12]:
+
+
+confidence_score_df = (
+    total_candidates_df
+    [["gene1_name", "gene2_name", "text", "candidate_id"]]
+    .merge(dev_predictions_df, on="candidate_id")
+    .merge(dev_all_predictions_df, on="candidate_id")
+    .sort_values("candidate_id")
+    .assign(text=lambda x: tag_sentence(x))
+    .sort_values("model_predictions_after")
+)
+confidence_score_df.head(2)
+
+
+# In[13]:
+
+
+(
+    confidence_score_df
+    .head(10)
+    .sort_values("model_predictions_after", ascending=False)
+    .drop("candidate_id", axis=1)
+    .round(3)
+    .to_csv("results/bottom_ten_high_confidence_scores.tsv", sep="\t", index=False)
+)
+
+
+# In[14]:
+
+
+(
+    confidence_score_df
+    .tail(10)
+    .sort_values("model_predictions_after", ascending=False)
+    .drop("candidate_id", axis=1)
+    .round(3)
+    .to_csv("results/top_ten_high_confidence_scores.tsv", sep="\t", index=False)
+)
+
+
+# In[15]:
 
 
 model_all_predictions_df = (
     candidate_dfs['dev']
-    .merge(dev_all_predictions_df, on="candidate_id")
+    .merge(dev_all_predictions_df.rename(index=str, columns={"model_predictions_after":"model_predictions"}))
     [["curated_gig", "model_predictions"]]
     .round(2)
 )
 model_all_predictions_df.head(2)
 
 
-# In[8]:
+# In[16]:
 
 
 from sklearn.calibration import calibration_curve
