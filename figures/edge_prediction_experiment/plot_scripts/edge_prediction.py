@@ -62,13 +62,14 @@ def plot_performance_graph(
         data - the dataframe tree to plot the large graph
         color_map - the color coded to plot each point on
     """
-    fig, axes = plt.subplots(len(file_tree["DaG"]), len(file_tree), figsize=(22, 10), sharey='row', sharex='row')
-
+    fig, axes = plt.subplots(len(file_tree["DaG"]), len(file_tree), figsize=(22, 10))#, sharey='row')
+    sns.set_context(rc={'lines.markeredgewidth': 0.9})
     for row_ind, col in enumerate(data):
         for row in data[col]:
 
             if "precision" not in data[col][row]:
                 continue
+
             data[col][row][evaluation_set] = (
                 data[col][row][evaluation_set]
                 .groupby([
@@ -82,17 +83,23 @@ def plot_performance_graph(
                 .reset_index(level="in_hetionet")
                 .reset_index(drop=True)
                 .append(data[col][row][evaluation_set].query("precision==1"), sort=True)
+                .reset_index(drop=True)
+                .dropna()
             )
 
             # plot the graph
-            sns.scatterplot(
-                x="precision", y=metric,
-                hue="in_hetionet",
-                data=data[col][row][evaluation_set].sort_values("in_hetionet"),
-                ax=axes[row_ind], ci=None,
+
+            axes[row_ind].plot(
+                data[col][row][evaluation_set].query("in_hetionet=='Existing'")["precision"],
+                data[col][row][evaluation_set].query("in_hetionet=='Existing'")[metric],
+                linestyle='--', marker='o', label="Existing"
             )
 
-            # print(data[col][row][evaluation_set])
+            axes[row_ind].plot(
+                data[col][row][evaluation_set].query("in_hetionet=='Novel'")["precision"],
+                data[col][row][evaluation_set].query("in_hetionet=='Novel'")[metric],
+                linestyle='--', marker='o', label="Novel"
+            )
 
             # remove x axis labels
             axes[row_ind].set_xlabel('')
@@ -102,7 +109,6 @@ def plot_performance_graph(
             axes[row_ind].set_ylim([10**(-1/8), 10e4])
             axes[row_ind].set_xlim([0, 1.05])
             axes[row_ind].set_ylabel("")
-            axes[row_ind].get_legend().remove()
 
     # Change the font for each element of the graph
     for item in axes.flat:
