@@ -73,7 +73,7 @@ def plot_performance_graph(
 
         # plot the graph
         sns.pointplot(
-            x="num_lfs", y=metric,
+            x="num_lfs", y=metric if metric == "AUROC" else "AUPRC",
             data=perform_df.astype({"num_lfs": int}),
             ax=axes[row_ind],
             hue='polarity', scale=1.25
@@ -85,7 +85,7 @@ def plot_performance_graph(
         if metric == "AUROC":
             axes[row_ind].set_ylim([0, 1])
 
-        if metric == "AUPRC":
+        if metric == "AUPR":
             axes[row_ind].set_ylim([0, 0.5])
 
         axes[row_ind].set_title(col, color=color_map[col])
@@ -178,7 +178,7 @@ if __name__ == '__main__':
         color_map=color_map
     )
     plot_performance_graph(
-        metric="AUPRC",  evaluation_set='dev',
+        metric="AUPR",  evaluation_set='dev',
         title="Random Label Function Generative Model Assessment (Dev Set)",
         file_name="../transfer_dev_set_auprc.png", data=performance_data_tree,
         color_map=color_map
@@ -190,7 +190,7 @@ if __name__ == '__main__':
         color_map=color_map
     )
     plot_performance_graph(
-        metric="AUPRC", evaluation_set='test',
+        metric="AUPR", evaluation_set='test',
         title="Random Label Function Generative Model Assessment (Test Set)",
         file_name="../transfer_test_set_auprc.png", data=performance_data_tree,
         color_map=color_map
