@@ -2,8 +2,9 @@
 
 This repository stores data and code to scale the extraction of biomedical relationships (i.e. Disease-Gene assocaitions, Compounds binding to Genes, Gene-Gene interactions etc.) from the Pubmed Abstracts.
 
-This work uses a subset of [Hetionet v1](https://doi.org/cdfk) (bolded in figure below), which is a heterogenous network that contains pharmacological and biological information in the form of nodes and edges.
-This network is made from publicly available data, that is usually populated via manual curation.
+This work uses a subset of [Hetionet v1](https://doi.org/cdfk), which is a heterogenous network that contains pharmacological and biological information in the form of nodes and edges. 
+(Resource metagraph shown in figure below).
+This network is made from publicly available data, which is usually populated via manual curation.
 Manual curation is time consuming and difficult to scale as the rate of publications continues to rise.
 A recently introduced "[Data Programming](https://arxiv.org/abs/1605.07723v3)" paradigm can circumvent this issue by being able to generate large annotated datasets quickly.
 This paradigm combines distant supervision with simple rules and heuristics written as labeling functions to automatically annotate large datasets.
