@@ -11,7 +11,7 @@ Unfortunately, it takes a significant amount of time and effort to write a usefu
 Because of this fact, we aimed to speed up this process by re-using label functions across edge types.
 Read the full paper [here](https://greenelab.github.io/text_mined_hetnet_manuscript/).
 
-![Highlighted edges used in Hetionet v1](https://raw.githubusercontent.com/greenelab/text_mined_hetnet_manuscript/3a040e78114208417d2b1784ae558fb323eabe01/ "Metagraph of Hetionet v1")
+![Highlighted edges used in Hetionet v1](https://raw.githubusercontent.com/greenelab/text_mined_hetnet_manuscript/3a040e78114208417d2b1784ae558fb323eabe01/content/images/figures/hetionet/metagraph_highlighted_edges.png "Metagraph of Hetionet v1")
 
 ## Directories
 
