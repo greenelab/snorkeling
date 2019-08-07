@@ -68,7 +68,7 @@ def plot_performance_graph(
             if metric == "AUROC":
                 axes[row_ind][col_ind].set_ylim([0.5, 1])
 
-            if metric == "AUPRC":
+            if metric == "AUPR":
                 axes[row_ind][col_ind].set_ylim([0, 0.7])
 
             # Data Not Available Yet
@@ -78,7 +78,7 @@ def plot_performance_graph(
 
             else:
                 sns.pointplot(
-                    x="num_lfs", y=metric,
+                    x="num_lfs", y=metric if metric=="AUROC" else "AUPRC",
                     data=data[col][row][evaluation_set],
                     ax=axes[row_ind][col_ind],
                     hue="label", ci="sd", scale=1.2,
@@ -237,7 +237,7 @@ if __name__ == '__main__':
     )
 
     plot_performance_graph(
-        metric="AUPRC", evaluation_set='dev',
+        metric="AUPR", evaluation_set='dev',
         title="Label Sampling Discriminator Model Assessment (Dev Set)",
         file_name="../disc_performance_dev_set_auprc.png", data=disc_performance_tree,
         color_map=color_map
@@ -251,7 +251,7 @@ if __name__ == '__main__':
     )
 
     plot_performance_graph(
-        metric="AUPRC", evaluation_set='test',
+        metric="AUPR", evaluation_set='test',
         title="Label Sampling Discriminator Model Assessment (Test Set)",
         file_name="../disc_performance_test_set_auprc.png", data=disc_performance_tree,
         color_map=color_map

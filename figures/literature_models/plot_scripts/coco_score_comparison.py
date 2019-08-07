@@ -146,7 +146,7 @@ def plot_performance_graph(
     sns.barplot(x="Edge_Type", y="AUPR", hue="Models", data=performance_df, ax=axes[1])
     axes[0].set_xlabel('')
     axes[1].set_xlabel('')
-    axes[0].set_ylim([0, 1])
+    axes[0].set_ylim([0.5, 1])
     axes[1].set_ylim([0, 1])
     axes[0].get_legend().remove()
     axes[1].get_legend().remove()
