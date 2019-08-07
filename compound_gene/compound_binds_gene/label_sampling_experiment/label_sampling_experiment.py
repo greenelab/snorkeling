@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# # Transfer Learning to Predict Compound Binds Gene Relations
+# # Using Labels from Different Relation Types to Predict Compound Binds Gene Sentences
 
 # This notebook is designed to predict the compound binds gene (CbG) relation. The first step in this process is to label our train, dev, and test sentences (split = 6,7,8). We will label these sentences using all of our handcrafted label functions. The working hypothesis here is there are shared information between different relations, which in turn should aid in predicting the compound binds gene relation. After the labeling process, the next step is to train a generative model that will estimate the likelihood of the positive class ($\hat{Y}$) given our annotated label matrix. **Note**: This process doesn't involve any sentence context, so the only information used here are categorical output.
 
@@ -10,9 +10,9 @@
 # In[1]:
 
 
-get_ipython().magic(u'load_ext autoreload')
-get_ipython().magic(u'autoreload 2')
-get_ipython().magic(u'matplotlib inline')
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '2')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 from collections import defaultdict
 import os
@@ -49,7 +49,7 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[22]:
+# In[3]:
 
 
 from snorkel.learning.pytorch.rnn.rnn_base import mark_sentence
@@ -71,23 +71,23 @@ from utils.notebook_utils.train_model_helper import (
     run_random_additional_lfs
 )
 
-sys.path.append(os.path.abspath('data/label_functions'))
-sys.path.append(os.path.abspath('../../../disease_gene/disease_associates_gene/single_task/data/label_functions'))
-sys.path.append(os.path.abspath('../../../compound_disease/compound_treats_disease/single_task/data/label_functions'))
-sys.path.append(os.path.abspath('../../../gene_gene/gene_interacts_gene/single_task/data/label_functions'))
+sys.path.append(os.path.abspath('../data/label_functions'))
+sys.path.append(os.path.abspath('../../../disease_gene/disease_associates_gene/data/label_functions'))
+sys.path.append(os.path.abspath('../../../compound_disease/compound_treats_disease/data/label_functions'))
+sys.path.append(os.path.abspath('../../../gene_gene/gene_interacts_gene/data/label_functions'))
 from compound_gene_lf import CG_LFS
 from disease_gene_lfs import DG_LFS
 from compound_disease_lf import CD_LFS
 from gene_gene_lf import GG_LFS
 
 
-# In[4]:
+# In[ ]:
 
 
 CompoundGene = candidate_subclass('CompoundGene', ['Compound', 'Gene'])
 
 
-# In[5]:
+# In[ ]:
 
 
 quick_load = True
@@ -97,24 +97,24 @@ quick_load = True
 
 # This block of code is designed to label the sentences using our label functions. All the sentences are located in our postgres database that is store locally on the lab machine. The labeling process is defined as follows: Given a candidate id, we use the sqlalchemy library to extract a candidate object. Using this object and we pass it through a series of label functions that will output a 1 (positive), -1 (negative) or 0 (abstain) depending on the rule set. Lastly we aggregate the output of these functions into a sparse matrix that the generative model will use. Since these steps are pretty linear, we parallelized this process using python's multithreading library. Despite the optimization, this process can still take about 3 hours to label a set of ~300000 sentences.
 
-# In[6]:
+# In[ ]:
 
 
-total_candidates_df = pd.read_table("../dataset_statistics/data/all_cbg_candidates.tsv.xz")
+total_candidates_df = pd.read_table("../dataset_statistics/results/all_cbg_candidates.tsv.xz")
 total_candidates_df.head(2)
 
 
-# In[7]:
+# In[ ]:
 
 
 spreadsheet_names = {
     #'train': 'data/sentences/sentence_labels_train.xlsx',
-    'dev': 'data/sentences/sentence_labels_dev.xlsx',
-    'test': 'data/sentences/sentence_labels_test.xlsx'
+    'dev': '../data/sentences/sentence_labels_dev.xlsx',
+    'test': '../data/sentences/sentence_labels_test.xlsx'
 }
 
 
-# In[8]:
+# In[ ]:
 
 
 candidate_dfs = {
@@ -126,7 +126,34 @@ for key in candidate_dfs:
     print("Size of {} set: {}".format(key, candidate_dfs[key].shape[0]))
 
 
-# In[9]:
+# In[ ]:
+
+
+# Write out selected candidates to tsv file
+(
+    total_candidates_df
+    .query("split==6")
+    [["candidate_id"]]
+    .sample(680000, random_state=100)
+    .assign(type="train")
+    .append(
+        candidate_dfs["dev"]
+        .assign(type="dev")
+        [["candidate_id", "type"]]
+        .append(
+            candidate_dfs["test"]
+            .assign(type="test")
+            [["candidate_id", "type"]]
+        )
+    )
+    .to_csv(
+        "results/cluster/compound_binds_gene_selected_candidates.tsv",
+        index=False, sep="\t"
+    )
+)
+
+
+# In[ ]:
 
 
 lfs = (
@@ -143,7 +170,7 @@ lf_names = (
 )
 
 
-# In[10]:
+# In[ ]:
 
 
 if not quick_load:
@@ -166,7 +193,7 @@ if not quick_load:
     }
 
 
-# In[11]:
+# In[ ]:
 
 
 if not quick_load:
@@ -184,7 +211,7 @@ if not quick_load:
     })
 
 
-# In[12]:
+# In[ ]:
 
 
 # Save the label matricies to a file for future loading/error analysis
@@ -192,24 +219,24 @@ if not quick_load:
     (
         label_matricies['train']
         .sort_values("candidate_id")
-        .to_csv("data/train_sparse_matrix.tsv.xz", sep="\t", index=False)
+        .to_csv("../data/label_matricies/train_sparse_matrix.tsv.xz", sep="\t", index=False)
     )
     (
         label_matricies['dev']
         .sort_values("candidate_id")
-        .to_csv("data/dev_sparse_matrix.tsv.xz", sep="\t", index=False)
+        .to_csv("../data/label_matricies/dev_sparse_matrix.tsv.xz", sep="\t", index=False)
     )
     (
         label_matricies['test']
         .sort_values("candidate_id")
-        .to_csv("data/test_sparse_matrix.tsv.xz", sep="\t", index=False)
+        .to_csv("../data/label_matricies/test_sparse_matrix.tsv.xz", sep="\t", index=False)
     )
 # Quick load the label matricies
 else:
     label_destinations = {
-        'train':"data/train_sparse_matrix.tsv.xz",
-        'dev':"data/dev_sparse_matrix.tsv.xz",
-        'test':"data/test_sparse_matrix.tsv.xz"
+        'train':"../data/label_matricies/train_sparse_matrix.tsv.xz",
+        'dev':"../data/label_matricies/dev_sparse_matrix.tsv.xz",
+        'test':"../data/label_matricies/test_sparse_matrix.tsv.xz"
     }
     label_matricies = {
         key:pd.read_table(label_destinations[key]).to_sparse()
@@ -217,7 +244,7 @@ else:
     }
 
 
-# In[13]:
+# In[ ]:
 
 
 # Important Note Snorkel Metal uses a different coding scheme
@@ -252,7 +279,7 @@ correct_L_test = plusminus_to_categorical(
 )
 
 
-# In[14]:
+# In[ ]:
 
 
 lf_summary(
@@ -264,7 +291,7 @@ lf_summary(
 )
 
 
-# In[15]:
+# In[ ]:
 
 
 lf_summary(
@@ -281,7 +308,7 @@ lf_summary(
 
 # This block trains the baseline model (Distant Supervision of CbG Databases) that will be used as a reference to compare against.
 
-# In[16]:
+# In[ ]:
 
 
 ds_start = 0
@@ -289,13 +316,17 @@ ds_end = 9
 regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=5), 2)
 
 
-# In[17]:
+# In[ ]:
 
 
 dev_ds_grid, test_ds_grid = train_baseline_model(
     correct_L, correct_L_dev, correct_L_test,
-    list(range(ds_start, ds_end)), regularization_grid
+    list(range(ds_start, ds_end)), regularization_grid,
+    train_marginal_dir="data/random_sampling/CbG/marginals/"
 )
+
+dev_baseline_marginals = list(dev_ds_grid.values())[0][:,0]
+test_baseline_marginals = list(test_ds_grid.values())[0][:,0]
 
 dev_ds_grid = (
     generate_results_df(
@@ -316,7 +347,7 @@ test_ds_grid = (
 )
 
 
-# In[18]:
+# In[ ]:
 
 
 best_param = dev_ds_grid.query("AUROC==AUROC.max()").l2_param.values[0]
@@ -324,29 +355,44 @@ dev_baseline=dev_ds_grid.query("l2_param==@best_param").to_dict('records')
 dev_baseline[0].update({"num_lfs": 0})
 
 
-# In[19]:
+# In[ ]:
 
 
 test_baseline=test_ds_grid.query("l2_param==@best_param").to_dict('records')
 test_baseline[0].update({"num_lfs": 0})
 
 
+# In[ ]:
+
+
+dev_baseline_marginals = list(zip(dev_baseline_marginals, candidate_dfs['dev'].curated_cbg.values))
+test_baseline_marginals = list(zip(test_baseline_marginals, candidate_dfs['test'].curated_cbg.values))
+
+
+# In[ ]:
+
+
+count_fraction_correct = lambda x: 1 if (x.marginals > 0.5 and x.label==1) or (x.marginals < 0.5 and x.label==0) else 0
+
+
 # # Compound Binds Gene LFS Only
 
 # This block is designed to determine how many label functions are needed to achieve decent results.
 
-# In[20]:
+# In[ ]:
 
 
 num_of_samples = 50
 regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=5), 2)
 
 
-# In[23]:
+# In[ ]:
 
 
 dev_cbg_df = pd.DataFrame(dev_baseline)
 test_cbg_df = pd.DataFrame(test_baseline)
+dev_cbg_marginals_df = pd.DataFrame(dev_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
+test_cbg_marginals_df = pd.DataFrame(test_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
 
 cbg_start = ds_end
 cbg_end = 29
@@ -356,7 +402,7 @@ range_of_sample_sizes = (
     [correct_L[:,cbg_start:cbg_end].shape[1]]
 )
 
-lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
+lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_marginals_df = run_random_additional_lfs(
     range_of_sample_sizes=range_of_sample_sizes, 
     range_of_lf_indicies = list(range(cbg_start, cbg_end+1)),
     size_of_sample_pool=cbg_end-cbg_start,
@@ -368,18 +414,56 @@ lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
     test_labels=candidate_dfs['test'].curated_cbg.values,
     grid=regularization_grid,
     label_matricies=label_matricies['train'],
-    train_marginal_dir='data/random_sampling/CbG/marginals/',
+    train_marginal_dir='results/CbG/marginals/',
     ds_start=ds_start,
     ds_end=ds_end,
 )
 
 dev_cbg_df = dev_cbg_df.append(dev_results_df, sort=True)
 test_cbg_df = test_cbg_df.append(test_results_df, sort=True)
+dev_cbg_marginals_df = dev_cbg_marginals_df.append(dev_marginals_df, sort=True)
+test_cbg_marginals_df = test_cbg_marginals_df.append(test_marginals_df, sort=True)
+
+
+# In[ ]:
+
+
+dev_cbg_marginals_df = (
+     dev_cbg_marginals_df
+     .assign(
+        frac_correct=(
+            dev_cbg_marginals_df
+            .apply(count_fraction_correct,axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
+
+
+# In[ ]:
+
+
+test_cbg_marginals_df = (
+    test_cbg_marginals_df
+    .assign(
+        frac_correct=(
+            test_cbg_marginals_df
+            .apply(count_fraction_correct, axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
 
 
 # ## Dev Set Performance (AUPRC, AUROC)
 
-# In[24]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -387,9 +471,15 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=dev_cbg_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_cbg_df, ax=axs[1])
 
 
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=dev_cbg_marginals_df, hue="label")
+
+
 # ## Test Set Performance (AUPRC, AUROC)
 
-# In[25]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -397,16 +487,36 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=test_cbg_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=test_cbg_df, ax=axs[1])
 
 
-# In[26]:
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=test_cbg_marginals_df, hue="label")
+
+
+# In[ ]:
 
 
 dev_cbg_df.to_csv(
-    "data/random_sampling/CbG/results/dev_sampled_performance.tsv", 
+    "results/CbG/results/dev_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_cbg_df.to_csv(
-    "data/random_sampling/CbG/results/test_sampled_performance.tsv", 
+    "results/CbG/results/test_sampled_performance.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+
+# In[ ]:
+
+
+dev_cbg_marginals_df.to_csv(
+    "results/CbG/results/dev_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+test_cbg_marginals_df.to_csv(
+    "results/CbG/results/test_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -415,18 +525,20 @@ test_cbg_df.to_csv(
 
 # This section determines how well disease associates gene label functions can predict compound binds gene relations.
 
-# In[27]:
+# In[ ]:
 
 
 num_of_samples = 50
 regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=10), 2)
 
 
-# In[28]:
+# In[ ]:
 
 
 dev_dag_df = pd.DataFrame(dev_baseline)
 test_dag_df = pd.DataFrame(test_baseline)
+dev_dag_marginals_df = pd.DataFrame(dev_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
+test_dag_marginals_df = pd.DataFrame(test_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
 
 dag_start = 29
 dag_end = 59
@@ -436,7 +548,7 @@ range_of_sample_sizes = (
     [correct_L[:,dag_start:dag_end].shape[1]]
 )
 
-lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
+lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_marginals_df = run_random_additional_lfs(
     range_of_sample_sizes=range_of_sample_sizes, 
     range_of_lf_indicies = list(range(dag_start, dag_end+1)),
     size_of_sample_pool=dag_end-dag_start,
@@ -448,18 +560,56 @@ lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
     test_labels=candidate_dfs['test'].curated_cbg.values,
     grid=regularization_grid,
     label_matricies=label_matricies['train'],
-    train_marginal_dir='data/random_sampling/DaG/marginals/',
+    train_marginal_dir='results/DaG/marginals/',
     ds_start=ds_start,
     ds_end=ds_end,
 )
 
 dev_dag_df = dev_dag_df.append(dev_results_df, sort=True)
 test_dag_df = test_dag_df.append(test_results_df, sort=True)
+dev_dag_marginals_df = dev_dag_marginals_df.append(dev_marginals_df, sort=True)
+test_dag_marginals_df = test_dag_marginals_df.append(test_marginals_df, sort=True)
+
+
+# In[ ]:
+
+
+dev_dag_marginals_df = (
+     dev_dag_marginals_df
+     .assign(
+        frac_correct=(
+            dev_dag_marginals_df
+            .apply(count_fraction_correct,axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
+
+
+# In[ ]:
+
+
+test_dag_marginals_df = (
+    test_dag_marginals_df
+    .assign(
+        frac_correct=(
+            test_dag_marginals_df
+            .apply(count_fraction_correct, axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
 
 
 # ## Dev Set Performance (AUPRC, AUROC)
 
-# In[29]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -467,9 +617,15 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=dev_dag_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_dag_df, ax=axs[1])
 
 
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=dev_dag_marginals_df, hue="label")
+
+
 # ## Test Set Performance (AUPRC, AUROC)
 
-# In[30]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -477,16 +633,36 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=test_dag_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=test_dag_df, ax=axs[1])
 
 
-# In[31]:
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=test_dag_marginals_df, hue="label")
+
+
+# In[ ]:
 
 
 dev_dag_df.to_csv(
-    "data/random_sampling/DaG/results/dev_sampled_performance.tsv", 
+    "results/DaG/results/dev_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_dag_df.to_csv(
-    "data/random_sampling/DaG/results/test_sampled_performance.tsv", 
+    "results/DaG/results/test_sampled_performance.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+
+# In[ ]:
+
+
+dev_dag_marginals_df.to_csv(
+    "results/DaG/results/dev_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+test_dag_marginals_df.to_csv(
+    "results/DaG/results/test_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -495,7 +671,7 @@ test_dag_df.to_csv(
 
 # This section determines how well compound treats disease label functions can predict compound binds gene relations.
 
-# In[32]:
+# In[ ]:
 
 
 num_of_samples = 50
@@ -507,6 +683,8 @@ regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=10), 2)
 
 dev_ctd_df = pd.DataFrame(dev_baseline)
 test_ctd_df = pd.DataFrame(test_baseline)
+dev_ctd_marginals_df = pd.DataFrame(dev_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
+test_ctd_marginals_df = pd.DataFrame(test_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
 
 ctd_start = 59
 ctd_end = 81
@@ -516,7 +694,7 @@ range_of_sample_sizes = (
     [correct_L[:,ctd_start:ctd_end].shape[1]]
 )
 
-lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
+lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_marginals_df = run_random_additional_lfs(
     range_of_sample_sizes=range_of_sample_sizes, 
     range_of_lf_indicies = list(range(ctd_start, ctd_end+1)),
     size_of_sample_pool=ctd_end-ctd_start,
@@ -528,18 +706,56 @@ lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
     test_labels=candidate_dfs['test'].curated_cbg.values,
     grid=regularization_grid,
     label_matricies=label_matricies['train'],
-    train_marginal_dir='data/random_sampling/CtD/marginals/',
+    train_marginal_dir='results/CtD/marginals/',
     ds_start=ds_start,
     ds_end=ds_end,
 )
 
 dev_ctd_df = dev_ctd_df.append(dev_results_df, sort=True)
 test_ctd_df = test_ctd_df.append(test_results_df, sort=True)
+dev_ctd_marginals_df = dev_ctd_marginals_df.append(dev_marginals_df, sort=True)
+test_ctd_marginals_df = test_ctd_marginals_df.append(test_marginals_df, sort=True)
+
+
+# In[ ]:
+
+
+dev_ctd_marginals_df = (
+     dev_ctd_marginals_df
+     .assign(
+        frac_correct=(
+            dev_ctd_marginals_df
+            .apply(count_fraction_correct,axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+ )
+
+
+# In[ ]:
+
+
+test_ctd_marginals_df = (
+    test_ctd_marginals_df
+    .assign(
+        frac_correct=(
+            test_ctd_marginals_df
+            .apply(count_fraction_correct, axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
 
 
 # ## Dev Set Performance (AUPRC, AUROC)
 
-# In[34]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -547,9 +763,15 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=dev_ctd_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_ctd_df, ax=axs[1])
 
 
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=dev_ctd_marginals_df, hue="label")
+
+
 # ## Test Set Performance (AUPRC, AUROC)
 
-# In[35]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -557,16 +779,36 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=test_ctd_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=test_ctd_df, ax=axs[1])
 
 
-# In[36]:
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=test_ctd_marginals_df, hue="label")
+
+
+# In[ ]:
 
 
 dev_ctd_df.to_csv(
-    "data/random_sampling/CtD/results/dev_sampled_performance.tsv", 
+    "results/CtD/results/dev_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_ctd_df.to_csv(
-    "data/random_sampling/CtD/results/test_sampled_performance.tsv", 
+    "results/CtD/results/test_sampled_performance.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+
+# In[ ]:
+
+
+dev_ctd_marginals_df.to_csv(
+    "results/CtD/results/dev_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+test_ctd_marginals_df.to_csv(
+    "results/CtD/results/test_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -575,18 +817,20 @@ test_ctd_df.to_csv(
 
 # This section determines how well gene interacts gene label functions can predict compound binds gene relations.
 
-# In[37]:
+# In[ ]:
 
 
 num_of_samples = 50
 regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=10), 2)
 
 
-# In[38]:
+# In[ ]:
 
 
 dev_gig_df = pd.DataFrame(dev_baseline)
 test_gig_df = pd.DataFrame(test_baseline)
+dev_gig_marginals_df = pd.DataFrame(dev_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
+test_gig_marginals_df = pd.DataFrame(test_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
 
 gig_start = 81
 gig_end = 109
@@ -596,7 +840,7 @@ range_of_sample_sizes = (
     [correct_L[:,gig_start:gig_end].shape[1]]
 )
 
-lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
+lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_marginals_df = run_random_additional_lfs(
     range_of_sample_sizes=range_of_sample_sizes, 
     range_of_lf_indicies = list(range(gig_start, gig_end+1)),
     size_of_sample_pool=gig_end-gig_start,
@@ -608,18 +852,56 @@ lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
     test_labels=candidate_dfs['test'].curated_cbg.values,
     grid=regularization_grid,
     label_matricies=label_matricies['train'],
-    train_marginal_dir='data/random_sampling/GiG/marginals/',
+    train_marginal_dir='results/GiG/marginals/',
     ds_start=ds_start,
     ds_end=ds_end,
 )
 
 dev_gig_df = dev_gig_df.append(dev_results_df, sort=True)
 test_gig_df = test_gig_df.append(test_results_df, sort=True)
+dev_gig_marginals_df = dev_gig_marginals_df.append(dev_marginals_df, sort=True)
+test_gig_marginals_df = test_gig_marginals_df.append(test_marginals_df, sort=True)
+
+
+# In[ ]:
+
+
+dev_gig_marginals_df = (
+     dev_gig_marginals_df
+     .assign(
+        frac_correct=(
+            dev_gig_marginals_df
+            .apply(count_fraction_correct,axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+ )
+
+
+# In[ ]:
+
+
+test_gig_marginals_df = (
+    test_gig_marginals_df
+    .assign(
+        frac_correct=(
+            test_gig_marginals_df
+            .apply(count_fraction_correct, axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
 
 
 # ## Dev Set Performance (AUPRC, AUROC)
 
-# In[39]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -627,9 +909,15 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=dev_gig_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=dev_gig_df, ax=axs[1])
 
 
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=dev_gig_marginals_df, hue="label")
+
+
 # ## Test Set Performance (AUPRC, AUROC)
 
-# In[40]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(10, 5))
@@ -637,16 +925,36 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=test_gig_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=test_gig_df, ax=axs[1])
 
 
-# In[41]:
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=test_gig_marginals_df, hue="label")
+
+
+# In[ ]:
 
 
 dev_gig_df.to_csv(
-    "data/random_sampling/GiG/results/dev_sampled_performance.tsv", 
+    "results/GiG/results/dev_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_gig_df.to_csv(
-    "data/random_sampling/GiG/results/test_sampled_performance.tsv", 
+    "results/GiG/results/test_sampled_performance.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+
+# In[ ]:
+
+
+dev_gig_marginals_df.to_csv(
+    "results/GiG/results/dev_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+test_gig_marginals_df.to_csv(
+    "results/GiG/results/test_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -655,25 +963,27 @@ test_gig_df.to_csv(
 
 # This section determines how well all label functions can predict compound binds gene relations.
 
-# In[42]:
+# In[ ]:
 
 
 num_of_samples = 50
 regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=5), 2)
 
 
-# In[43]:
+# In[ ]:
 
 
 all_dev_result_df = pd.DataFrame(dev_baseline)
 all_test_result_df = pd.DataFrame(test_baseline)
+dev_all_marginals_df = pd.DataFrame(dev_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
+test_all_marginals_df = pd.DataFrame(test_baseline_marginals, columns=["marginals", "label"]).assign(num_lfs=0)
 
 range_of_sample_sizes = (
     list(range(1, correct_L[:,ds_end:].shape[1], 8)) +
     [correct_L[:,ds_end:].shape[1]]
 )
 
-lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
+lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_marginals_df = run_random_additional_lfs(
     range_of_sample_sizes=range_of_sample_sizes, 
     range_of_lf_indicies = list(range(ds_end, correct_L.shape[1]+1)),
     size_of_sample_pool=correct_L.shape[1]-ds_end,
@@ -685,18 +995,56 @@ lf_sample_keeper, dev_results_df, test_results_df = run_random_additional_lfs(
     test_labels=candidate_dfs['test'].curated_cbg.values,
     grid=regularization_grid,
     label_matricies=label_matricies['train'],
-    train_marginal_dir='data/random_sampling/all/',
+    train_marginal_dir='results/all/',
     ds_start=ds_start,
     ds_end=ds_end,
 )
 
 all_dev_result_df = all_dev_result_df.append(dev_results_df, sort=True)
 all_test_result_df = all_test_result_df.append(test_results_df, sort=True)
+dev_all_marginals_df = dev_all_marginals_df.append(dev_marginals_df, sort=True)
+test_all_marginals_df = test_all_marginals_df.append(test_marginals_df, sort=True)
+
+
+# In[ ]:
+
+
+dev_all_marginals_df = (
+     dev_all_marginals_df
+     .assign(
+        frac_correct=(
+            dev_all_marginals_df
+            .apply(count_fraction_correct,axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+ )
+
+
+# In[ ]:
+
+
+test_all_marginals_df = (
+    test_all_marginals_df
+    .assign(
+        frac_correct=(
+            test_all_marginals_df
+            .apply(count_fraction_correct, axis=1)
+            .values
+        )
+    )
+    .groupby(["label", "num_lfs"])["frac_correct"]
+    .agg(pd.np.mean)
+    .reset_index(level=["label", "num_lfs"])
+)
 
 
 # ## Dev Set Performance (AUPRC, AUROC)
 
-# In[44]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(13, 5))
@@ -704,9 +1052,15 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=all_dev_result_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=all_dev_result_df, ax=axs[1])
 
 
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=dev_all_marginals_df, hue="label")
+
+
 # ## Test Set Performance (AUPRC, AUROC)
 
-# In[45]:
+# In[ ]:
 
 
 fig, axs = plt.subplots(ncols=2, figsize=(13, 5))
@@ -714,16 +1068,36 @@ sns.pointplot(x="num_lfs", y="AUPRC", data=all_test_result_df, ax=axs[0])
 sns.pointplot(x="num_lfs", y="AUROC", data=all_test_result_df, ax=axs[1])
 
 
-# In[46]:
+# In[ ]:
+
+
+sns.pointplot(x="num_lfs", y="frac_correct", data=test_all_marginals_df, hue="label")
+
+
+# In[ ]:
 
 
 all_dev_result_df.to_csv(
-    "data/random_sampling/all/dev_sampled_performance.tsv", 
+    "results/all/dev_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 all_test_result_df.to_csv(
-    "data/random_sampling/all/test_sampled_performance.tsv", 
+    "results/all/test_sampled_performance.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+
+# In[ ]:
+
+
+dev_all_marginals_df.to_csv(
+    "results/all/dev_sampled_marginals.tsv", 
+    index=False, sep="\t", float_format="%.5g"
+)
+
+test_all_marginals_df.to_csv(
+    "results/all/test_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 

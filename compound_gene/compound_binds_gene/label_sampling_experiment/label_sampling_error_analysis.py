@@ -100,7 +100,7 @@ quick_load = True
 # In[6]:
 
 
-total_candidates_df = pd.read_table("../dataset_statistics/data/all_cbg_candidates.tsv.xz")
+total_candidates_df = pd.read_table("../dataset_statistics/results/all_cbg_candidates.tsv.xz")
 total_candidates_df.head(2)
 
 
@@ -386,7 +386,7 @@ for p_success in frequency:
         new_dev_grid, new_test_grid = train_baseline_model(
             new_L, new_L_dev, candidate_dfs['dev'].curated_cbg.values, 
             new_L_test, list(range(ds_start, ds_end+1)), regularization_grid,
-            train_marginal_dir="data/random_sampling/CbG/marginals/"
+            train_marginal_dir="results/CbG/marginals/"
         )
         dev_random_grid[sample] = new_dev_grid[list(new_dev_grid.keys())[0]]
         test_random_grid [sample] = new_test_grid[list(new_test_grid.keys())[0]]
