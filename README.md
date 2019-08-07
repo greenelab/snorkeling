@@ -2,8 +2,8 @@
 
 This repository stores data and code to scale up the extraction of biomedical relationships (i.e. Disease-Gene assocaitions, Compounds binding to Genes, Gene-Gene interactions etc.) from the Pubmed Abstracts.
 
-This work uses a subset of [Hetionet v1](https://doi.org/cdfk), which is a heterogenous network that contains pharmacological and biological information in the form of nodes and edges. 
-(Resource metagraph shown in figure below).
+## Quick Synopsis
+This work uses a subset of [Hetionet v1](https://doi.org/cdfk) (bolded in the resource schema below), which is a heterogenous network that contains pharmacological and biological information in the form of nodes and edges. 
 This network was made from publicly available data, which is usually populated via manual curation.
 Manual curation is time consuming and difficult to scale as the rate of publications continues to rise.
 A recently introduced "[Data Programming](https://arxiv.org/abs/1605.07723v3)" paradigm can circumvent this issue by being able to generate large annotated datasets quickly.
@@ -16,7 +16,8 @@ Read the full paper [here](https://greenelab.github.io/text_mined_hetnet_manuscr
 
 ## Directories
 
-The main folders for this project are described below. For convention most of the folder names are based on the metagraph shown above. 
+Described below are the main folders for this project. 
+For convention the folder names are based on the schema shown above. 
 
 | Name | Descirption |
 | ---- | ---- | 
@@ -24,7 +25,7 @@ The main folders for this project are described below. For convention most of th
 | [compound_gene](https://github.com/greenelab/snorkeling/tree/master/compound_gene) | Head folder that contains all relationships compounds and genes may share | 
 | [disease_gene](https://github.com/greenelab/snorkeling/tree/master/disease_gene) | Head folder that contains all realtionships disease and genes may share |
 | [gene_gene](https://github.com/greenelab/snorkeling/tree/master/gene_gene) | Head folder than contains all realtionships genes may share with each other |
-| [dependency cluster](https://github.com/greenelab/snorkeling/tree/master/dependency_cluster) | This folder contains a notebook for extracting and converting the results of another [study](https://zenodo.org/record/1495808#.XUmlR_wpBrk).
+| [dependency cluster](https://github.com/greenelab/snorkeling/tree/master/dependency_cluster) | This folder contains preprocessed results from the ["A global network of biomedical relationships derived from text"](https://zenodo.org/record/1495808#.XUmlR_wpBrk) paper.
 | [figures](https://github.com/greenelab/snorkeling/tree/master/figures) | This folder contains figures for this work |
 | [modules](https://github.com/greenelab/snorkeling/tree/master/modules/utils) | This folder contains helper scripts that this work uses |
 | [playground](https://github.com/greenelab/snorkeling/tree/master/playground) | This folder contains ancient code designed to test and understand the snorkel package. |
