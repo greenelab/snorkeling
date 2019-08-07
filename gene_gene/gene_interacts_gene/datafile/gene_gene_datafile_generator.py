@@ -178,5 +178,5 @@ map_df.head(2)
 # In[15]:
 
 
-map_df.to_csv("gene_interacts_gene.tsv.xz", sep="\t", compression="xz", index=False)
+map_df.to_csv("results/gene_interacts_gene.tsv.xz", sep="\t", compression="xz", index=False)
 
