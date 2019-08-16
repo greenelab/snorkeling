@@ -23,7 +23,7 @@ import seaborn as sns
 
 total_candidates_df = (
     pd
-    .read_table("../dataset_statistics/data/all_dg_candidates_map.tsv.xz")
+    .read_table("../dataset_statistics/data/all_dag_map.tsv.xz")
     .sort_values("candidate_id")
 )
 total_candidates_df.head(2)

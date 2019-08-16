@@ -131,7 +131,7 @@ dev_all_predictions_df.head(2)
 # In[11]:
 
 
-total_candidates_df = pd.read_csv("../dataset_statistics/results/all_dg_candidates.tsv.xz", sep="\t")
+total_candidates_df = pd.read_csv("../dataset_statistics/results/all_dag_map.tsv.xz", sep="\t")
 total_candidates_df.head(2)
 
 
