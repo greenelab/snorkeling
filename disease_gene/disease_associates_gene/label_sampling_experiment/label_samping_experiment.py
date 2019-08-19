@@ -98,10 +98,10 @@ quick_load = True
 
 # This block of code is designed to label the sentences using our label functions. All the sentences are located in our postgres database that is store locally on the lab machine. The labeling process is defined as follows: Given a candidate id, we use the sqlalchemy library to extract a candidate object. Using this object and we pass it through a series of label functions that will output a 1 (positive), -1 (negative) or 0 (abstain) depending on the rule set. Lastly, we aggregate the output of these functions into a sparse matrix that the generative model will use. Since these steps are pretty linear, we parallelized this process using python's multithreading library. Despite the optimization, this process can still take greater than 3 hours to label a set of ~600000 sentences.
 
-# In[6]:
+# In[2]:
 
 
-total_candidates_df = pd.read_table("../dataset_statistics/data/all_dg_candidates_map.tsv.xz")
+total_candidates_df = pd.read_table("../dataset_statistics/data/all_dag_map.tsv.xz")
 total_candidates_df.head(2)
 
 
@@ -109,9 +109,9 @@ total_candidates_df.head(2)
 
 
 spreadsheet_names = {
-    'train': 'data/sentences/sentence_labels_train.xlsx',
-    'dev': 'data/sentences/sentence_labels_dev.xlsx',
-    'test': 'data/sentences/sentence_labels_test.xlsx'
+    'train': '../data/sentences/sentence_labels_train.xlsx',
+    'dev': '../data/sentences/sentence_labels_dev.xlsx',
+    'test': '../data/sentences/sentence_labels_test.xlsx'
 }
 
 
@@ -194,24 +194,24 @@ if not quick_load:
     (
         label_matricies['train']
         .sort_values("candidate_id")
-        .to_csv("data/train_sparse_matrix.tsv", sep="\t", index=False)
+        .to_csv("../data/label_matricies/train_sparse_matrix.tsv", sep="\t", index=False)
     )
     (
         label_matricies['dev']
         .sort_values("candidate_id")
-        .to_csv("data/dev_sparse_matrix.tsv", sep="\t", index=False)
+        .to_csv("../data/label_matricies/dev_sparse_matrix.tsv", sep="\t", index=False)
     )
     (
         label_matricies['test']
         .sort_values("candidate_id")
-        .to_csv("data/test_sparse_matrix.tsv", sep="\t", index=False)
+        .to_csv("../data/label_matricies/test_sparse_matrix.tsv", sep="\t", index=False)
     )
 # Quick load the label matricies
 else:
     label_destinations = {
-        'train':"data/train_sparse_matrix.tsv.xz",
-        'dev':"data/dev_sparse_matrix.tsv.xz",
-        'test':"data/test_sparse_matrix.tsv.xz"
+        'train':"../data/label_matricies/train_sparse_matrix.tsv.xz",
+        'dev':"../data/label_matricies/dev_sparse_matrix.tsv.xz",
+        'test':"../data/label_matricies/test_sparse_matrix.tsv.xz"
     }
     label_matricies = {
         key:pd.read_table(label_destinations[key]).to_sparse()
@@ -308,9 +308,10 @@ regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=5), 2)
 
 
 dev_ds_grid, test_ds_grid = train_baseline_model(
-    correct_L, correct_L_dev, correct_L_test,
+    correct_L, correct_L_dev, candidate_dfs['dev'].curated_dsh.values, 
+    correct_L_test,
     list(range(ds_start,ds_end+1)), regularization_grid,
-    train_marginal_dir="data/random_sampling/DaG/marginals/"
+    train_marginal_dir="results/random_sampling/DaG/marginals/",
 )
 
 dev_baseline_marginals = list(dev_ds_grid.values())[0][:,0]
@@ -402,7 +403,7 @@ lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_margin
     test_labels=candidate_dfs['test'].curated_dsh.values,
     grid=regularization_grid,
     label_matricies=label_matricies['train'][train_ids == False],
-    train_marginal_dir='data/random_sampling/DaG/marginals/',
+    train_marginal_dir='results/random_sampling/DaG/marginals/',
     ds_start=ds_start,
     ds_end=ds_end,
 )
@@ -485,12 +486,12 @@ sns.pointplot(x="num_lfs", y="frac_correct", data=test_dag_marginals_df, hue="la
 
 
 dev_dag_df.to_csv(
-    "data/random_sampling/DaG/results/dev_sampled_performance.tsv", 
+    "results/random_sampling/DaG/results/dev_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_dag_df.to_csv(
-    "data/random_sampling/DaG/results/test_sampled_performance.tsv", 
+    "results/random_sampling/DaG/results/test_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -499,12 +500,12 @@ test_dag_df.to_csv(
 
 
 dev_dag_marginals_df.to_csv(
-    "data/random_sampling/DaG/results/dev_sampled_marginals.tsv", 
+    "results/random_sampling/DaG/results/dev_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_dag_marginals_df.to_csv(
-    "data/random_sampling/DaG/results/test_sampled_marginals.tsv", 
+    "results/random_sampling/DaG/results/test_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -548,7 +549,7 @@ lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_margin
     test_labels=candidate_dfs['test'].curated_dsh.values,
     grid=regularization_grid,
     label_matricies=label_matricies['train'][train_ids == False],
-    train_marginal_dir='data/random_sampling/CtD/marginals/',
+    train_marginal_dir='results/random_sampling/CtD/marginals/',
     ds_start=ds_start,
     ds_end=ds_end,
 )
@@ -631,12 +632,12 @@ sns.pointplot(x="num_lfs", y="frac_correct", data=test_ctd_marginals_df, hue="la
 
 
 dev_ctd_df.to_csv(
-    "data/random_sampling/CtD/results/dev_sampled_performance.tsv", 
+    "results/random_sampling/CtD/results/dev_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_ctd_df.to_csv(
-    "data/random_sampling/CtD/results/test_sampled_performance.tsv", 
+    "results/random_sampling/CtD/results/test_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -645,12 +646,12 @@ test_ctd_df.to_csv(
 
 
 dev_ctd_marginals_df.to_csv(
-    "data/random_sampling/CtD/results/dev_sampled_marginals.tsv", 
+    "results/random_sampling/CtD/results/dev_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_ctd_marginals_df.to_csv(
-    "data/random_sampling/CtD/results/test_sampled_marginals.tsv", 
+    "results/random_sampling/CtD/results/test_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -694,7 +695,7 @@ lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_margin
     test_labels=candidate_dfs['test'].curated_dsh.values,
     grid=regularization_grid,
     label_matricies=label_matricies['train'][train_ids == False],
-    train_marginal_dir='data/random_sampling/CbG/marginals/',
+    train_marginal_dir='results/random_sampling/CbG/marginals/',
     ds_start=ds_start,
     ds_end=ds_end,
 )
@@ -777,12 +778,12 @@ sns.pointplot(x="num_lfs", y="frac_correct", data=test_cbg_marginals_df, hue="la
 
 
 dev_cbg_df.to_csv(
-    "data/random_sampling/CbG/results/dev_sampled_performance.tsv", 
+    "results/random_sampling/CbG/results/dev_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_cbg_df.to_csv(
-    "data/random_sampling/CbG/results/test_sampled_performance.tsv", 
+    "results/random_sampling/CbG/results/test_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -791,12 +792,12 @@ test_cbg_df.to_csv(
 
 
 dev_cbg_marginals_df.to_csv(
-    "data/random_sampling/CbG/results/dev_sampled_marginals.tsv", 
+    "results/random_sampling/CbG/results/dev_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_cbg_marginals_df.to_csv(
-    "data/random_sampling/CbG/results/test_sampled_marginals.tsv", 
+    "results/random_sampling/CbG/results/test_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -840,7 +841,7 @@ lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_margin
     test_labels=candidate_dfs['test'].curated_dsh.values,
     grid=regularization_grid,
     label_matricies=label_matricies['train'][train_ids == False],
-    train_marginal_dir='data/random_sampling/GiG/marginals/',
+    train_marginal_dir='results/random_sampling/GiG/marginals/',
     ds_start=ds_start,
     ds_end=ds_end,
 )
@@ -923,12 +924,12 @@ sns.pointplot(x="num_lfs", y="frac_correct", data=test_gig_marginals_df, hue="la
 
 
 dev_gig_df.to_csv(
-    "data/random_sampling/GiG/results/dev_sampled_performance.tsv", 
+    "results/random_sampling/GiG/results/dev_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_gig_df.to_csv(
-    "data/random_sampling/GiG/results/test_sampled_performance.tsv", 
+    "results/random_sampling/GiG/results/test_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -937,12 +938,12 @@ test_gig_df.to_csv(
 
 
 dev_gig_marginals_df.to_csv(
-    "data/random_sampling/GiG/results/dev_sampled_marginals.tsv", 
+    "results/random_sampling/GiG/results/dev_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_gig_marginals_df.to_csv(
-    "data/random_sampling/GiG/results/test_sampled_marginals.tsv", 
+    "results/random_sampling/GiG/results/test_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -983,7 +984,7 @@ lf_sample_keeper, dev_results_df, test_results_df, dev_marginals_df, test_margin
     test_labels=candidate_dfs['test'].curated_dsh.values,
     grid=regularization_grid,
     label_matricies=label_matricies['train'][train_ids == False],
-    train_marginal_dir='data/random_sampling/all/',
+    train_marginal_dir='results/random_sampling/all/',
     ds_start=ds_start,
     ds_end=ds_end,
 )
@@ -1066,12 +1067,12 @@ sns.pointplot(x="num_lfs", y="frac_correct", data=test_all_marginals_df, hue="la
 
 
 all_dev_result_df.to_csv(
-    "data/random_sampling/all/dev_sampled_performance.tsv", 
+    "results/random_sampling/all/dev_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 all_test_result_df.to_csv(
-    "data/random_sampling/all/test_sampled_performance.tsv", 
+    "results/random_sampling/all/test_sampled_performance.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
@@ -1080,12 +1081,12 @@ all_test_result_df.to_csv(
 
 
 dev_all_marginals_df.to_csv(
-    "data/random_sampling/all/dev_sampled_marginals.tsv", 
+    "results/random_sampling/all/dev_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 
 test_all_marginals_df.to_csv(
-    "data/random_sampling/all/test_sampled_marginals.tsv", 
+    "results/random_sampling/all/test_sampled_marginals.tsv", 
     index=False, sep="\t", float_format="%.5g"
 )
 

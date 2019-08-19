@@ -295,7 +295,7 @@ regularization_grid = pd.np.round(pd.np.linspace(0.01, 5, num=5), 2)
 dev_ds_grid, test_ds_grid = train_baseline_model(
     correct_L, correct_L_dev, candidate_dfs['dev'].curated_gig.values,
     correct_L_test, list(range(ds_start, ds_end)), regularization_grid,
-    train_marginal_dir="data/random_sampling/GiG/marginals/"
+    train_marginal_dir="results/GiG/marginals/"
 )
 
 dev_baseline_marginals = list(dev_ds_grid.values())[0][:,0]
@@ -386,7 +386,7 @@ for p_success in frequency:
         new_dev_grid, new_test_grid = train_baseline_model(
             new_L, new_L_dev, candidate_dfs['dev'].curated_gig.values, 
             new_L_test, list(range(ds_start, ds_end+1)), regularization_grid,
-            train_marginal_dir="data/random_sampling/GiG/marginals/"
+            train_marginal_dir="results/GiG/marginals/"
         )
         dev_random_grid[sample] = new_dev_grid[list(new_dev_grid.keys())[0]]
         test_random_grid [sample] = new_test_grid[list(new_test_grid.keys())[0]]
@@ -511,7 +511,7 @@ for p_success in frequency:
         new_dev_grid, new_test_grid = train_baseline_model(
             new_L, new_L_dev, candidate_dfs['dev'].curated_gig.values, 
             new_L_test, list(range(ds_start, ds_end+1)), regularization_grid,
-            train_marginal_dir="data/random_sampling/GiG/marginals/"
+            train_marginal_dir="results/GiG/marginals/"
         )
         dev_random_grid[sample] = new_dev_grid[list(new_dev_grid.keys())[0]]
         test_random_grid [sample] = new_test_grid[list(new_test_grid.keys())[0]]

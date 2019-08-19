@@ -128,7 +128,7 @@ entity_stats_df.head(2)
 
 
 tagging_error_df = pd.Series(sorted(list(tagging_error_ids)))
-tagging_error_df.to_csv("data/tagging_error_ids.tsv.xz", sep="\t",  index=False, compression="xz")
+tagging_error_df.to_csv("results/tagging_error_ids.tsv.xz", sep="\t",  index=False, compression="xz")
 tagging_error_df.head(2)
 
 
@@ -147,8 +147,8 @@ print(
 
 
 header = ["sentence_id", "text", "sen_length"]
-sentence_df[header].to_csv("data/sentence_stats.tsv.xz", sep="\t", index=False, compression="xz")
-entity_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False, compression="xz")
+sentence_df[header].to_csv("results/sentence_stats.tsv.xz", sep="\t", index=False, compression="xz")
+entity_stats_df.to_csv("results/entity_stats.tsv.xz", sep="\t",  index=False, compression="xz")
 
 
 # # Sentence Counts and Statistics
@@ -165,21 +165,21 @@ entity_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False, compr
 # In[5]:
 
 
-entity_level_df = pd.read_csv("../compound_gene_pairs_binds.csv")
+entity_level_df = pd.read_csv("../datafile/results/compound_binds_gene.tsv.xz")
 entity_level_df.head(2)
 
 
 # In[6]:
 
 
-entity_stats_df = pd.read_table("data/entity_stats.tsv.xz")
+entity_stats_df = pd.read_table("results/entity_stats.tsv.xz")
 entity_stats_df.head(2)
 
 
 # In[7]:
 
 
-sentence_count_df = pd.read_table("data/sentence_stats.tsv.xz")
+sentence_count_df = pd.read_table("results/sentence_stats.tsv.xz")
 sentence_count_df.head(2)
 
 
@@ -284,6 +284,7 @@ total_candidates_df = (
     .append(dev_set_df)
     .append(test_set_df)
 )
+total_candidates_df.to_csv("results/all_cbg_candidates.tsv.xz", compress="xz", sep="\t", index=False)
 
 
 # In[17]:
@@ -331,8 +332,8 @@ test_df.head(2)
 # In[ ]:
 
 
-write_candidates_to_excel(dev_df, "data/sentence_labels_dev.xlsx")
-write_candidates_to_excel(test_df, "data/sentence_labels_test.xlsx")
+write_candidates_to_excel(dev_df, "../data/sentences/sentence_labels_dev.xlsx")
+write_candidates_to_excel(test_df, "../data/sentences/sentence_labels_test.xlsx")
 
 
 # ## Distribution of Sentence Length

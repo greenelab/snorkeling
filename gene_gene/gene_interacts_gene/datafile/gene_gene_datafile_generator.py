@@ -1,6 +1,10 @@
 
 # coding: utf-8
 
+# # Generate Gene Interacts Gene Candidates
+
+# This notebook is designed to construct a table that contains gene pairs with various statistics (number of sentences, if contained in hetionet, if the edge has sentences and which training category each pair belongs to).
+
 # In[1]:
 
 
@@ -36,6 +40,8 @@ gene_url = "https://raw.githubusercontent.com/dhimmel/entrez-gene/a7362748a34211
 ppi_url = "https://raw.githubusercontent.com/dhimmel/ppi/f6a7edbc8de6ba2d7fe1ef3fee4d89e5b8d0b900/data/ppi-hetio-ind.tsv"
 
 
+# ## Read in Gene Entities
+
 # In[4]:
 
 
@@ -43,12 +49,16 @@ entrez_gene_df = pd.read_table(gene_url).rename(index=str, columns={"GeneID": "e
 entrez_gene_df.head(2)
 
 
+# ## Read in Gene Interacts Gene Table
+
 # In[5]:
 
 
 gene_gene_interaction_df = pd.read_table(ppi_url)
 gene_gene_interaction_df.head(2)
 
+
+# ## Read in Sentences with Edge Pair
 
 # In[6]:
 
@@ -61,6 +71,8 @@ GROUP BY "Gene1_cid", "Gene2_cid";
 gene_gene_sentence_df = pd.read_sql(query, database_str).astype({"gene1_id":int, "gene2_id":int})
 gene_gene_sentence_df.head(2)
 
+
+# ## Merge Edges Into a Unified Table
 
 # In[7]:
 
@@ -96,6 +108,8 @@ gene_gene_interaction_df=(
 )
 gene_gene_interaction_df.head(2)
 
+
+# ## Sort Edges into categories
 
 # In[9]:
 
@@ -178,5 +192,5 @@ map_df.head(2)
 # In[15]:
 
 
-map_df.to_csv("gene_interacts_gene.tsv.xz", sep="\t", compression="xz", index=False)
+map_df.to_csv("results/gene_interacts_gene.tsv.xz", sep="\t", compression="xz", index=False)
 

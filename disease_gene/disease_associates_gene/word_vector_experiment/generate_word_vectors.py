@@ -79,7 +79,7 @@ DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 
 cutoff = 300
 total_candidates_df = (
-    pd.read_table("../dataset_statistics/data/all_dg_candidates_map.tsv.xz")
+    pd.read_table("../dataset_statistics/data/all_dag_map.tsv.xz")
     .query("sen_length < @cutoff")
 )
 total_candidates_df.head(2)
