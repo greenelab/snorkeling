@@ -1,6 +1,10 @@
 
 # coding: utf-8
 
+# # Generate Disease Associates Gene Candidates
+
+# This notebook is designed to construct a table that contains disease and gene pairs with various statistics (number of sentences, if contained in hetionet, if the edge has sentences and which training category each pair belongs to).
+
 # In[1]:
 
 
@@ -38,6 +42,8 @@ dag_url = "https://github.com/dhimmel/integrate/raw/93feba1765fbcd76fd79e22f2512
 drg_url = "https://raw.githubusercontent.com/dhimmel/stargeo/08b126cc1f93660d17893c4a3358d3776e35fd84/data/diffex.tsv"
 
 
+# ## Read in Diesease and Gene Entities
+
 # In[4]:
 
 
@@ -58,7 +64,9 @@ entrez_gene_df = (
 entrez_gene_df.head(2)
 
 
-# In[ ]:
+# ## Read in Disease Associates/Regulates Gene Tables
+
+# In[6]:
 
 
 disease_associates_gene_df = (
@@ -67,7 +75,7 @@ disease_associates_gene_df = (
 disease_associates_gene_df.head(2)
 
 
-# In[ ]:
+# In[7]:
 
 
 disease_regulates_gene_df = (
@@ -79,7 +87,9 @@ disease_regulates_gene_df = (
 disease_regulates_gene_df.head(2)
 
 
-# In[ ]:
+# ## Read in Sentences with Edge Pair
+
+# In[8]:
 
 
 query = '''
@@ -91,7 +101,9 @@ disease_gene_sentence_df = pd.read_sql(query, database_str).astype({"entrez_gene
 disease_gene_sentence_df.head(2)
 
 
-# In[ ]:
+# ## Merge Edges Into a Unified Table
+
+# In[9]:
 
 
 disease_gene_associations_df = (
@@ -106,7 +118,7 @@ disease_gene_associations_df = (
 disease_gene_associations_df.head(2)
 
 
-# In[ ]:
+# In[10]:
 
 
 disease_gene_regulation_df = (
@@ -121,7 +133,9 @@ disease_gene_regulation_df = (
 disease_gene_regulation_df.head(2)
 
 
-# In[ ]:
+# ## Sort Edges into categories
+
+# In[11]:
 
 
 def partitioner(df):
@@ -142,7 +156,7 @@ def partitioner(df):
     return df
 
 
-# In[ ]:
+# In[12]:
 
 
 def get_split(partition_rank, training=0.7, dev=0.2, test=0.1):
@@ -165,7 +179,7 @@ def get_split(partition_rank, training=0.7, dev=0.2, test=0.1):
     return 3
 
 
-# In[ ]:
+# In[13]:
 
 
 pd.np.random.seed(100)
@@ -173,26 +187,26 @@ dag_map_df = disease_gene_associations_df.groupby(['hetionet', 'has_sentence']).
 dag_map_df.head(2)
 
 
-# In[ ]:
+# In[14]:
 
 
 dag_map_df['split'] = dag_map_df.partition_rank.map(get_split)
 dag_map_df.split.value_counts()
 
 
-# In[ ]:
+# In[15]:
 
 
 dag_map_df.sources.unique()
 
 
-# In[ ]:
+# In[16]:
 
 
 dag_map_df.to_csv("results/disease_associates_gene.tsv.xz", sep="\t", compression="xz", index=False)
 
 
-# In[ ]:
+# In[17]:
 
 
 disease_downregulates_gene_df = (
@@ -202,7 +216,7 @@ disease_downregulates_gene_df = (
 )
 
 
-# In[ ]:
+# In[18]:
 
 
 pd.np.random.seed(100)
@@ -210,26 +224,26 @@ ddg_map_df = disease_downregulates_gene_df.groupby(['hetionet', 'has_sentence'])
 ddg_map_df.head(2)
 
 
-# In[ ]:
+# In[19]:
 
 
 ddg_map_df['split'] = ddg_map_df.partition_rank.map(get_split)
 ddg_map_df.split.value_counts()
 
 
-# In[ ]:
+# In[20]:
 
 
 ddg_map_df.sources.unique()
 
 
-# In[ ]:
+# In[21]:
 
 
 ddg_map_df.to_csv("results/disease_downregulates_gene.tsv.xz", sep="\t", compression="xz", index=False)
 
 
-# In[ ]:
+# In[22]:
 
 
 disease_upregulates_gene_df = (
@@ -239,7 +253,7 @@ disease_upregulates_gene_df = (
 )
 
 
-# In[ ]:
+# In[23]:
 
 
 pd.np.random.seed(100)
@@ -247,20 +261,20 @@ dug_map_df = disease_upregulates_gene_df.groupby(['hetionet', 'has_sentence']).a
 dug_map_df.head(2)
 
 
-# In[ ]:
+# In[24]:
 
 
 dug_map_df['split'] = dug_map_df.partition_rank.map(get_split)
 dug_map_df.split.value_counts()
 
 
-# In[ ]:
+# In[25]:
 
 
 dug_map_df.sources.unique()
 
 
-# In[ ]:
+# In[26]:
 
 
 dug_map_df.to_csv("results/disease_upregulates_gene.tsv.xz", sep="\t", compression="xz", index=False)

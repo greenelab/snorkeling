@@ -1,6 +1,10 @@
 
 # coding: utf-8
 
+# # Generate Compound Binds Gene Candidates
+
+# This notebook is designed to construct a table that contains compound and gene pairs with various statistics (number of sentences, if contained in hetionet, if the edge has sentences and which training category each pair belongs to).
+
 # In[1]:
 
 
@@ -38,6 +42,8 @@ cbg_url = "https://raw.githubusercontent.com/dhimmel/integrate/93feba1765fbcd76f
 crg_url = "https://raw.githubusercontent.com/dhimmel/lincs/bbc6812b7d19e98637b44373cdfc52f61bce6327/data/consensi/signif/dysreg-drugbank.tsv"
 
 
+# ## Read in Gene and Compound Entities
+
 # In[4]:
 
 
@@ -51,6 +57,8 @@ entrez_gene_df.head(2)
 drugbank_df = pd.read_table(compound_url).rename(index=str, columns={'name':'drug_name'})
 drugbank_df.head(2)
 
+
+# ## Read in Compound Binds/Regulates Gene Tables
 
 # In[6]:
 
@@ -71,6 +79,8 @@ compound_regulates_gene_df = (
 compound_regulates_gene_df.head(2)
 
 
+# ## Read in Sentences with Edge Pair
+
 # In[8]:
 
 
@@ -89,6 +99,8 @@ compound_gene_sentence_df = (
 )
 compound_gene_sentence_df.head(2)
 
+
+# ## Merge Edges Into a Unified Table
 
 # In[9]:
 
@@ -136,6 +148,8 @@ compound_upregulates_gene_df=(
 )
 compound_upregulates_gene_df.head(2)
 
+
+# ## Sort Edges into categories
 
 # In[12]:
 

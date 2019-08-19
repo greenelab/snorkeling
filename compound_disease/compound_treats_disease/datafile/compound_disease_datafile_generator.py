@@ -1,6 +1,10 @@
 
 # coding: utf-8
 
+# # Generate Compound Treats Disease Candidates
+
+# This notebook is designed to construct a table that contains compound and disease pairs with various statistics (number of sentences, if contained in hetionet, if the edge has sentences and which training category each pair belongs to).
+
 # In[1]:
 
 
@@ -43,6 +47,8 @@ ctpd_url = "https://raw.githubusercontent.com/dhimmel/indications/11d535ba0884ee
 base_dir = os.path.join(os.path.dirname(os.getcwd()), 'compound_disease')
 
 
+# ## Read in Diesease and Compound Entities
+
 # In[5]:
 
 
@@ -51,6 +57,7 @@ disease_ontology_df = (
     .drop_duplicates(["doid_code", "doid_name"])
     .rename(columns={'doid_code': 'doid_id'})
 )
+disease_ontology_df.head(2)
 
 
 # In[6]:
@@ -62,6 +69,8 @@ drugbank_df = (
 )
 drugbank_df.head(2)
 
+
+# ## Read in Compound Treats/Palliates Disease Tables
 
 # In[7]:
 
@@ -75,6 +84,8 @@ compound_treats_palliates_disease_df = (
 compound_treats_palliates_disease_df.head(2)
 
 
+# ## Read in Sentences with Edge Pair
+
 # In[8]:
 
 
@@ -86,6 +97,8 @@ GROUP BY "Compound_cid", "Disease_cid";
 compound_disease_sentence_df = pd.read_sql(query, database_str)
 compound_disease_sentence_df.head(2)
 
+
+# ## Merge Edges Into a Unified Table
 
 # In[9]:
 
@@ -118,6 +131,8 @@ compound_palliates_disease_df=(
 )
 compound_palliates_disease_df.head(2)
 
+
+# ## Sort Edges into categories
 
 # In[11]:
 
