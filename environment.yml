@@ -1,9 +1,8 @@
-name: snorkeling
+name: snorkeling_advanced
 channels:
   - conda-forge
   - pytorch
 dependencies:
-- backports.lzma==0.0.8
 - beautifulsoup4=4.6.0
 - gensim=3.8.1
 - ipykernel=5.1.2
