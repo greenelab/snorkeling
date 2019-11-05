@@ -1,4 +1,4 @@
-name: snorkeling_advanced
+name: snorkeling
 channels:
   - conda-forge
   - pytorch
