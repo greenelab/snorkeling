@@ -37,8 +37,8 @@ def get_dataframes(
         # Get the head word of each file that will be parsed
         os.path.splitext(os.path.basename(file))[0].split("_")[0]:
         pd.read_csv(file, sep="\t")
-        .assign(num_lfs=lambda x: x['num_lfs'].map(lambda y: y if y != 'baseline' else 'BL'))
-        .query("num_lfs in @query_points", engine="python", local_dict={"query_points":query_points})
+        .assign(num_lfs=lambda x: x['lf_num'].map(lambda y: y if y != 'baseline' else 'BL'))
+        .query("lf_num in @query_points", engine="python", local_dict={"query_points":query_points})
         for file in glob.glob(f"{result_dir}/{file_path}")
     }
 
@@ -68,18 +68,18 @@ def plot_performance_graph(
 
             # plot the graph
             sns.pointplot(
-                x="num_lfs", y=metric if metric=="AUROC" else "AUPRC",
+                x="lf_num", y=metric if metric=="auroc" else "aupr",
                 data=data[col][row][evaluation_set],
-                ax=axes[row_ind][col_ind], ci="sd",
+                ax=axes[row_ind][col_ind],
                 scale=1.25
             )
 
             # remove x axis labels
             axes[row_ind][col_ind].set_xlabel('')
-            if metric == "AUROC":
-                axes[row_ind][col_ind].set_ylim([0.5, 1])
+            if metric == "auroc":
+                axes[row_ind][col_ind].set_ylim([0.45, 1])
 
-            if metric == "AUPR":
+            if metric == "aupr":
                 axes[row_ind][col_ind].set_ylim([0, 0.6])
 
             # Not used now because of bad asethetics
@@ -194,7 +194,7 @@ if __name__ == '__main__':
     performance_data_tree = OrderedDict({
         key: {
             sub_key: get_dataframes(
-                file_tree[key][sub_key], "*sampled_performance.tsv",
+                file_tree[key][sub_key], "*sampled_results.tsv",
                 ending_point=end_points[sub_key],
                 # if using all the label functions step by 32 instead of 5
                 step=5 if sub_key != "All" else 32
@@ -223,25 +223,25 @@ if __name__ == '__main__':
     }
 
     plot_performance_graph(
-        metric="AUROC", evaluation_set='dev',
+        metric="auroc", evaluation_set='dev',
         title="Label Sampling Generative Model Assessment (Dev Set)",
         file_name="../transfer_dev_set_auroc.png", data=performance_data_tree,
         color_map=color_map
     )
     plot_performance_graph(
-        metric="AUPR",  evaluation_set='dev',
+        metric="aupr",  evaluation_set='dev',
         title="Label Sampling Generative Model Assessment (Dev Set)",
         file_name="../transfer_dev_set_auprc.png", data=performance_data_tree,
         color_map=color_map
     )
     plot_performance_graph(
-        metric="AUROC", evaluation_set='test',
+        metric="auroc", evaluation_set='test',
         title="Label Sampling Generative Model Assessment (Test Set)",
         file_name="../transfer_test_set_auroc.png", data=performance_data_tree,
         color_map=color_map
     )
     plot_performance_graph(
-        metric="AUPR", evaluation_set='test',
+        metric="aupr", evaluation_set='test',
         title="Label Sampling Generative Model Assessment (Test Set)",
         file_name="../transfer_test_set_auprc.png", data=performance_data_tree,
         color_map=color_map
