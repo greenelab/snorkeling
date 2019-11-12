@@ -68,7 +68,7 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-path = pathlib.Path(__file__).joinpath('../../disease_associates_gene.csv.xz').resolve()
+path = pathlib.Path(__file__).joinpath('../../../datafile/results/disease_associates_gene.csv.xz').resolve()
 pair_df = pd.read_csv(path, dtype={"sources": str})
 knowledge_base = set()
 for row in pair_df.itertuples():

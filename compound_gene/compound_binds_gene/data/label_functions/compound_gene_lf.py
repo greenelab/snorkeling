@@ -68,8 +68,8 @@ def ltp(tokens):
 """
 DISTANT SUPERVISION
 """
-path = pathlib.Path(__file__).joinpath('../../compound_gene_pairs_binds.csv').resolve()
-pair_df = pd.read_csv(path, dtype={"sources": str})
+path = pathlib.Path(__file__).joinpath('../../../datafile/results/compound_binds_gene.tsv.xz').resolve()
+pair_df = pd.read_table(path, dtype={"sources": str})
 knowledge_base = set()
 for row in pair_df.itertuples():
     if not row.sources or pd.isnull(row.sources):
