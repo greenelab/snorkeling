@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Generate Word Vectors For Gene Interacts Gene Sentences
@@ -78,7 +78,7 @@ GeneGene = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
 
 
 total_candidates_df = (
-    pd.read_table("../dataset_statistics/results/all_gig_candidates.tsv.xz")
+    pd.read_table("../dataset_statistics/output/all_gig_candidates.tsv.xz")
     .query("sen_length < 300")
 )
 total_candidates_df.head(2)
@@ -142,8 +142,8 @@ model = FastText(
     model
     .wv
     .save_word2vec_format(
-        "results/gene_interacts_gene_word_vectors.bin", 
-        fvocab="results/gene_interacts_gene_word_vocab.txt", 
+        "output/gene_interacts_gene_word_vectors.bin", 
+        fvocab="output/gene_interacts_gene_word_vocab.txt", 
         binary=False
         )
 )
@@ -166,6 +166,6 @@ word_dict_df = (
     .reset_index()
     .rename({"index":"word", 0:"index"}, axis=1)
 )
-word_dict_df.to_csv("results/gene_interacts_gene_word_dict.tsv", sep="\t", index=False)
+word_dict_df.to_csv("output/gene_interacts_gene_word_dict.tsv", sep="\t", index=False)
 word_dict_df.head(2)
 

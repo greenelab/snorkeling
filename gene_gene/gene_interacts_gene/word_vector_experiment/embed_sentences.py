@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Generate Word Vectors For Gene Interacts Gene Sentences
@@ -12,7 +12,7 @@
 
 # # Set Up Environment
 
-# In[1]:
+# In[ ]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -37,7 +37,7 @@ from gensim.models import KeyedVectors
 from utils.notebook_utils.dataframe_helper import load_candidate_dataframes, generate_embedded_df
 
 
-# In[2]:
+# In[ ]:
 
 
 #Set up the environment
@@ -53,7 +53,7 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[3]:
+# In[ ]:
 
 
 from snorkel.learning.pytorch.rnn.rnn_base import mark_sentence
@@ -61,7 +61,7 @@ from snorkel.learning.pytorch.rnn.utils import candidate_to_tokens
 from snorkel.models import Candidate, candidate_subclass
 
 
-# In[4]:
+# In[ ]:
 
 
 GeneGene = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
@@ -71,11 +71,11 @@ GeneGene = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
 
 # This section loads the dataframe that contains all gene interacts gene candidate sentences and their respective dataset assignments.
 
-# In[5]:
+# In[ ]:
 
 
 total_candidates_df = (
-    pd.read_table("../dataset_statistics/results/all_gig_candidates.tsv.xz")
+    pd.read_table("../dataset_statistics/output/all_gig_candidates.tsv.xz")
     .query("sen_length < 300")
 )
 total_candidates_df.head(2)
@@ -85,11 +85,12 @@ total_candidates_df.head(2)
 
 # This section embeds all candidate sentences. For each sentence, we place tags around each mention, tokenized the sentence and then matched each token to their corresponding word index. Any words missing from our vocab receive a index of 1. Lastly, the embedded sentences are exported as a sparse dataframe.
 
-# In[6]:
+# In[ ]:
 
 
-word_dict_df = pd.read_table("results/gene_interacts_gene_word_dict.tsv")
+word_dict_df = pd.read_table("output/gene_interacts_gene_word_dict.tsv")
 word_dict = {word[0]:word[1] for word in word_dict_df.values.tolist()}
+fixed_word_dict = {word:word_dict[word] + 2 for word in word_dict}
 
 
 # In[ ]:
@@ -120,9 +121,9 @@ for offset in list(range(0, total_candidate_count, limit)):
     # if first iteration create the file
     if offset == 0:
         (
-            generate_embedded_df(candidates, word_dict, max_length=max_length)
+            generate_embedded_df(candidates, fixed_word_dict, max_length=max_length)
             .to_csv(
-                "results/all_embedded_gg_sentences.tsv",
+                "output/all_embedded_gg_sentences.tsv",
                 index=False, 
                 sep="\t", 
                 mode="w"
@@ -132,9 +133,9 @@ for offset in list(range(0, total_candidate_count, limit)):
     # else append don't overwrite
     else:
         (
-            generate_embedded_df(candidates, word_dict, max_length=max_length)
+            generate_embedded_df(candidates, fixed_word_dict, max_length=max_length)
             .to_csv(
-                "results/all_embedded_gg_sentences.tsv",
+                "output/all_embedded_gg_sentences.tsv",
                 index=False, 
                 sep="\t", 
                 mode="a",
@@ -146,5 +147,5 @@ for offset in list(range(0, total_candidate_count, limit)):
 # In[ ]:
 
 
-os.system("cd results; xz all_embedded_gg_sentences.tsv")
+os.system("cd output; xz all_embedded_gg_sentences.tsv")
 

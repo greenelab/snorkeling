@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Generate Word Vectors For Compound Binds Gene Sentences
@@ -142,8 +142,8 @@ model = FastText(
     model
     .wv
     .save_word2vec_format(
-        "results/compound_gene_word_vectors.bin", 
-        fvocab="results/compound_gene_word_vocab.txt", 
+        "output/compound_gene_word_vectors.bin", 
+        fvocab="output/compound_gene_word_vocab.txt", 
         binary=False
         )
 )
@@ -166,7 +166,7 @@ word_dict_df = (
     .reset_index()
     .rename({"index":"word", 0:"index"}, axis=1)
 )
-word_dict_df.to_csv("results/compound_gene_word_dict.tsv", sep="\t", index=False)
+word_dict_df.to_csv("output/compound_gene_word_dict.tsv", sep="\t", index=False)
 word_dict_df.head(2)
 
 
@@ -179,7 +179,7 @@ word_dict_df.head(2)
 # In[6]:
 
 
-word_dict_df = pd.read_table("results/compound_gene_word_dict.tsv")
+word_dict_df = pd.read_table("output/compound_gene_word_dict.tsv")
 word_dict = {word[0]:word[1] for word in word_dict_df.values.tolist()}
 
 
@@ -213,7 +213,7 @@ for offset in list(range(0, total_candidate_count, limit)):
         (
             generate_embedded_df(candidates, word_dict, max_length=max_length)
             .to_csv(
-                "results/all_embedded_cg_sentences.tsv",
+                "output/all_embedded_cg_sentences.tsv",
                 index=False, 
                 sep="\t",
                 mode="w"
@@ -225,7 +225,7 @@ for offset in list(range(0, total_candidate_count, limit)):
         (
             generate_embedded_df(candidates, word_dict, max_length=max_length)
             .to_csv(
-                "results/all_embedded_cg_sentences.tsv",
+                "output/all_embedded_cg_sentences.tsv",
                 index=False, 
                 sep="\t", 
                 mode="a",
@@ -237,5 +237,5 @@ for offset in list(range(0, total_candidate_count, limit)):
 # In[ ]:
 
 
-os.system("cd results; xz all_embedded_cg_sentences.tsv")
+os.system("cd output; xz all_embedded_cg_sentences.tsv")
 

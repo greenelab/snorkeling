@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Embed Compound Treats Disease Sentences
@@ -12,7 +12,7 @@
 
 # # Set Up Environment
 
-# In[2]:
+# In[1]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -37,7 +37,7 @@ from gensim.models import KeyedVectors
 from utils.notebook_utils.dataframe_helper import load_candidate_dataframes, generate_embedded_df
 
 
-# In[3]:
+# In[2]:
 
 
 #Set up the environment
@@ -53,7 +53,7 @@ from snorkel import SnorkelSession
 session = SnorkelSession()
 
 
-# In[4]:
+# In[3]:
 
 
 from snorkel.learning.pytorch.rnn.rnn_base import mark_sentence
@@ -61,7 +61,7 @@ from snorkel.learning.pytorch.rnn.utils import candidate_to_tokens
 from snorkel.models import Candidate, candidate_subclass
 
 
-# In[5]:
+# In[4]:
 
 
 CompoundDisease = candidate_subclass('CompoundDisease', ['Compound', 'Disease'])
@@ -71,13 +71,13 @@ CompoundDisease = candidate_subclass('CompoundDisease', ['Compound', 'Disease'])
 
 # This section loads the dataframe that contains all compound treats disease candidate sentences and their respective dataset assignments.
 
-# In[9]:
+# In[5]:
 
 
 cutoff = 300
 total_candidates_df = (
     pd
-    .read_table("../dataset_statistics/results/all_ctd_map.tsv.xz")
+    .read_table("../dataset_statistics/output/all_ctd_map.tsv.xz")
     .query("sen_length < 300")
 )
 total_candidates_df.head(2)
@@ -87,14 +87,15 @@ total_candidates_df.head(2)
 
 # This section embeds all candidate sentences. For each sentence, we place tags around each mention, tokenized the sentence and then matched each token to their corresponding word index. Any words missing from our vocab receive a index of 1. Lastly, the embedded sentences are exported as a sparse dataframe.
 
-# In[17]:
+# In[6]:
 
 
-word_dict_df = pd.read_table("results/compound_treats_disease_word_dict.tsv")
+word_dict_df = pd.read_table("output/compound_treats_disease_word_dict.tsv")
 word_dict = {word[0]:word[1] for word in word_dict_df.values.tolist()}
+fixed_word_dict = {word:word_dict[word] + 2 for word in word_dict}
 
 
-# In[18]:
+# In[9]:
 
 
 limit = 1000000
@@ -122,10 +123,10 @@ for offset in list(range(0, total_candidate_count, limit)):
     # if first iteration create the file
     if offset == 0:
         (
-            generate_embedded_df(candidates, word_dict, max_length=max_length)
+            generate_embedded_df(candidates, fixed_word_dict, max_length=max_length)
             .to_sparse()
             .to_csv(
-                "results/all_embedded_cd_sentences.tsv",
+                "output/all_embedded_cd_sentences.tsv",
                 index=False, 
                 sep="\t", 
                 mode="w"
@@ -135,10 +136,10 @@ for offset in list(range(0, total_candidate_count, limit)):
     # else append don't overwrite
     else:
         (
-            generate_embedded_df(candidates, word_dict, max_length=max_length)
+            generate_embedded_df(candidates, fixed_word_dict, max_length=max_length)
             .to_sparse()
             .to_csv(
-                "results/all_embedded_cd_sentences.tsv",
+                "output/all_embedded_cd_sentences.tsv",
                 index=False, 
                 sep="\t", 
                 mode="a",
@@ -147,8 +148,8 @@ for offset in list(range(0, total_candidate_count, limit)):
         )
 
 
-# In[ ]:
+# In[10]:
 
 
-os.system("cd results; xz all_embedded_cd_sentences.tsv")
+os.system("cd output; xz all_embedded_cd_sentences.tsv")
 
