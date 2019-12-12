@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Generate Word Vectors For Disease Associate Gene Sentences
@@ -76,7 +76,7 @@ DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 
 cutoff = 300
 total_candidates_df = (
-    pd.read_table("../dataset_statistics/data/all_dag_map.tsv.xz")
+    pd.read_table("../dataset_statistics/output/all_dag_map.tsv.xz")
     .query("sen_length < @cutoff")
 )
 total_candidates_df.head(2)
@@ -89,8 +89,9 @@ total_candidates_df.head(2)
 # In[6]:
 
 
-word_dict_df = pd.read_table("results/disease_associates_gene_word_dict.tsv")
+word_dict_df = pd.read_table("output/disease_associates_gene_word_dict.tsv")
 word_dict = {word[0]:word[1] for word in word_dict_df.values.tolist()}
+fixed_word_dict = {word:word_dict[word] + 2 for word in word_dict}
 
 
 # In[7]:
@@ -121,9 +122,9 @@ for offset in list(range(0, total_candidate_count, limit)):
     # if first iteration create the file
     if offset == 0:
         (
-            generate_embedded_df(candidates, word_dict, max_length=max_length)
+            generate_embedded_df(candidates, fixed_word_dict, max_length=max_length)
             .to_csv(
-                "results/all_embedded_dg_sentences.tsv",
+                "output/all_embedded_dg_sentences.tsv",
                 index=False, 
                 sep="\t", 
                 mode="w"
@@ -133,9 +134,9 @@ for offset in list(range(0, total_candidate_count, limit)):
     # else append don't overwrite
     else:
         (
-            generate_embedded_df(candidates, word_dict, max_length=max_length)
+            generate_embedded_df(candidates, fixed_word_dict, max_length=max_length)
             .to_csv(
-                "results/all_embedded_dg_sentences.tsv",
+                "output/all_embedded_dg_sentences.tsv",
                 index=False, 
                 sep="\t", 
                 mode="a",
@@ -147,5 +148,5 @@ for offset in list(range(0, total_candidate_count, limit)):
 # In[8]:
 
 
-os.system("cd results; xz all_embedded_dg_sentences.tsv")
+os.system("cd output; xz all_embedded_dg_sentences.tsv")
 

@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Generate Word Vectors For Disease Associate Gene Sentences
@@ -79,7 +79,7 @@ DiseaseGene = candidate_subclass('DiseaseGene', ['Disease', 'Gene'])
 
 cutoff = 300
 total_candidates_df = (
-    pd.read_table("../dataset_statistics/data/all_dag_map.tsv.xz")
+    pd.read_table("../dataset_statistics/output/all_dag_map.tsv.xz")
     .query("sen_length < @cutoff")
 )
 total_candidates_df.head(2)
@@ -142,8 +142,8 @@ model = FastText(
     model
     .wv
     .save_word2vec_format(
-        "results/disease_associates_gene_word_vectors.bin", 
-        fvocab="results/disease_associates_gene_word_vocab.txt", 
+        "output/disease_associates_gene_word_vectors.bin", 
+        fvocab="output/disease_associates_gene_word_vocab.txt", 
         binary=False
         )
 )
@@ -166,6 +166,6 @@ word_dict_df = (
     .reset_index()
     .rename({"index":"word", 0:"index"}, axis=1)
 )
-word_dict_df.to_csv("results/disease_associates_gene_word_dict.tsv", sep="\t", index=False)
+word_dict_df.to_csv("output/disease_associates_gene_word_dict.tsv", sep="\t", index=False)
 word_dict_df.head(2)
 
