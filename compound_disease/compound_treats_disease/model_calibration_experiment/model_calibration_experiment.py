@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # In[1]:
@@ -15,9 +15,8 @@ import sys
 
 sys.path.append(os.path.abspath('../../../modules'))
 
-import matplotlib.pyplot as plt
+import plotnine as p9
 import pandas as pd
-import seaborn as sns
 from tqdm import tqdm_notebook
 
 from utils.notebook_utils.dataframe_helper import load_candidate_dataframes, mark_sentence
@@ -103,51 +102,50 @@ for key in candidate_dfs:
 # In[8]:
 
 
-dev_predictions_df = pd.read_table("results/before_22_sampled_lfs.tsv_dev.tsv")
-dev_predictions_df.columns = ["model_predictions", "candidate_id"]
+dev_predictions_df = pd.read_table("input/calibrated_tune.tsv")
 dev_predictions_df.head(2)
 
 
 # In[9]:
 
 
-model_predictions_df = (
-    candidate_dfs['dev']
-    .merge(dev_predictions_df)
-    [["curated_ctd", "model_predictions", "candidate_id"]]
-    .round(2)
-)
-model_predictions_df.head(2)
+dev_labels = pd.read_csv("../disc_model_experiment/input/ctd_dev_labels.tsv", sep="\t")
+dev_labels.head(2)
 
 
 # In[10]:
-
-
-dev_all_predictions_df = pd.read_table("results/after_22_sampled_lfs.tsv_dev.tsv")
-dev_all_predictions_df.columns = ["candidate_id", "model_predictions_after"]
-dev_all_predictions_df.head(2)
-
-
-# In[11]:
 
 
 total_candidates_df = pd.read_csv("../dataset_statistics/results/all_ctd_map.tsv.xz", sep="\t")
 total_candidates_df.head(2)
 
 
-# In[12]:
+# In[11]:
 
 
 confidence_score_df = (
     total_candidates_df
     [["drug_name", "doid_name", "text", "candidate_id"]]
     .merge(dev_predictions_df, on="candidate_id")
-    .merge(dev_all_predictions_df, on="candidate_id")
+    .merge(dev_labels, on="candidate_id")
     .sort_values("candidate_id")
     .assign(text=lambda x: tag_sentence(x))
-    .sort_values("model_predictions_after")
+    .sort_values("cal")
 )
 confidence_score_df.head(2)
+
+
+# In[12]:
+
+
+(
+    confidence_score_df
+    .head(10)
+    .sort_values("cal", ascending=False)
+    .drop("candidate_id", axis=1)
+    .round(3)
+    .to_csv("output/bottom_ten_high_confidence_scores.tsv", sep="\t", index=False)
+)
 
 
 # In[13]:
@@ -155,51 +153,39 @@ confidence_score_df.head(2)
 
 (
     confidence_score_df
-    .head(10)
-    .sort_values("model_predictions_after", ascending=False)
+    .tail(10)
+    .sort_values("cal", ascending=False)
     .drop("candidate_id", axis=1)
     .round(3)
-    .to_csv("results/bottom_ten_high_confidence_scores.tsv", sep="\t", index=False)
+    .to_csv("output/top_ten_high_confidence_scores.tsv", sep="\t", index=False)
 )
 
 
 # In[14]:
 
 
-(
-    confidence_score_df
-    .tail(10)
-    .sort_values("model_predictions_after", ascending=False)
-    .drop("candidate_id", axis=1)
-    .round(3)
-    .to_csv("results/top_ten_high_confidence_scores.tsv", sep="\t", index=False)
+from sklearn.calibration import calibration_curve
+cnn_y, cnn_x = calibration_curve(confidence_score_df.curated_ctd, confidence_score_df.uncal, n_bins=10)
+all_cnn_y, all_cnn_x = calibration_curve(confidence_score_df.curated_ctd, confidence_score_df.cal, n_bins=10)
+
+
+calibration_df = pd.DataFrame.from_records(
+    list(map(lambda x: {"predicted":x[0], "actual": x[1], "model_calibration":'before'}, zip(cnn_x, cnn_y)))
+    + list(map(lambda x: {"predicted":x[0], "actual": x[1], "model_calibration":'after'}, zip(all_cnn_x, all_cnn_y)))
 )
+calibration_df.to_csv("output/ctd_calibration.tsv", sep="\t", index=False)
 
 
 # In[15]:
 
 
-model_all_predictions_df = (
-    candidate_dfs['dev']
-    .merge(dev_all_predictions_df.rename(index=str, columns={"model_predictions_after":"model_predictions"}))
-    [["curated_ctd", "model_predictions"]]
-    .round(2)
+(
+    p9.ggplot(calibration_df, p9.aes(x="predicted", y="actual", color="model_calibration"))
+    + p9.geom_point()
+    + p9.geom_line(p9.aes(group="factor(model_calibration)"))
+    + p9.geom_abline(intercept=0, slope=1, linetype='dashed')
+    + p9.scale_y_continuous(limits=[0,1])
+    + p9.scale_x_continuous(limits=[0,1])
+    + p9.theme_bw()
 )
-model_all_predictions_df.head(2)
-
-
-# In[16]:
-
-
-from sklearn.calibration import calibration_curve
-cnn_y, cnn_x = calibration_curve(model_predictions_df.curated_ctd, model_predictions_df.model_predictions, n_bins=10)
-all_cnn_y, all_cnn_x = calibration_curve(model_predictions_df.curated_ctd, model_all_predictions_df.model_predictions, n_bins=10)
-
-plt.plot(cnn_x, cnn_y, marker='o', label="Before Calibration")
-plt.plot(all_cnn_x, all_cnn_y, marker='o', label="After Calibration")
-
-plt.plot([0,1], [0,1], color='black', linestyle='--', label="Perfectly Calibrated")
-plt.xlabel("Predicted")
-plt.ylabel("Actual")
-plt.legend()
 
