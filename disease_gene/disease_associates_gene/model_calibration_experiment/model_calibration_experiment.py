@@ -107,21 +107,21 @@ dev_predictions_df = pd.read_table("input/calibrated_tune.tsv")
 dev_predictions_df.head(2)
 
 
-# In[11]:
+# In[9]:
 
 
 dev_labels = pd.read_csv("../disc_model_experiment/input/dag_dev_labels.tsv", sep="\t")
 dev_labels.head(2)
 
 
-# In[12]:
+# In[10]:
 
 
 total_candidates_df = pd.read_csv("../dataset_statistics/results/all_dag_map.tsv.xz", sep="\t")
 total_candidates_df.head(2)
 
 
-# In[13]:
+# In[11]:
 
 
 confidence_score_df = (
@@ -136,33 +136,33 @@ confidence_score_df = (
 confidence_score_df.head(2)
 
 
-# In[14]:
+# In[12]:
 
 
 (
     confidence_score_df
     .head(10)
     .sort_values("cal", ascending=False)
-    .drop("candidate_id", axis=1)
+    .drop(["candidate_id", "curated_dsh"], axis=1)
     .round(3)
     .to_csv("output/bottom_ten_high_confidence_scores.tsv", sep="\t", index=False)
 )
 
 
-# In[15]:
+# In[13]:
 
 
 (
     confidence_score_df
     .tail(10)
     .sort_values("cal", ascending=False)
-    .drop("candidate_id", axis=1)
+    .drop(["candidate_id", "curated_dsh"], axis=1)
     .round(3)
     .to_csv("output/top_ten_high_confidence_scores.tsv", sep="\t", index=False)
 )
 
 
-# In[16]:
+# In[14]:
 
 
 from sklearn.calibration import calibration_curve
@@ -176,7 +176,7 @@ calibration_df = pd.DataFrame.from_records(
 calibration_df.to_csv("output/dag_calibration.tsv", sep="\t", index=False)
 
 
-# In[17]:
+# In[15]:
 
 
 (
