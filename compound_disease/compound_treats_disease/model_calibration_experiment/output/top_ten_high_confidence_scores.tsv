@@ -1,0 +1,11 @@
+drug_name	doid_name	text	uncal	cal
+Prazosin	hypertension	experience with ~~[[1 prazosin 1]]~~ in the treatment of ~~[[2 hypertension 2]]~~ .	0.997	0.961
+Methyldopa	hypertension	oxprenolol plus cyclopenthiazide-kcl versus ~~[[1 methyldopa 1]]~~ in the treatment of ~~[[2 hypertension 2]]~~ .	0.997	0.961
+Methyldopa	hypertension	atenolol and ~~[[1 methyldopa 1]]~~ in the treatment of ~~[[2 hypertension 2]]~~ .	0.996	0.957
+Prednisone	asthma	~~[[1 prednisone 1]]~~ and beclomethasone for treatment of ~~[[2 asthma 2]]~~ .	0.995	0.953
+Sulfasalazine	ulcerative colitis	~~[[1 sulphasalazine 1]]~~ , used in the treatment of ~~[[2 ulcerative colitis 2]]~~ , is cleaved in the colon by the metabolic action of colonic bacteria on the diazo bond to release 5-aminosalicylic acid ( 5-asa ) and sulpharidine .	0.994	0.949
+Prazosin	hypertension	letter : ~~[[1 prazosin 1]]~~ in treatment of ~~[[2 hypertension 2]]~~ .	0.994	0.949
+Methylprednisolone	asthma	use of tao without ~~[[1 methylprednisolone 1]]~~ in the treatment of severe ~~[[2 asthma 2]]~~ .	0.994	0.948
+Budesonide	asthma	thus , a regimen of ~~[[1 budesonide 1]]~~ treatment that consistently attenuates bronchial responsiveness in ~~[[2 asthmatic 2]]~~ subjects had no effect in these men ; larger and longer trials will be required to establish whether a subgroup of smokers shows a favorable response .	0.994	0.946
+Methyldopa	hypertension	pressor and chronotropic responses to bilateral carotid occlusion ( bco ) and tyramine were also markedly reduced following treatment with ~~[[1 methyldopa 1]]~~ , which is consistent with the clinical findings that chronic methyldopa treatment in ~~[[2 hypertensive 2]]~~ patients impairs cardiovascular reflexes .	0.994	0.946
+Fluphenazine	schizophrenia	low dose ~~[[1 fluphenazine decanoate 1]]~~ in maintenance treatment of ~~[[2 schizophrenia 2]]~~ .	0.994	0.946

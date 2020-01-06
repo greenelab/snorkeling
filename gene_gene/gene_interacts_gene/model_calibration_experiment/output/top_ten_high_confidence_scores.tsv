@@ -1,0 +1,11 @@
+gene1_name	gene2_name	text	uncal	cal
+ESR1	HSP90AA1	previous studies have suggested that the 90-kda heat shock protein ( ~~[[2 hsp90 ) 2]]~~ interacts with the ~~[[1 er 1]]~~ , thus stabilizing the receptor in an inactive state .	0.812	0.864
+TP53	TP73	cyclin g interacts with p53 as well as ~~[[2 p73 2]]~~ , and its binding to ~~[[1 p53 1]]~~ or p73 presumably mediates downregulation of p53 and p73 .	0.785	0.837
+TP53	AKT1	treatment of c81 cells with ly294002 resulted in an increase in the ~~[[1 p53-responsive 1]]~~ gene mdm2 , suggesting a role for ~~[[2 akt 2]]~~ in the tax-mediated regulation of p53 transcriptional activity .	0.773	0.825
+ABCB1	NR1I3	valproic acid induces cyp3a4 and ~~[[1 mdr1 1]]~~ gene expression by activation of ~~[[2 constitutive androstane receptor 2]]~~ and pregnane x receptor pathways .	0.762	0.813
+PTH2R	PTH2	thus , the juxtamembrane receptor domain specifies the signaling and binding selectivity of ~~[[2 tip39 2]]~~ for the ~~[[1 pth2 receptor 1]]~~ over the pth1 receptor .	0.761	0.812
+CCND1	ABL1	synergy with ~~[[2 v-abl 2]]~~ depended on a motif in ~~[[1 cyclin d1 1]]~~ that mediates its binding to the retinoblastoma protein , suggesting that abl oncogenes in part mediate their mitogenic effects via a retinoblastoma protein-dependent pathway .	0.757	0.808
+CTNND1	CDH1	these complexes are formed independently of ddr1 activation and of beta-catenin and ~~[[1 p120-catenin 1]]~~ binding to ~~[[2 e-cadherin 2]]~~ ; they are ubiquitous in epithelial cells .	0.748	0.798
+CSF1	CSF1R	this is in agreement with current thought that the ~~[[2 c-fms 2]]~~ proto-oncogene product functions as the ~~[[1 csf-1 1]]~~ receptor specific to this pathway .	0.745	0.795
+EZR	CFTR	without ~~[[1 ezrin 1]]~~ binding , the cytoplasmic tail of ~~[[2 cftr 2]]~~ only interacts strongly with the first amino-terminal pdz domain to form a 1:1 c-cftr .	0.732	0.78
+SRC	PIK3CG	we have demonstrated that the sh2 ( ~~[[1 src 1]]~~ homology 2 ) domains of the 85 kda subunit of pi-3k are sufficient to mediate binding of the ~~[[2 pi-3k 2]]~~ complex to tyrosine phosphorylated , but not non-phosphorylated il-2r beta , suggesting that tyrosine phosphorylation is an integral component of the activation of pi-3k by the il-2r .	0.731	0.78
