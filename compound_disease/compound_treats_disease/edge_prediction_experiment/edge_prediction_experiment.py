@@ -35,7 +35,7 @@ total_candidates_df.head(2)
 
 sentence_prediction_df = (
     pd
-    .read_csv("results/all_predicted_ctd_sentences.tsv.xz", sep="\t")
+    .read_csv("input/all_predicted_ctd_sentences.tsv.xz", sep="\t")
     .sort_values("candidate_id")
 )
 sentence_prediction_df.head(2)
@@ -56,7 +56,7 @@ total_candidates_pred_df = (
 )
 
 total_candidates_pred_df.to_csv(
-    "results/combined_predicted_ctd_sentences.tsv.xz", 
+    "output/combined_predicted_ctd_sentences.tsv.xz", 
     sep="\t", index=False, compression="xz"
 )
 
@@ -97,19 +97,23 @@ grouped_candidates_pred_df.head(2)
 # In[7]:
 
 
-grouped_candidates_pred_df = (
+grouped_candidates_pred_subset_df = (
     grouped_candidates_pred_df
     .query("split==11")
     .drop("split", axis=1)
 )
-grouped_candidates_pred_df.head(2)
+grouped_candidates_pred_subset_df.head(2)
 
 
 # In[8]:
 
 
-grouped_candidates_pred_df.hetionet.value_counts()
+grouped_candidates_pred_subset_df.hetionet.value_counts()
 
+
+# # Best Sentence Representation Metric
+
+# This section aims to answer the question: What metric (Mean, Max, Median) best predicts Hetionet Edges?
 
 # In[9]:
 
@@ -121,13 +125,13 @@ performance_map = {}
 
 
 precision, recall, pr_threshold = precision_recall_curve(
-    grouped_candidates_pred_df.hetionet, 
-    grouped_candidates_pred_df.pred_max,
+    grouped_candidates_pred_subset_df.hetionet, 
+    grouped_candidates_pred_subset_df.pred_max,
 )
 
 fpr, tpr, roc_threshold = roc_curve(
-    grouped_candidates_pred_df.hetionet, 
-    grouped_candidates_pred_df.pred_max,
+    grouped_candidates_pred_subset_df.hetionet, 
+    grouped_candidates_pred_subset_df.pred_max,
 )
 
 performance_map['max'] = {
@@ -141,13 +145,13 @@ performance_map['max'] = {
 
 
 precision, recall, pr_threshold = precision_recall_curve(
-    grouped_candidates_pred_df.hetionet, 
-    grouped_candidates_pred_df.pred_mean,
+    grouped_candidates_pred_subset_df.hetionet, 
+    grouped_candidates_pred_subset_df.pred_mean,
 )
 
 fpr, tpr, roc_threshold = roc_curve(
-    grouped_candidates_pred_df.hetionet, 
-    grouped_candidates_pred_df.pred_mean,
+    grouped_candidates_pred_subset_df.hetionet, 
+    grouped_candidates_pred_subset_df.pred_mean,
 )
 
 performance_map['mean'] = {
@@ -161,13 +165,13 @@ performance_map['mean'] = {
 
 
 precision, recall, pr_threshold = precision_recall_curve(
-    grouped_candidates_pred_df.hetionet, 
-    grouped_candidates_pred_df.pred_median,
+    grouped_candidates_pred_subset_df.hetionet, 
+    grouped_candidates_pred_subset_df.pred_median,
 )
 
 fpr, tpr, roc_threshold = roc_curve(
-    grouped_candidates_pred_df.hetionet, 
-    grouped_candidates_pred_df.pred_median,
+    grouped_candidates_pred_subset_df.hetionet, 
+    grouped_candidates_pred_subset_df.pred_median,
 )
 
 performance_map['median'] = {
@@ -176,10 +180,6 @@ performance_map['median'] = {
     "true_pos":tpr, "roc_threshold":roc_threshold, 
 }
 
-
-# # Hetionet Reconstruction
-
-# How well does sentence marginals reconstruct Hetionet?
 
 # In[13]:
 
@@ -195,7 +195,7 @@ plt.legend()
 plt.show()
 
 
-# In[15]:
+# In[14]:
 
 
 for key in performance_map:
@@ -209,9 +209,9 @@ plt.legend()
 plt.show()
 
 
-# # Optimial Cutoff Using PR-Curve
+# # Optimal Cutoff Using PR-Curve
 
-# In[16]:
+# In[15]:
 
 
 threshold_df = (
@@ -230,7 +230,7 @@ threshold_df = (
 threshold_df.head(2)
 
 
-# In[17]:
+# In[16]:
 
 
 #precision_thresholds = pd.np.linspace(0,1,num=5)
@@ -257,7 +257,7 @@ for precision_cutoff in precision_thresholds:
     )
     
     values_added = (
-        grouped_candidates_pred_df
+        grouped_candidates_pred_subset_df
         .query("pred_max >= @cutoff")
         .hetionet
         .value_counts()
@@ -283,65 +283,91 @@ edges_added_df = (
 edges_added_df.head(10)
 
 
-# In[18]:
+# In[17]:
 
 
 ax = sns.scatterplot(x="precision", y="edges", hue="in_hetionet", data=edges_added_df)
 ax.set(yscale="log")
 
 
+# In[18]:
+
+
+edges_added_df.to_csv("output/precision_ctd_edges_added.tsv", index=False, sep="\t")
+
+
+# # Total Recalled Edges
+
+# How many edges of hetionet can we recall using a cutoff score of 0.5?
+
 # In[19]:
 
 
-edges_added_df.to_csv("results/precision_ctd_edges_added.tsv", index=False, sep="\t")
-
-
-# # Optimal Cutoff using ROC Curve
-
-# In[14]:
-
-
-# https://stackoverflow.com/questions/28719067/roc-curve-and-cut-off-point-python
-def Find_Optimal_Cutoff(target, predicted):
-    """ Find the optimal probability cutoff point for a classification model related to event rate
-    Parameters
-    ----------
-    target : Matrix with dependent or target data, where rows are observations
-
-    predicted : Matrix with predicted data, where rows are observations
-
-    Returns
-    -------     
-    list type, with optimal cutoff value
-
-    """
-    fpr, tpr, threshold = roc_curve(target, predicted)
-    i = pd.np.arange(len(tpr)) 
-    roc = pd.DataFrame({'tf' : pd.Series(tpr-(1-fpr), index=i), 'threshold' : pd.Series(threshold, index=i)})
-    roc_t = roc.ix[(roc.tf-0).abs().argsort()[:1]]
-
-    return list(roc_t['threshold']) 
-roc_optimal = Find_Optimal_Cutoff(grouped_candidates_pred_df.hetionet.values, grouped_candidates_pred_df.pred_max)[0]
-roc_optimal
+datarows = []
+datarows.append({
+    "recall":(
+        grouped_candidates_pred_df
+        .query("pred_max > 0.5")
+        .hetionet
+        .value_counts()[1] /
+        grouped_candidates_pred_df
+        .hetionet.
+        value_counts()[1]
+    ),
+    "edges":(
+        grouped_candidates_pred_df
+        .query("pred_max > 0.5")
+        .hetionet
+        .value_counts()[1]
+    ),
+    "in_hetionet": "Existing",
+    "total": int(grouped_candidates_pred_df.hetionet.value_counts()[1]),
+    "relation":"CtD"
+})
+datarows.append({
+    "edges":(
+        grouped_candidates_pred_df
+        .query("pred_max > 0.5")
+        .hetionet
+        .value_counts()[0]
+    ),
+    "in_hetionet": "Novel",
+    "relation":"CtD"
+})
+edges_df = pd.DataFrame.from_records(datarows)
+edges_df
 
 
 # In[20]:
 
 
-(
-    grouped_candidates_pred_df
-    .query("pred_max > @roc_optimal")
-    .sort_values("hetionet")
-    .hetionet.value_counts()
+import math
+g = (
+    p9.ggplot(edges_df, p9.aes(x="relation", y="edges", fill="in_hetionet"))
+    + p9.geom_col(position="dodge")
+    + p9.geom_text(
+        p9.aes(
+            label=(
+                edges_df
+                .apply(
+                    lambda x: 
+                    f"{x['edges']} ({x['recall']*100:.0f}%)" 
+                    if not math.isnan(x['recall']) else 
+                    f"{x['edges']}",
+                    axis=1
+                )
+            )
+        ),
+        position=p9.position_dodge(width=1),
+        size=9,
+        va="bottom"
+    )
+    + p9.scale_y_log10()
+    + p9.theme(
+        axis_text_y=p9.element_blank(),
+        axis_ticks_major = p9.element_blank(),
+        rect=p9.element_blank()
+    )
 )
-
-
-# In[21]:
-
-
-(
-    grouped_candidates_pred_df
-    .query("pred_max > @roc_optimal")
-    .sort_values(["hetionet", "pred_max"], ascending=[True, False])
-)
+print(g)
 
