@@ -1,0 +1,11 @@
+gene1_name	gene2_name	text	uncal	cal
+AGTR1	ACE	result ( s ) : the luteal tissue is the major site of ang ii , ~~[[2 ace 2]]~~ , ~~[[1 at1r 1]]~~ , and vegf , with highest staining intensity found during the midluteal phase and at pregnancy .	0.009	0.003
+ABCE1	ABCF2	in relation to normal melanocytes , abcb3 , abcb6 , abcc2 , abcc4 , ~~[[1 abce1 1]]~~ and ~~[[2 abcf2 2]]~~ were significantly increased in melanoma cell lines , whereas abca7 , abca12 , abcb2 , abcb4 , abcb5 and abcd1 showed lower expression levels .	0.008	0.002
+IL4	IFNG	in contrast , il-13ralpha2 mrna expression was up-regulated by ~~[[2 ifn-gamma 2]]~~ plus ~~[[1 il-4 1]]~~ .	0.007	0.002
+FCAR	CD79A	we report here the presence of circulating soluble fcalphar ( ~~[[1 cd89 ) 1]]~~ - ~~[[2 iga 2]]~~ complexes in patients with igan .	0.007	0.002
+IL4	VCAM1	similarly , ~~[[1 il-4 1]]~~ induced ~~[[2 vcam-1 2]]~~ expression and augmented tnf-alpha-induced expression on huvec but did not affect vcam-1 expression on hdmec .	0.007	0.002
+IL2	IFNG	prostaglandin e2 at priming of naive cd4 + t cells inhibits acquisition of ability to produce ~~[[2 ifn-gamma 2]]~~ and ~~[[1 il-2 1]]~~ , but not il-4 and il-5 .	0.006	0.002
+IL2	FOXP3	il-1b promotes tgf-b1 and ~~[[1 il-2 1]]~~ dependent ~~[[2 foxp3 2]]~~ expression in regulatory t cells .	0.006	0.002
+IL2	IFNG	the detailed distribution of lymphokine-producing cells showed that ~~[[1 il-2 1]]~~ and ~~[[2 ifn-gamma-producing 2]]~~ cells were located mainly in the follicular areas .	0.005	0.001
+IFNG	IL10	results : we found weak mrna expression of interleukin-4 ( il-4 ) and il-5 , and strong expression of il-6 , ~~[[2 il-10 2]]~~ and ~~[[1 ifn-gamma 1]]~~ before therapy .	0.005	0.001
+PIK3R1	PTEN	both ~~[[2 pten 2]]~~ ( ~~[[1 pi3k 1]]~~ antagonist ) and pp2 ( unspecific phosphatase ) were down-regulated .	0.005	0.001
