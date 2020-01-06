@@ -55,15 +55,15 @@ total_candidates_pred_df = (
     .merge(sentence_prediction_df, on="candidate_id")
 )
 
-#total_candidates_pred_df.to_csv(
-#    "output/combined_predicted_gig_sentences.tsv.xz", 
-#    sep="\t", index=False, compression="xz"
-#)
+total_candidates_pred_df.to_csv(
+    "output/combined_predicted_gig_sentences.tsv.xz", 
+    sep="\t", index=False, compression="xz"
+)
 
 total_candidates_pred_df.head(2)
 
 
-# In[8]:
+# In[5]:
 
 
 # DataFrame that groups gene mentions together and takes
@@ -82,7 +82,7 @@ grouped_candidates_pred_df=(
 grouped_candidates_pred_df.head(2)
 
 
-# In[9]:
+# In[6]:
 
 
 grouped_candidates_pred_df.columns = [
@@ -93,7 +93,7 @@ grouped_candidates_pred_df.columns = [
 grouped_candidates_pred_df.head(2)
 
 
-# In[10]:
+# In[7]:
 
 
 grouped_candidates_pred_df = (
@@ -104,19 +104,19 @@ grouped_candidates_pred_df = (
 grouped_candidates_pred_df.head(2)
 
 
-# In[11]:
+# In[8]:
 
 
 grouped_candidates_pred_df.hetionet.value_counts()
 
 
-# In[12]:
+# In[9]:
 
 
 performance_map = {}
 
 
-# In[14]:
+# In[10]:
 
 
 precision, recall, pr_threshold = precision_recall_curve(
@@ -136,7 +136,7 @@ performance_map['max'] = {
 }
 
 
-# In[15]:
+# In[11]:
 
 
 precision, recall, pr_threshold = precision_recall_curve(
@@ -156,7 +156,7 @@ performance_map['mean'] = {
 }
 
 
-# In[16]:
+# In[12]:
 
 
 precision, recall, pr_threshold = precision_recall_curve(
@@ -176,7 +176,7 @@ performance_map['median'] = {
 }
 
 
-# In[17]:
+# In[13]:
 
 
 for key in performance_map:
@@ -190,7 +190,7 @@ plt.legend()
 plt.show()
 
 
-# In[18]:
+# In[14]:
 
 
 # https://stackoverflow.com/questions/28719067/roc-curve-and-cut-off-point-python
@@ -217,7 +217,7 @@ roc_optimal = Find_Optimal_Cutoff(grouped_candidates_pred_df.hetionet.values, gr
 roc_optimal
 
 
-# In[19]:
+# In[15]:
 
 
 for key in performance_map:
@@ -233,7 +233,7 @@ plt.show()
 
 # # Optimal PR-Cutoff
 
-# In[20]:
+# In[16]:
 
 
 threshold_df = (
@@ -252,7 +252,7 @@ threshold_df = (
 threshold_df.head(2)
 
 
-# In[21]:
+# In[17]:
 
 
 #precision_thresholds = pd.np.linspace(0,1,num=5)
@@ -305,14 +305,14 @@ edges_added_df = (
 edges_added_df.head(10)
 
 
-# In[22]:
+# In[18]:
 
 
 ax = sns.scatterplot(x="precision", y="edges", hue="in_hetionet", data=edges_added_df.sort_values("in_hetionet"))
 ax.set(yscale="log")
 
 
-# In[24]:
+# In[19]:
 
 
 edges_added_df.to_csv("output/precision_gig_edges_added.tsv", index=False, sep="\t")
@@ -320,7 +320,7 @@ edges_added_df.to_csv("output/precision_gig_edges_added.tsv", index=False, sep="
 
 # # Optimal ROC Cutoff
 
-# In[25]:
+# In[20]:
 
 
 (
@@ -331,7 +331,7 @@ edges_added_df.to_csv("output/precision_gig_edges_added.tsv", index=False, sep="
 )
 
 
-# In[26]:
+# In[21]:
 
 
 (
