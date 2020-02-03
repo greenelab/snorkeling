@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Using Labels from Different Relation Types to Predict Compound Treats Disease Sentences
