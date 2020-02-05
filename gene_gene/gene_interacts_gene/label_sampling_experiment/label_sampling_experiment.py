@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Using Labels from Different Relation Types to Predict Gene Interacts Gene Sentences
@@ -118,7 +118,7 @@ train_grid_results, dev_grid_results, test_grid_results, models = (
 (
     pd.DataFrame({key:train_grid_results[key][:,1] for key in train_grid_results})
     .assign(candidate_id=label_matricies['train'].candidate_id.values)
-    .to_csv(f"results/GiG/marginals/baseline_sampled.tsv.xz", compression="xz", sep="\t", index=False)
+    .to_csv(f"output/GiG/marginals/baseline_sampled.tsv.xz", compression="xz", sep="\t", index=False)
 )
 
 
@@ -194,20 +194,20 @@ for num_lf in sampled_lfs_dict:
     (
         pd.DataFrame({key:train_grid_results[key][:,1] for key in train_grid_results})
         .assign(candidate_id=label_matricies['train'].candidate_id.values)
-        .to_csv(f"results/GiG/marginals/{num_lf}_sampled_train.tsv.xz", compression="xz", sep="\t", index=False)
+        .to_csv(f"output/GiG/marginals/{num_lf}_sampled_train.tsv.xz", compression="xz", sep="\t", index=False)
     )
     (
         pd.DataFrame({key:dev_grid_results[key][:,1] for key in dev_grid_results})
-        .to_csv(f"results/GiG/marginals/{num_lf}_sampled_dev.tsv", sep="\t", index=False)
+        .to_csv(f"output/GiG/marginals/{num_lf}_sampled_dev.tsv", sep="\t", index=False)
     )
     (
         pd.DataFrame({key:test_grid_results[key][:,1] for key in test_grid_results})
-        .to_csv(f"results/GiG/marginals/{num_lf}_sampled_test.tsv", sep="\t", index=False)
+        .to_csv(f"output/GiG/marginals/{num_lf}_sampled_test.tsv", sep="\t", index=False)
     )
     
     (
         pd.DataFrame({key:models[key].get_weights() for key in models})
-        .to_csv(f"results/GiG/weights/{num_lf}_sampled_weights.tsv", sep="\t", index=False)
+        .to_csv(f"output/GiG/weights/{num_lf}_sampled_weights.tsv", sep="\t", index=False)
     )
     
     dev_records.append(get_model_performance(candidate_dfs['dev'].curated_gig, dev_grid_results, num_lf))
@@ -218,7 +218,7 @@ for num_lf in sampled_lfs_dict:
 
 
 dev_full_results_df = pd.concat([dev_baseline_df] + dev_records).reset_index(drop=True)
-dev_full_results_df.to_csv("results/GiG/results/dev_sampled_results.tsv", index=False, sep="\t")
+dev_full_results_df.to_csv("output/GiG/results/dev_sampled_results.tsv", index=False, sep="\t")
 dev_full_results_df.head(2)
 
 
@@ -238,7 +238,7 @@ sns.pointplot(x='lf_num', y='aupr', data=dev_full_results_df)
 
 
 test_full_results_df = pd.concat([test_baseline_df] + test_records).reset_index(drop=True)
-test_full_results_df.to_csv("results/GiG/results/test_sampled_results.tsv", index=False, sep="\t")
+test_full_results_df.to_csv("output/GiG/results/test_sampled_results.tsv", index=False, sep="\t")
 test_full_results_df.head(2)
 
 
@@ -312,20 +312,20 @@ for num_lf in sampled_lfs_dict:
     (
         pd.DataFrame({key:train_grid_results[key][:,1] for key in train_grid_results})
         .assign(candidate_id=label_matricies['train'].candidate_id.values)
-        .to_csv(f"results/DaG/marginals/{num_lf}_sampled_train.tsv.xz", compression="xz", index=False, sep="\t")
+        .to_csv(f"output/DaG/marginals/{num_lf}_sampled_train.tsv.xz", compression="xz", index=False, sep="\t")
     )
     (
         pd.DataFrame({key:dev_grid_results[key][:,1] for key in dev_grid_results})
-        .to_csv(f"results/DaG/marginals/{num_lf}_sampled_dev.tsv", index=False, sep="\t")
+        .to_csv(f"output/DaG/marginals/{num_lf}_sampled_dev.tsv", index=False, sep="\t")
     )
     (
         pd.DataFrame({key:test_grid_results[key][:,1] for key in test_grid_results})
-        .to_csv(f"results/DaG/marginals/{num_lf}_sampled_test.tsv", index=False, sep="\t")
+        .to_csv(f"output/DaG/marginals/{num_lf}_sampled_test.tsv", index=False, sep="\t")
     )
     
     (
         pd.DataFrame({key:models[key].get_weights() for key in models})
-        .to_csv(f"results/DaG/weights/{num_lf}_sampled_weights.tsv", index=False, sep="\t")
+        .to_csv(f"output/DaG/weights/{num_lf}_sampled_weights.tsv", index=False, sep="\t")
     )
     
     dev_records.append(get_model_performance(candidate_dfs['dev'].curated_gig, dev_grid_results, num_lf))
@@ -336,7 +336,7 @@ for num_lf in sampled_lfs_dict:
 
 
 dev_full_results_df = pd.concat([dev_baseline_df] + dev_records).reset_index(drop=True)
-dev_full_results_df.to_csv("results/DaG/results/dev_sampled_results.tsv", index=False, sep="\t")
+dev_full_results_df.to_csv("output/DaG/results/dev_sampled_results.tsv", index=False, sep="\t")
 dev_full_results_df.head(2)
 
 
@@ -356,7 +356,7 @@ sns.pointplot(x='lf_num', y='aupr', data=dev_full_results_df)
 
 
 test_full_results_df = pd.concat([test_baseline_df] + test_records).reset_index(drop=True)
-test_full_results_df.to_csv("results/DaG/results/test_sampled_results.tsv", index=False, sep="\t")
+test_full_results_df.to_csv("output/DaG/results/test_sampled_results.tsv", index=False, sep="\t")
 test_full_results_df.head(2)
 
 
@@ -430,20 +430,20 @@ for num_lf in sampled_lfs_dict:
     (
         pd.DataFrame({key:train_grid_results[key][:,1] for key in train_grid_results})
         .assign(candidate_id=label_matricies['train'].candidate_id.values)
-        .to_csv(f"results/CtD/marginals/{num_lf}_sampled_train.tsv.xz", compression="xz", index=False, sep="\t")
+        .to_csv(f"output/CtD/marginals/{num_lf}_sampled_train.tsv.xz", compression="xz", index=False, sep="\t")
     )
     (
         pd.DataFrame({key:dev_grid_results[key][:,1] for key in dev_grid_results})
-        .to_csv(f"results/CtD/marginals/{num_lf}_sampled_dev.tsv", index=False, sep="\t")
+        .to_csv(f"output/CtD/marginals/{num_lf}_sampled_dev.tsv", index=False, sep="\t")
     )
     (
         pd.DataFrame({key:test_grid_results[key][:,1] for key in test_grid_results})
-        .to_csv(f"results/CtD/marginals/{num_lf}_sampled_test.tsv", index=False, sep="\t")
+        .to_csv(f"output/CtD/marginals/{num_lf}_sampled_test.tsv", index=False, sep="\t")
     )
     
     (
         pd.DataFrame({key:models[key].get_weights() for key in models})
-        .to_csv(f"results/CtD/weights/{num_lf}_sampled_weights.tsv", index=False, sep="\t")
+        .to_csv(f"output/CtD/weights/{num_lf}_sampled_weights.tsv", index=False, sep="\t")
     )
     
     dev_records.append(get_model_performance(candidate_dfs['dev'].curated_gig, dev_grid_results, num_lf))
@@ -454,7 +454,7 @@ for num_lf in sampled_lfs_dict:
 
 
 dev_full_results_df = pd.concat([dev_baseline_df] + dev_records).reset_index(drop=True)
-dev_full_results_df.to_csv("results/CtD/results/dev_sampled_results.tsv", index=False, sep="\t")
+dev_full_results_df.to_csv("output/CtD/results/dev_sampled_results.tsv", index=False, sep="\t")
 dev_full_results_df.head(2)
 
 
@@ -474,7 +474,7 @@ sns.pointplot(x='lf_num', y='aupr', data=dev_full_results_df)
 
 
 test_full_results_df = pd.concat([test_baseline_df] + test_records).reset_index(drop=True)
-test_full_results_df.to_csv("results/CtD/results/test_sampled_results.tsv", index=False, sep="\t")
+test_full_results_df.to_csv("output/CtD/results/test_sampled_results.tsv", index=False, sep="\t")
 test_full_results_df.head(2)
 
 
@@ -548,20 +548,20 @@ for num_lf in sampled_lfs_dict:
     (
         pd.DataFrame({key:train_grid_results[key][:,1] for key in train_grid_results})
         .assign(candidate_id=label_matricies['train'].candidate_id.values)
-        .to_csv(f"results/CbG/marginals/{num_lf}_sampled_train.tsv.xz", compression="xz", index=False, sep="\t")
+        .to_csv(f"output/CbG/marginals/{num_lf}_sampled_train.tsv.xz", compression="xz", index=False, sep="\t")
     )
     (
         pd.DataFrame({key:dev_grid_results[key][:,1] for key in dev_grid_results})
-        .to_csv(f"results/CbG/marginals/{num_lf}_sampled_dev.tsv", index=False, sep="\t")
+        .to_csv(f"output/CbG/marginals/{num_lf}_sampled_dev.tsv", index=False, sep="\t")
     )
     (
         pd.DataFrame({key:test_grid_results[key][:,1] for key in test_grid_results})
-        .to_csv(f"results/CbG/marginals/{num_lf}_sampled_test.tsv", index=False, sep="\t")
+        .to_csv(f"output/CbG/marginals/{num_lf}_sampled_test.tsv", index=False, sep="\t")
     )
     
     (
         pd.DataFrame({key:models[key].get_weights() for key in models})
-        .to_csv(f"results/CbG/weights/{num_lf}_sampled_weights.tsv", index=False, sep="\t")
+        .to_csv(f"output/CbG/weights/{num_lf}_sampled_weights.tsv", index=False, sep="\t")
     )
     
     dev_records.append(get_model_performance(candidate_dfs['dev'].curated_gig, dev_grid_results, num_lf))
@@ -572,7 +572,7 @@ for num_lf in sampled_lfs_dict:
 
 
 dev_full_results_df = pd.concat([dev_baseline_df] + dev_records).reset_index(drop=True)
-dev_full_results_df.to_csv("results/CbG/results/dev_sampled_results.tsv", index=False, sep="\t")
+dev_full_results_df.to_csv("output/CbG/results/dev_sampled_results.tsv", index=False, sep="\t")
 dev_full_results_df.head(2)
 
 
@@ -592,7 +592,7 @@ sns.pointplot(x='lf_num', y='aupr', data=dev_full_results_df)
 
 
 test_full_results_df = pd.concat([test_baseline_df] + test_records).reset_index(drop=True)
-test_full_results_df.to_csv("results/CbG/results/test_sampled_results.tsv", index=False, sep="\t")
+test_full_results_df.to_csv("output/CbG/results/test_sampled_results.tsv", index=False, sep="\t")
 test_full_results_df.head(2)
 
 
@@ -666,20 +666,20 @@ for num_lf in sampled_lfs_dict:
     (
         pd.DataFrame({key:train_grid_results[key][:,1] for key in train_grid_results})
         .assign(candidate_id=label_matricies['train'].candidate_id.values)
-        .to_csv(f"results/all/marginals/{num_lf}_sampled_train.tsv.xz", compression="xz", index=False, sep="\t")
+        .to_csv(f"output/all/marginals/{num_lf}_sampled_train.tsv.xz", compression="xz", index=False, sep="\t")
     )
     (
         pd.DataFrame({key:dev_grid_results[key][:,1] for key in dev_grid_results})
-        .to_csv(f"results/all/marginals/{num_lf}_sampled_dev.tsv", index=False, sep="\t")
+        .to_csv(f"output/all/marginals/{num_lf}_sampled_dev.tsv", index=False, sep="\t")
     )
     (
         pd.DataFrame({key:test_grid_results[key][:,1] for key in test_grid_results})
-        .to_csv(f"results/all/marginals/{num_lf}_sampled_test.tsv", index=False, sep="\t")
+        .to_csv(f"output/all/marginals/{num_lf}_sampled_test.tsv", index=False, sep="\t")
     )
     
     (
         pd.DataFrame({key:models[key].get_weights() for key in models})
-        .to_csv(f"results/all/weights/{num_lf}_sampled_weights.tsv", index=False, sep="\t")
+        .to_csv(f"output/all/weights/{num_lf}_sampled_weights.tsv", index=False, sep="\t")
     )
     
     dev_records.append(get_model_performance(candidate_dfs['dev'].curated_gig, dev_grid_results, num_lf))
@@ -690,7 +690,7 @@ for num_lf in sampled_lfs_dict:
 
 
 dev_full_results_df = pd.concat([dev_baseline_df] + dev_records).reset_index(drop=True)
-dev_full_results_df.to_csv("results/all/results/dev_sampled_results.tsv", index=False, sep="\t")
+dev_full_results_df.to_csv("output/all/results/dev_sampled_results.tsv", index=False, sep="\t")
 dev_full_results_df.head(2)
 
 
@@ -710,7 +710,7 @@ sns.pointplot(x='lf_num', y='aupr', data=dev_full_results_df)
 
 
 test_full_results_df = pd.concat([test_baseline_df] + test_records).reset_index(drop=True)
-test_full_results_df.to_csv("results/all/results/test_sampled_results.tsv", index=False, sep="\t")
+test_full_results_df.to_csv("output/all/results/test_sampled_results.tsv", index=False, sep="\t")
 test_full_results_df.head(2)
 
 
