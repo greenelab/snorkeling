@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Generate Compound Treats Disease Candidates
@@ -79,7 +79,7 @@ compound_treats_palliates_disease_df = (
     pd.read_table(ctpd_url)
     .assign(sources='pharmacotherapydb')
     .drop(["n_curators", "n_resources"], axis=1)
-    .rename(index=str, columns={"drug": "drug_name", "disease":"disease_name"})
+    .rename(index=str, columns={"drug": "drug_name", "disease":"doid_name"})
 )
 compound_treats_palliates_disease_df.head(2)
 
@@ -103,10 +103,30 @@ compound_disease_sentence_df.head(2)
 # In[9]:
 
 
+compound_disease_map_df = (
+    drugbank_df[["drugbank_id", "drug_name"]]
+    .assign(key=1)
+    .merge(disease_ontology_df[["doid_id", "doid_name"]].assign(key=1))
+    .drop("key", axis=1)
+)
+compound_disease_map_df.head(2)
+
+
+# In[10]:
+
+
 compound_treats_disease_df = (
-    compound_treats_palliates_disease_df
-    .query("category=='DM'")
-    .merge(compound_disease_sentence_df, on=["drugbank_id", "doid_id"], how="right")
+    compound_disease_map_df
+    .merge(
+        compound_treats_palliates_disease_df
+        .query("category=='DM'")
+        [["doid_id", "drugbank_id", "category", "sources"]],
+        on=["drugbank_id", "doid_id"], 
+        how="left"
+    )
+    .merge(compound_disease_sentence_df, on=["drugbank_id", "doid_id"], how="left")
+    .fillna({"n_sentences": 0})
+    .astype({"n_sentences": int})
 )
 compound_treats_disease_df=(
     compound_treats_disease_df
@@ -116,25 +136,25 @@ compound_treats_disease_df=(
 compound_treats_disease_df.head(2)
 
 
-# In[10]:
+# In[11]:
 
 
-compound_palliates_disease_df = (
-    compound_treats_palliates_disease_df
-    .query("category=='SYM'")
-    .merge(compound_disease_sentence_df, on=["drugbank_id", "doid_id"], how="right")
-)
-compound_palliates_disease_df=(
-    compound_palliates_disease_df
-    .assign(hetionet=compound_treats_disease_df.sources.notnull().astype(int))
-    .assign(has_sentence=(compound_treats_disease_df.n_sentences > 0).astype(int))
-)
-compound_palliates_disease_df.head(2)
+# Make sure all existing edges are found
+# 755 is determined from neo4j to be all CtD Edges
+assert compound_treats_disease_df.hetionet.value_counts()[1] == 755
 
+
+# In[12]:
+
+
+compound_treats_disease_df.query("hetionet==1&has_sentence==1").shape[0]
+
+
+# Note 69 edges in hetionet does not have sentences.
 
 # ## Sort Edges into categories
 
-# In[11]:
+# In[13]:
 
 
 def partitioner(df):
@@ -155,7 +175,7 @@ def partitioner(df):
     return df
 
 
-# In[12]:
+# In[14]:
 
 
 def get_split(partition_rank, training=0.7, dev=0.2, test=0.1):
@@ -169,16 +189,16 @@ def get_split(partition_rank, training=0.7, dev=0.2, test=0.1):
     return label that corresponds to appropiate dataset cateogories
     """
     if partition_rank < training:
-        return 3
+        return 9
     partition_rank -= training
     if partition_rank < dev:
-        return 4
+        return 10
     partition_rank -= dev
     assert partition_rank <= test
-    return 5
+    return 11
 
 
-# In[13]:
+# In[15]:
 
 
 pd.np.random.seed(100)
@@ -186,25 +206,25 @@ ctd_map_df = compound_treats_disease_df.groupby(['hetionet', 'has_sentence']).ap
 ctd_map_df.head(2)
 
 
-# In[14]:
+# In[16]:
 
 
 ctd_map_df['split'] = ctd_map_df.partition_rank.map(get_split)
 ctd_map_df.split.value_counts()
 
 
-# In[15]:
+# In[17]:
 
 
 ctd_map_df.sources.unique()
 
 
-# In[16]:
+# In[18]:
 
 
 ctd_map_df = ctd_map_df[[
     "drugbank_id", "drug_name",
-    "doid_id", "disease_name",
+    "doid_id", "doid_name",
     "sources", "n_sentences",
     "hetionet", "has_sentence",
     "split", "partition_rank"
@@ -212,48 +232,8 @@ ctd_map_df = ctd_map_df[[
 ctd_map_df.head(2)
 
 
-# In[17]:
-
-
-ctd_map_df.to_csv("results/compound_treats_disease.tsv.xz", sep="\t", compression="xz", index=False)
-
-
-# In[18]:
-
-
-pd.np.random.seed(100)
-cpd_map_df = compound_palliates_disease_df.groupby(['hetionet', 'has_sentence']).apply(partitioner)
-cpd_map_df.head(2)
-
-
 # In[19]:
 
 
-cpd_map_df['split'] = cpd_map_df.partition_rank.map(get_split)
-cpd_map_df.split.value_counts()
-
-
-# In[20]:
-
-
-cpd_map_df.sources.unique()
-
-
-# In[21]:
-
-
-cpd_map_df = cpd_map_df[[
-    "drugbank_id", "drug_name",
-    "doid_id", "disease_name",
-    "sources", "n_sentences",
-    "hetionet", "has_sentence",
-    "split", "partition_rank"
-]]
-cpd_map_df.head(2)
-
-
-# In[22]:
-
-
-cpd_map_df.to_csv("results/compound_palliates_disease.tsv.xz", sep="\t", compression="xz", index=False)
+ctd_map_df.to_csv("output/compound_treats_disease.tsv.xz", sep="\t", compression="xz", index=False)
 

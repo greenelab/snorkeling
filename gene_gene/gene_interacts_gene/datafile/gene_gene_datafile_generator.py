@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Generate Gene Interacts Gene Candidates
@@ -60,7 +60,7 @@ gene_gene_interaction_df.head(2)
 
 # ## Read in Sentences with Edge Pair
 
-# In[6]:
+# In[8]:
 
 
 query = '''
@@ -74,7 +74,7 @@ gene_gene_sentence_df.head(2)
 
 # ## Merge Edges Into a Unified Table
 
-# In[7]:
+# In[9]:
 
 
 gene_gene_interaction_df = (
@@ -192,5 +192,5 @@ map_df.head(2)
 # In[15]:
 
 
-map_df.to_csv("results/gene_interacts_gene.tsv.xz", sep="\t", compression="xz", index=False)
+map_df.to_csv("output/gene_interacts_gene.tsv.xz", sep="\t", compression="xz", index=False)
 
