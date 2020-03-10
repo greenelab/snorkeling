@@ -12,26 +12,60 @@ get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
 get_ipython().run_line_magic('matplotlib', 'inline')
 
+import os
+import sys
 import pandas as pd
 from sklearn.metrics import precision_recall_curve, roc_curve, auc
-import seaborn as sns
 import matplotlib.pyplot as plt
 import plotnine as p9
-from tqdm import tqdm_notebook
+import seaborn as sns
+
+sys.path.append(os.path.abspath('../../../modules'))
+
+from utils.notebook_utils.dataframe_helper import mark_sentence
 
 
 # In[2]:
 
 
+#Set up the environment
+username = "danich1"
+password = "snorkel"
+dbname = "pubmeddb"
+
+#Path subject to change for different os
+database_str = "postgresql+psycopg2://{}:{}@/{}?host=/var/run/postgresql".format(username, password, dbname)
+os.environ['SNORKELDB'] = database_str
+
+from snorkel import SnorkelSession
+session = SnorkelSession()
+
+
+# In[3]:
+
+
+from snorkel.learning.pytorch.rnn.utils import candidate_to_tokens
+from snorkel.models import Candidate, candidate_subclass
+
+
+# In[4]:
+
+
+GeneGene = candidate_subclass('GeneGene', ['Gene1', 'Gene2'])
+
+
+# In[5]:
+
+
 total_candidates_df = (
     pd
-    .read_table("../dataset_statistics/results/all_gig_candidates.tsv.xz")
+    .read_table("input/all_gig_candidates.tsv.xz")
     .sort_values("candidate_id")
 )
 total_candidates_df.head(2)
 
 
-# In[3]:
+# In[6]:
 
 
 sentence_prediction_df = (
@@ -42,7 +76,7 @@ sentence_prediction_df = (
 sentence_prediction_df.head(2)
 
 
-# In[4]:
+# In[7]:
 
 
 # DataFrame that combines likelihood scores with each candidate sentence
@@ -56,15 +90,15 @@ total_candidates_pred_df = (
     .merge(sentence_prediction_df, on="candidate_id")
 )
 
-total_candidates_pred_df.to_csv(
-    "output/combined_predicted_gig_sentences.tsv.xz", 
-    sep="\t", index=False, compression="xz"
-)
+#total_candidates_pred_df.to_csv(
+#    "output/combined_predicted_gig_sentences.tsv.xz", 
+#    sep="\t", index=False, compression="xz"
+#)
 
 total_candidates_pred_df.head(2)
 
 
-# In[5]:
+# In[8]:
 
 
 # DataFrame that groups gene mentions together and takes
@@ -83,7 +117,7 @@ grouped_candidates_pred_df=(
 grouped_candidates_pred_df.head(2)
 
 
-# In[6]:
+# In[9]:
 
 
 grouped_candidates_pred_df.columns = [
@@ -94,7 +128,7 @@ grouped_candidates_pred_df.columns = [
 grouped_candidates_pred_df.head(2)
 
 
-# In[7]:
+# In[10]:
 
 
 grouped_candidates_pred_subet_df = (
@@ -105,7 +139,7 @@ grouped_candidates_pred_subet_df = (
 grouped_candidates_pred_subet_df.head(2)
 
 
-# In[8]:
+# In[11]:
 
 
 grouped_candidates_pred_subet_df.hetionet.value_counts()
@@ -115,13 +149,13 @@ grouped_candidates_pred_subet_df.hetionet.value_counts()
 
 # This section aims to answer the question: What metric (Mean, Max, Median) best predicts Hetionet Edges?
 
-# In[9]:
+# In[12]:
 
 
 performance_map = {}
 
 
-# In[10]:
+# In[13]:
 
 
 precision, recall, pr_threshold = precision_recall_curve(
@@ -141,7 +175,7 @@ performance_map['max'] = {
 }
 
 
-# In[11]:
+# In[14]:
 
 
 precision, recall, pr_threshold = precision_recall_curve(
@@ -161,7 +195,7 @@ performance_map['mean'] = {
 }
 
 
-# In[12]:
+# In[15]:
 
 
 precision, recall, pr_threshold = precision_recall_curve(
@@ -181,7 +215,7 @@ performance_map['median'] = {
 }
 
 
-# In[13]:
+# In[16]:
 
 
 for key in performance_map:
@@ -195,7 +229,7 @@ plt.legend()
 plt.show()
 
 
-# In[14]:
+# In[17]:
 
 
 for key in performance_map:
@@ -211,7 +245,7 @@ plt.show()
 
 # # Optimal Cutoff Using PR-CURVE 
 
-# In[15]:
+# In[18]:
 
 
 threshold_df = (
@@ -230,7 +264,7 @@ threshold_df = (
 threshold_df.head(2)
 
 
-# In[16]:
+# In[19]:
 
 
 #precision_thresholds = pd.np.linspace(0,1,num=5)
@@ -247,7 +281,7 @@ precision_thresholds = (
 )
 
 performance_records = []
-for precision_cutoff in tqdm_notebook(precision_thresholds):
+for precision_cutoff in precision_thresholds:
 
     cutoff = (
         threshold_df
@@ -283,14 +317,14 @@ edges_added_df = (
 edges_added_df.head(10)
 
 
-# In[17]:
+# In[20]:
 
 
 ax = sns.scatterplot(x="precision", y="edges", hue="in_hetionet", data=edges_added_df.sort_values("in_hetionet"))
 ax.set(yscale="log")
 
 
-# In[18]:
+# In[21]:
 
 
 edges_added_df.to_csv("output/precision_gig_edges_added.tsv", index=False, sep="\t")
@@ -300,14 +334,94 @@ edges_added_df.to_csv("output/precision_gig_edges_added.tsv", index=False, sep="
 
 # How many edges of hetionet can we recall using a cutoff score of 0.5?
 
-# In[19]:
+# In[22]:
+
+
+def tag_sentence(x):
+    candidates=(
+        session
+        .query(GeneGene)
+        .filter(GeneGene.id.in_(x.candidate_id.astype(int).tolist()))
+        .all()
+    )
+    tagged_sen=[
+         " ".join(
+             mark_sentence(
+                candidate_to_tokens(cand), 
+                [
+                        (cand[0].get_word_start(), cand[0].get_word_end(), 1),
+                        (cand[1].get_word_start(), cand[1].get_word_end(), 2)
+                ]
+            )
+         )
+        for cand in candidates
+    ]
+
+    return tagged_sen
+
+
+# In[23]:
+
+
+gen_pred_df = (
+    pd.read_csv("../label_sampling_experiment/results/GiG/marginals/train/28_sampled_train.tsv.xz", sep="\t")
+    .iloc[:, [0,-1]]
+    .append(
+        pd.read_csv("../label_sampling_experiment/results/GiG/marginals/tune/28_sampled_dev.tsv", sep="\t")
+        .iloc[:, [0,-1]]
+    )
+    .append(
+        pd.read_csv("../label_sampling_experiment/results/GiG/marginals/test/28_sampled_test.tsv", sep="\t")
+        .iloc[:, [0,-1]]
+    )
+)
+gen_pred_df.columns = ["gen_pred", "candidate_id"]
+gen_pred_df.head(2)
+
+
+# In[24]:
+
+
+(
+    total_candidates_pred_df.iloc[
+        total_candidates_pred_df
+        .groupby(["gene1_id", "gene2_id"], as_index=False)
+        .agg({
+            "pred": 'idxmax'
+        })
+        .pred
+    ]
+    .merge(gen_pred_df, on=["candidate_id"])
+    .assign(edge_type="GiG")
+    .sort_values("pred", ascending=False)
+    .query("gene1_name!=gene2_name")
+    .head(10)
+    .sort_values("candidate_id")
+    .assign(text=lambda x: tag_sentence(x))
+    .merge(total_candidates_df[["n_sentences", "candidate_id"]], on="candidate_id")
+    .sort_values("pred", ascending=False)
+    .assign(hetionet=lambda x: x.hetionet.apply(lambda x: "Existing" if x == 1 else "Novel"))
+    [["edge_type", "gene1_name", "gene2_name", "gen_pred", "pred", "n_sentences", "hetionet", "text"]]
+    .to_csv("output/top_ten_edge_predictions.tsv", sep="\t", index=False, float_format="%.3g")
+)
+
+
+# In[25]:
 
 
 datarows = []
+fpr, tpr, threshold = roc_curve(
+    grouped_candidates_pred_df.hetionet.values, 
+    grouped_candidates_pred_df.pred_max.values
+)
+
+fnr = 1 - tpr
+optimal_threshold = threshold[pd.np.nanargmin(pd.np.absolute((fnr - fpr)))]
+
 datarows.append({
     "recall":(
         grouped_candidates_pred_df
-        .query("pred_max > 0.5")
+        .query("pred_max > @optimal_threshold")
         .hetionet
         .value_counts()[1] /
         grouped_candidates_pred_df
@@ -316,7 +430,7 @@ datarows.append({
     ),
     "edges":(
         grouped_candidates_pred_df
-        .query("pred_max > 0.5")
+        .query("pred_max > @optimal_threshold")
         .hetionet
         .value_counts()[1]
     ),
@@ -327,7 +441,7 @@ datarows.append({
 datarows.append({
     "edges":(
         grouped_candidates_pred_df
-        .query("pred_max > 0.5")
+        .query("pred_max > @optimal_threshold")
         .hetionet
         .value_counts()[0]
     ),
@@ -338,7 +452,7 @@ edges_df = pd.DataFrame.from_records(datarows)
 edges_df
 
 
-# In[20]:
+# In[26]:
 
 
 import math
