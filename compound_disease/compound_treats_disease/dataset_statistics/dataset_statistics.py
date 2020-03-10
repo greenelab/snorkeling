@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Dataset Statistics for Compound Disease Sentences
@@ -22,7 +22,6 @@ sys.path.append(os.path.abspath('../../../modules'))
 
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib_venn import venn2
 import seaborn as sns
 from tqdm import tqdm_notebook
 
@@ -58,231 +57,47 @@ CompoundDisease = candidate_subclass('CompoundDisease', ['Compound', 'Disease'])
 from utils.notebook_utils.dataframe_helper import write_candidates_to_excel, make_sentence_df
 
 
-# # Read Full Sentence Table
-
-# The cells below will read every sentence that contains a compound and disease entity from the sentence table in our postgres database. Since this process can take a significant amount of time this section has already been executed.
-
-# In[5]:
-
-
-sql= '''
-select id as sentence_id, text, (
-    char_length(regexp_replace(CAST(words AS TEXT), '[\u0080-\u00ff]', '', 'g')) - 
-    char_length(regexp_replace(regexp_replace(CAST(words AS TEXT), '[\u0080-\u00ff]', '', 'g'), ',', '','g'))
-) as sen_length, entity_types 
-from sentence 
-where entity_types::text like '%%Compound%%' or entity_types::text like '%%Disease%%';
-'''
-sentence_df = pd.read_sql(sql, database_str)
-sentence_df.head(2)
-
-
-# In[7]:
-
-
-entity_data = []
-tagging_error_ids = set({})
-
-#skip tagging error
-skip_tag_error = False
-for index, row in tqdm_notebook(sentence_df.iterrows()):
-    
-    #create dictionay for mapping entity types
-    entity_mapper = {"sentence_id": row['sentence_id']}
-    
-    #Keep track of previous entity
-    previous_entity = 'o'
-    
-    #For all entitys in a given sentence decide what is tagged
-    for entity in row['entity_types']:
-        entity = entity.lower()
-
-        #Non-O tag
-        if entity != 'o' and previous_entity =='o':
-            #If entity not seen before instanciate it
-            if entity not in entity_mapper:
-                entity_mapper[entity] =0
-            entity_mapper[entity] += 1
-
-        # If previous tag was non-O and the current tag does not equal previous
-        # Then tagging error. e.x. Disease, Gene, Disease instead of Disease, O, Disease
-        elif entity != previous_entity and entity != 'o':
-            tagging_error_ids.add(row['sentence_id'])
-            skip_tag_error = True
-            break
-
-        previous_entity = entity
-    
-    # Do not add errors to dataframe
-    # They will be thrown out
-    if not skip_tag_error:
-        entity_data.append(entity_mapper)
-
-    skip_tag_error=False
-    
-entity_stats_df = pd.DataFrame.from_dict(entity_data).fillna(0)
-entity_stats_df.head(2)
-
-
-# In[8]:
-
-
-tagging_error_df = pd.Series(sorted(list(tagging_error_ids)))
-tagging_error_df.to_csv("data/tagging_error_ids.tsv.xz", sep="\t",  index=False, compression="xz")
-tagging_error_df.head(2)
-
-
-# In[9]:
-
-
-print(
-    "Total Number of IOB Tagging Errors: {}. Percentage of sentences affected: {:.2f}".format(
-        tagging_error_df.shape[0],
-        100*tagging_error_df.shape[0]/sentence_df.shape[0]
-    )
-)
-
-
-# In[10]:
-
-
-header = ["sentence_id", "text", "sen_length"]
-sentence_df[header].to_csv("data/sentence_stats.tsv.xz", sep="\t", index=False, compression="xz")
-entity_stats_df.to_csv("data/entity_stats.tsv.xz", sep="\t",  index=False, compression="xz")
-
-
-# # Sentence Counts and Statistics
-
-# Below is the block of code that contains information about the full distribution of sentences tied to each candidate pair. Multiple sentences can contain more than one co-occuring pair, which results in some sentences being counted more than once.
-
 # ## Load and Merge DataFrames
 
 # In[5]:
 
 
-entity_level_df = pd.read_table("../compound_treats_disease.tsv.xz")
-entity_level_df.head(2)
+edge_level_df = (
+    pd.read_table("input/compound_treats_disease.tsv.xz")
+    .drop(["disease", "sources", "resource", "resource_id"], axis=1)
+)
+edge_level_df.head(2)
 
 
 # In[6]:
 
 
-entity_stats_df = pd.read_table("data/entity_stats.tsv.xz")
-entity_stats_df.head(2)
+sql='''
+select cand_id as candidate_id, doid_id, drugbank_id, sentence_id, text, array_length(words, 1) as sen_length from (
+    select cand_id, "Disease_cid" as doid_id, "Compound_cid" as drugbank_id, sentence_id from 
+    (
+        select compound_disease.id as "cand_id", compound_disease."Disease_id",
+        compound_disease."Disease_cid", compound_disease."Compound_cid", candidate.split from compound_disease 
+        inner join candidate on compound_disease.id=candidate.id 
+    ) 
+    as candidate_splits inner join span on candidate_splits."Disease_id"=span.id
+) as candidate_sen inner join sentence on candidate_sen.sentence_id=sentence.id
+'''
+candidate_sentence_df = pd.read_sql(sql, database_str)
+candidate_sentence_df.head(2)
 
 
 # In[7]:
 
 
-sentence_count_df = pd.read_table("data/sentence_stats.tsv.xz")
-sentence_count_df.head(2)
+total_candidates_df= (
+    edge_level_df
+    .merge(candidate_sentence_df, on=["doid_id", "drugbank_id"])
+)
+total_candidates_df.head(2)
 
 
 # In[8]:
-
-
-sentence_sql = '''
-select cand_id, "Disease_cid" as doid_id, "Compound_cid" as drugbank_id, sentence_id from (
-    select compound_disease.id as "cand_id", compound_disease."Disease_id",
-    compound_disease."Disease_cid", compound_disease."Compound_cid", candidate.split from compound_disease 
-    inner join candidate on compound_disease.id=candidate.id 
-    where split={}
-) as candidate_splits inner join span on candidate_splits."Disease_id"=span.id;
-'''
-
-
-# In[9]:
-
-
-train_candidate_df = pd.read_sql(sentence_sql.format(9), database_str)
-train_candidate_df.head(2)
-
-
-# In[10]:
-
-
-dev_candidate_df = pd.read_sql(sentence_sql.format(10), database_str)
-test_candidate_df = pd.read_sql(sentence_sql.format(11), database_str)
-
-
-# In[11]:
-
-
-clean_up_df = lambda x: (
-        entity_stats_df
-        .merge(sentence_count_df, on="sentence_id")
-        .merge(x, on="sentence_id")
-        .rename(index=str, columns={
-            "disease":"disease_mention_count", 
-            "gene":"gene_mention_count", 
-            "compound":"compound_mention_count",
-            "cand_id": "candidate_id"
-        })
-    )
-
-
-# In[12]:
-
-
-train_candidate_df = clean_up_df(train_candidate_df)
-train_candidate_df.head(2)
-
-
-# In[13]:
-
-
-dev_candidate_df = clean_up_df(dev_candidate_df)
-test_candidate_df = clean_up_df(test_candidate_df)
-
-
-# In[14]:
-
-
-training_set_df = (
-    entity_level_df
-    .query("split==9&has_sentence==1")
-    .merge(
-        train_candidate_df, 
-        on=["drugbank_id", "doid_id"]
-    )
-)
-training_set_df.head(2)
-
-
-# In[15]:
-
-
-dev_set_df = (
-    entity_level_df
-    .query("split==10&has_sentence==1")
-    .merge(
-        dev_candidate_df, 
-        on=["drugbank_id", "doid_id"]
-    )
-)
-
-test_set_df = (
-    entity_level_df
-    .query("split==11&has_sentence==1")
-    .merge(
-        test_candidate_df, 
-        on=["drugbank_id", "doid_id"]
-    )
-)
-
-
-# In[16]:
-
-
-total_candidates_df = (
-    training_set_df
-    .append(dev_set_df)
-    .append(test_set_df)
-    .drop_duplicates("candidate_id")
-)
-
-
-# In[17]:
 
 
 dev_candidates = (
@@ -303,7 +118,7 @@ dev_df = make_sentence_df(dev_candidates)
 dev_df.head(2)
 
 
-# In[18]:
+# In[9]:
 
 
 test_candidates = (
@@ -327,22 +142,22 @@ test_df = make_sentence_df(test_candidates)
 test_df.head(2)
 
 
-# In[44]:
+# In[10]:
 
 
-write_candidates_to_excel(dev_df, "data/sentence_labels_dev.xlsx")
-write_candidates_to_excel(test_df, "data/sentence_labels_test.xlsx")
+#write_candidates_to_excel(dev_df, "../data/sentences/sentence_labels_dev.xlsx")
+#write_candidates_to_excel(test_df, "../data/sentences/sentence_labels_test.xlsx")
 
 
 # ## Distribution of Sentence Length
 
-# In[19]:
+# In[11]:
 
 
 sns.distplot(total_candidates_df["sen_length"], rug=False)
 
 
-# In[20]:
+# In[12]:
 
 
 total_candidates_df["sen_length"].describe().astype(int)
@@ -350,21 +165,21 @@ total_candidates_df["sen_length"].describe().astype(int)
 
 # Something seems fishy about this distribution. The number of words (tokens) for a given sentence is in the hundreds range. Intuitively, that doesn't make sense, since the average number of words for a given sentence is 36. Possible reason for this abnormality is a parsing error, so lets take a look at this 834 word sentence.
 
-# In[21]:
+# In[13]:
 
 
-total_candidates_df.query("sen_length==834").iloc[0]["text"]
+total_candidates_df.query("sen_length==798").iloc[0]["text"]
 
 
 # The above sentence shows that a long list of drugs that a issue will cover. This isn't helpful in our case, because we want to look at sentences that contain compounds and diseases; therefore, we should remove sentences of this nature by defining a cutoff score of 83 or less words.
 
-# In[22]:
+# In[14]:
 
 
 sns.distplot(total_candidates_df.query("sen_length < 83+1")["sen_length"], rug=False)
 
 
-# In[23]:
+# In[15]:
 
 
 total_candidates_df.query("sen_length < 83+1")["sen_length"].describe().astype(int)
@@ -372,161 +187,10 @@ total_candidates_df.query("sen_length < 83+1")["sen_length"].describe().astype(i
 
 # This distribution looks a bit more reasonable compared to the above distribution. After filtering out the outliers, we still have a pleathora of sentences on the order of 1.1 million.
 
-# In[24]:
+# In[16]:
 
 
-before_filter = set([tuple(line) for line in total_candidates_df[["drugbank_id", "doid_id"]].values])
-after_filter = set([tuple(line) for line in total_candidates_df.query("sen_length < 83+1")[["drugbank_id", "doid_id"]].values])
-print(
-    "Total number of unique candidates before filter: {}".format(
-        total_candidates_df[["drugbank_id", "doid_id"]].drop_duplicates().shape[0]
-    )
-)
-print(
-    "Total number of unique candidates after filter: {}".format(
-        total_candidates_df.query("sen_length < 83+1")[["drugbank_id", "doid_id"]].drop_duplicates().shape[0]
-    )
-)
-print("Total number of unique candidates being thrown out: {}".format(len(before_filter.difference(after_filter))))
+total_candidates_df.to_csv("output/all_ctd_candidates.tsv.xz", sep="\t", compression="xz", index=False)
 
 
-# In[25]:
-
-
-filtered_total_candidates_df = total_candidates_df.query("sen_length < 83+1")
-
-
-# In[26]:
-
-
-ids =filtered_total_candidates_df.query("hetionet==1").sentence_id.values
-venn2(
-    [
-        set(filtered_total_candidates_df.query("hetionet==0&sentence_id not in @ids").sentence_id),
-        set(filtered_total_candidates_df.query("hetionet==1").sentence_id)
-    ], set_labels=["Not In Hetionet", "In Hetionet"])
-plt.title("# of Unique Sentences in Entire Dataset with Co-Mention Pair in/not in hetionet")
-
-
-# # Co-occuring Mentions Sentence Stats
-
-# This next block contains a visualization about the number of mentions a sentence may contain.
-
-# In[27]:
-
-
-ax = sns.scatterplot(
-    x="disease_mention_count", 
-    y="compound_mention_count", 
-    data=
-    (
-        filtered_total_candidates_df
-        .drop_duplicates("sentence_id")
-        .groupby(["disease_mention_count", "compound_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
-)
-ax.set_title("Mention Distribution of Entire Dataset")
-
-
-# In the above graph every point is group of possible mention counts a sentence could contain. For example one group has sentences containing one compound mention and one disease mention (indicated in the bottom left in yellow). Overall this graph is acceptable in terms of the spread between the number of mentions; however, when getting ready to train the deep learning models one has to make sure the algorithm can detect which co-mention pair a candidate is referring to.
-
-# # Subsampled Set Distributions
-
-# Take a look at the stratification for each train/dev/test set.
-
-# ## Training Set
-
-# Here the training set covers majority of the characterisitics are the entire dataset. This isn't surprising because a stratified sort was used to allocate candidates.
-
-# In[28]:
-
-
-ax = sns.scatterplot(
-    x="disease_mention_count", 
-    y="compound_mention_count", 
-    data=
-    (
-        filtered_total_candidates_df
-        .query("split==9")
-        .drop_duplicates("sentence_id")
-        .groupby(["disease_mention_count", "compound_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
-)
-ax.set_title("Distribution of Sentences in Entire Training Set")
-
-
-# ## Dev Set
-
-# This block contains information on the development set (aka tuning set).
-
-# In[29]:
-
-
-ax = sns.scatterplot(
-    x="disease_mention_count", 
-    y="compound_mention_count", 
-    data=
-    (
-        filtered_total_candidates_df
-        .query("split==10")
-        .drop_duplicates("sentence_id")
-        .groupby(["disease_mention_count", "compound_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
-)
-ax.set_title("Sentence Distribution of Total Dev Dataset")
-
-
-# In[30]:
-
-
-sns.distplot(filtered_total_candidates_df.query("split==10")["sen_length"], rug=False)
-
-
-# ## Test Set
-
-# This block contains information on the test set.
-
-# In[31]:
-
-
-ax = sns.scatterplot(
-    x="disease_mention_count", 
-    y="compound_mention_count", 
-    data=
-    (
-        filtered_total_candidates_df
-        .query("split==11")
-        .drop_duplicates("sentence_id")
-        .groupby(["disease_mention_count", "compound_mention_count"]).size()
-        .reset_index()
-        .rename(index=str, columns={0:"size"})
-        .assign(natural_log_size= lambda x: pd.np.log(x['size']))
-    ),
-    hue="natural_log_size",
-    palette='viridis'
-)
-ax.set_title("Sentence Distribution of Total Test Dataset")
-
-
-# In[32]:
-
-
-sns.distplot(filtered_total_candidates_df.query("split==11")["sen_length"], rug=False)
-
-
-# In conclusion, the optimal cutoff point in this case would be: **84** tokens/words or smaller depending on algorithm performance. Another important lesson is to analyze one's dataset before undergoing the journey of training a deep learning model. Sentence length is an important factor, when it comes to filtering out the dataset. If ignored, a significant amount of problems will arise. For example, when training a long short term memory network (LSTM), sequence length dictates how many steps the LSTM needs to traverse in order to ultimately calculate the probability of a sentence mentioning a relationship. If the LSTM were to be fed a sentence that contains 834 words, then the network has 834 steps to parse through. This takes a significant amount of time (~20 hours+). Plus during backpropogation, the gradient will become very small that the network cannot learn anything useful ([Backpropogation through time](https://en.wikipedia.org/wiki/Backpropagation_through_time)). 
+# In conclusion, the optimal cutoff point in this case would be: **84** tokens/words or smaller depending on algorithm performance. Another important lesson is to analyze one's dataset before undergoing the journey of training a deep learning model. Sentence length is an important factor, when it comes to filtering out the dataset. If ignored, a significant amount of problems will arise. For example, when training a long short term memory network (LSTM), sequence length dictates how many steps the LSTM needs to traverse in order to ultimately calculate the probability of a sentence mentioning a relationship. If the LSTM were to be fed a sentence that contains 798 words, then the network has 798 steps to parse through. This takes a significant amount of time (~20 hours+). Plus during backpropogation, the gradient will become very small that the network cannot learn anything useful ([Backpropogation through time](https://en.wikipedia.org/wiki/Backpropagation_through_time)). 

@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Generate Compound Binds Gene Candidates
@@ -39,7 +39,6 @@ database_str = "postgresql+psycopg2://{}:{}@/{}?host=/var/run/postgresql".format
 compound_url = "https://raw.githubusercontent.com/dhimmel/drugbank/7b94454b14a2fa4bb9387cb3b4b9924619cfbd3e/data/drugbank.tsv"
 gene_url = "https://raw.githubusercontent.com/dhimmel/entrez-gene/a7362748a34211e5df6f2d185bb3246279760546/data/genes-human.tsv"
 cbg_url = "https://raw.githubusercontent.com/dhimmel/integrate/93feba1765fbcd76fd79e22f25121f5399629148/compile/CbG-binding.tsv"
-crg_url = "https://raw.githubusercontent.com/dhimmel/lincs/bbc6812b7d19e98637b44373cdfc52f61bce6327/data/consensi/signif/dysreg-drugbank.tsv"
 
 
 # ## Read in Gene and Compound Entities
@@ -67,21 +66,9 @@ compound_binds_gene_df = pd.read_table(cbg_url, dtype={'entrez_gene_id': int})
 compound_binds_gene_df.head(2)
 
 
-# In[7]:
-
-
-compound_regulates_gene_df = (
-    pd.read_table(crg_url, dtype={'entrez_gene_id': int})
-    .assign(sources='lincs')
-    .drop(['z_score', 'status', 'nlog10_bonferroni_pval'], axis=1)
-    .rename(index=str, columns={"perturbagen":'drugbank_id'})
-)
-compound_regulates_gene_df.head(2)
-
-
 # ## Read in Sentences with Edge Pair
 
-# In[8]:
+# In[7]:
 
 
 query = '''
@@ -102,12 +89,12 @@ compound_gene_sentence_df.head(2)
 
 # ## Merge Edges Into a Unified Table
 
-# In[9]:
+# In[8]:
 
 
 compound_binds_gene_df = (
     compound_binds_gene_df
-    .merge(compound_gene_sentence_df, on=["drugbank_id", "entrez_gene_id"], how="right")
+    .merge(compound_gene_sentence_df, on=["drugbank_id", "entrez_gene_id"], how="outer")
 )
 compound_binds_gene_df=(
     compound_binds_gene_df
@@ -117,41 +104,25 @@ compound_binds_gene_df=(
 compound_binds_gene_df.head(2)
 
 
+# In[9]:
+
+
+# Make sure all existing edges are found
+# 11571 is determined from neo4j to be all DaG Edges
+assert compound_binds_gene_df.hetionet.value_counts()[1] == 24687
+
+
 # In[10]:
 
 
-compound_downregulates_gene_df = (
-    compound_regulates_gene_df
-    .query("direction=='down'")
-    .merge(compound_gene_sentence_df, on=["drugbank_id", "entrez_gene_id"], how="right")
-)
-compound_downregulates_gene_df=(
-    compound_downregulates_gene_df
-    .assign(hetionet=compound_downregulates_gene_df.sources.notnull().astype(int))
-    .assign(has_sentence=(compound_downregulates_gene_df.n_sentences > 0).astype(int))
-)
-compound_downregulates_gene_df.head(2)
+compound_binds_gene_df.query("hetionet==1&has_sentence==1").shape
 
 
-# In[11]:
-
-
-compound_upregulates_gene_df = (
-    compound_regulates_gene_df
-    .query("direction=='up'")
-    .merge(compound_gene_sentence_df, on=["drugbank_id", "entrez_gene_id"], how="right")
-)
-compound_upregulates_gene_df=(
-    compound_upregulates_gene_df
-    .assign(hetionet=compound_upregulates_gene_df.sources.notnull().astype(int))
-    .assign(has_sentence=(compound_upregulates_gene_df.n_sentences > 0).astype(int))
-)
-compound_upregulates_gene_df.head(2)
-
+# Make note that 18741 edges in Hetionet do not have sentences
 
 # ## Sort Edges into categories
 
-# In[12]:
+# In[11]:
 
 
 def partitioner(df):
@@ -172,7 +143,7 @@ def partitioner(df):
     return df
 
 
-# In[13]:
+# In[12]:
 
 
 def get_split(partition_rank, training=0.7, dev=0.2, test=0.1):
@@ -195,7 +166,7 @@ def get_split(partition_rank, training=0.7, dev=0.2, test=0.1):
     return 8
 
 
-# In[14]:
+# In[13]:
 
 
 pd.np.random.seed(100)
@@ -203,20 +174,20 @@ cbg_map_df = compound_binds_gene_df.groupby(['hetionet', 'has_sentence']).apply(
 cbg_map_df.head(2)
 
 
-# In[15]:
+# In[14]:
 
 
 cbg_map_df['split'] = cbg_map_df.partition_rank.map(get_split)
 cbg_map_df.split.value_counts()
 
 
-# In[16]:
+# In[15]:
 
 
 cbg_map_df.sources.unique()
 
 
-# In[17]:
+# In[16]:
 
 
 cbg_map_df = cbg_map_df[[
@@ -229,88 +200,8 @@ cbg_map_df = cbg_map_df[[
 cbg_map_df.head(2)
 
 
-# In[18]:
+# In[17]:
 
 
-cbg_map_df.to_csv("results/compound_binds_gene.tsv.xz", sep="\t", compression="xz", index=False)
-
-
-# In[19]:
-
-
-pd.np.random.seed(100)
-cdg_map_df = compound_downregulates_gene_df.groupby(['hetionet', 'has_sentence']).apply(partitioner)
-cdg_map_df.head(2)
-
-
-# In[20]:
-
-
-cdg_map_df['split'] = cdg_map_df.partition_rank.map(get_split)
-cdg_map_df.split.value_counts()
-
-
-# In[21]:
-
-
-cdg_map_df.sources.unique()
-
-
-# In[22]:
-
-
-cdg_map_df = cdg_map_df[[
-    "drugbank_id", "drug_name",
-    "entrez_gene_id", "gene_symbol",
-    "sources", "n_sentences",
-    "hetionet", "has_sentence",
-    "split", "partition_rank"
-]]
-cdg_map_df.head(2)
-
-
-# In[23]:
-
-
-cdg_map_df.to_csv("results/compound_downregulates_gene.tsv.xz", sep="\t", compression="xz", index=False)
-
-
-# In[24]:
-
-
-pd.np.random.seed(100)
-cug_map_df = compound_upregulates_gene_df.groupby(['hetionet', 'has_sentence']).apply(partitioner)
-cug_map_df.head(2)
-
-
-# In[25]:
-
-
-cug_map_df['split'] = cbg_map_df.partition_rank.map(get_split)
-cug_map_df.split.value_counts()
-
-
-# In[26]:
-
-
-cug_map_df.sources.unique()
-
-
-# In[27]:
-
-
-cug_map_df = cug_map_df[[
-    "drugbank_id", "drug_name",
-    "entrez_gene_id", "gene_symbol",
-    "sources", "n_sentences",
-    "hetionet", "has_sentence",
-    "split", "partition_rank"
-]]
-cug_map_df.head(2)
-
-
-# In[28]:
-
-
-cbg_map_df.to_csv("results/compound_upregulates_gene.tsv.xz", sep="\t", compression="xz", index=False)
+cbg_map_df.to_csv("output/compound_binds_gene.tsv.xz", sep="\t", compression="xz", index=False)
 
