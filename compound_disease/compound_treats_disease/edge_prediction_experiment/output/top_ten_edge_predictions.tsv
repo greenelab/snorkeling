@@ -1,0 +1,11 @@
+edge_type	drug_name	doid_name	gen_pred	pred	n_sentences	hetionet	text
+CtD	Sorafenib	liver cancer	1	0.99	6672	Existing	tace plus ~~[[1 sorafenib 1]]~~ for the treatment of ~~[[2 hepatocellular carcinoma 2]]~~ : final results of the multicenter socrates trial .
+CtD	Methotrexate	rheumatoid arthritis	1	0.989	14546	Existing	comparison of low-dose oral pulse ~~[[1 methotrexate 1]]~~ and placebo in the treatment of ~~[[2 rheumatoid arthritis 2]]~~ .
+CtD	Auranofin	rheumatoid arthritis	1	0.988	419	Existing	~~[[1 auranofin 1]]~~ versus placebo in the treatment of ~~[[2 rheumatoid arthritis 2]]~~ .
+CtD	Lamivudine	hepatitis B	1	0.988	6709	Existing	randomized controlled trials ( rcts ) comparing etv with ~~[[1 lam 1]]~~ for the treatment of ~~[[2 hepatitis b 2]]~~ decompensated cirrhosis were included .
+CtD	Doxorubicin	urinary bladder cancer	1	0.988	930	Existing	17-year follow-up of a randomized prospective controlled trial of adjuvant intravesical ~~[[1 doxorubicin 1]]~~ in the treatment of superficial ~~[[2 bladder cancer 2]]~~ .
+CtD	Docetaxel	breast cancer	1	0.987	5206	Existing	currently , randomized phase iii trials have demonstrated that ~~[[1 docetaxel 1]]~~ is an effective strategy in the adjuvant treatment of ~~[[2 breast cancer 2]]~~ .
+CtD	Cimetidine	psoriasis	0.999	0.987	12	Novel	~~[[1 cimetidine 1]]~~ versus placebo in the treatment of ~~[[2 psoriasis 2]]~~ .
+CtD	Olanzapine	schizophrenia	1	0.987	3324	Novel	a double-blind , randomised comparative trial of amisulpride versus ~~[[1 olanzapine 1]]~~ in the treatment of ~~[[2 schizophrenia 2]]~~ : short-term results at two months .
+CtD	Fulvestrant	breast cancer	1	0.987	826	Existing	phase iii clinical trials have demonstrated the clinical benefit of ~~[[1 fulvestrant 1]]~~ in the endocrine treatment of ~~[[2 breast cancer 2]]~~ .
+CtD	Pimecrolimus	atopic dermatitis	1	0.987	531	Existing	introduction : although several controlled clinical trials have demonstrated the efficacy and good tolerability of 1 % ~~[[1 pimecrolimus 1]]~~ cream for the treatment of ~~[[2 atopic dermatitis 2]]~~ , the results of these trials may not apply to real-life usage .
