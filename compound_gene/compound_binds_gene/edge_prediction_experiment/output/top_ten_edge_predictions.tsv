@@ -1,0 +1,11 @@
+edge_type	drug_name	gene_symbol	gen_pred	pred	n_sentences	hetionet	text
+CbG	Gefitinib	EGFR	1	0.99	8746	Existing	morphologic features of adenocarcinoma of the lung predictive of response to the ~~[[2 epidermal growth factor receptor 2]]~~ kinase inhibitors erlotinib and ~~[[1 gefitinib 1]]~~ .
+CbG	Adenosine	EGFR	1	0.987	644	Novel	it is well established that inhibiting ~~[[1 atp 1]]~~ binding within the ~~[[2 egfr 2]]~~ kinase domain regulates its function .
+CbG	Rosiglitazone	PPARG	1	0.987	1498	Existing	~~[[1 rosiglitazone 1]]~~ is a potent ~~[[2 peroxisome proliferator-activated receptor gamma 2]]~~ agonist that decreases hyperglycemia by reducing insulin resistance in patients with type 2 diabetes mellitus .
+CbG	D-Tyrosine	INSR	0.998	0.987	1713	Novel	this result suggests that ~~[[1 tyrosine 1]]~~ phosphorylation of phosphatidylinositol 3-kinase by the ~~[[2 insulin receptor 2]]~~ kinase may increase the specific activity of the former enzyme in vivo .
+CbG	D-Tyrosine	IGF1	0.998	0.983	819	Novel	affinity-purified ~~[[2 insulin-like growth factor i 2]]~~ receptor kinase is activated by ~~[[1 tyrosine 1]]~~ phosphorylation of its beta subunit .
+CbG	Pindolol	HTR1A	1	0.983	175	Existing	~~[[1 pindolol 1]]~~ , a betablocker with weak partial ~~[[2 5-ht1a receptor 2]]~~ agonist activity has been shown to produce a more rapid onset of antidepressant action of ssris .
+CbG	Progesterone	SHBG	1	0.981	492	Existing	however , dng also elicits properties of ~~[[1 progesterone 1]]~~ derivatives like neutrality in metabolic and cardiovascular system and considerable antiandrogenic activity , the latter increased by lack of binding to ~~[[2 shbg 2]]~~ as specific property of dng .
+CbG	Mifepristone	AR	1	0.98	78	Existing	~~[[1 ru486 1]]~~ bound to the ~~[[2 androgen receptor 2]]~~ .
+CbG	Alfentanil	OPRM1	1	0.979	10	Existing	purpose : ~~[[1 alfentanil 1]]~~ is a high potency ~~[[2 mu opiate receptor 2]]~~ agonist commonly used during presurgical induction of anesthesia .
+CbG	Candesartan	AGTR1	1	0.979	36	Existing	~~[[1 tcv-116 1]]~~ is a new , nonpeptide , ~~[[2 angiotensin ii type-1 receptor 2]]~~ antagonist that acts as a specific inhibitor of the renin-angiotensin system .

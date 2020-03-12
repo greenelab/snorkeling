@@ -12,6 +12,7 @@ get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
 get_ipython().run_line_magic('matplotlib', 'inline')
 
+import math
 import pandas as pd
 from sklearn.metrics import precision_recall_curve, roc_curve, auc
 import matplotlib.pyplot as plt
@@ -341,7 +342,6 @@ edges_df
 # In[20]:
 
 
-import math
 g = (
     p9.ggplot(edges_df, p9.aes(x="relation", y="edges", fill="in_hetionet"))
     + p9.geom_col(position="dodge")
