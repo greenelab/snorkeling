@@ -6,6 +6,7 @@ from tqdm import tqdm_notebook
 import pandas as pd
 import numpy as np
 from scipy.sparse import coo_matrix
+import pdb
 
 
 def create_gen_marginal_df(L_data, models, lfs_columns, model_names, candidate_ids):
@@ -218,9 +219,10 @@ def generate_embedded_df(candidates, word_dict, max_length=83):
         ), cand.id)
         for cand in tqdm_notebook(candidates)
     ]
-    print(words_to_embed)
-    embed_df = pd.SparseDataFrame(
-        coo_matrix(
+
+    words_to_embed = list(filter(lambda x: max_length > len(x[0]), words_to_embed))
+        
+    embed_df = pd.DataFrame(
             list(
                 map(
                     lambda x: pd.np.pad(
@@ -231,8 +233,7 @@ def generate_embedded_df(candidates, word_dict, max_length=83):
                     ),
                     words_to_embed
                 )
-            )
-        ),
+            ),
         columns=list(range(max_length))
     )
     embed_df['candidate_id'] = list(map(lambda x: x[1], words_to_embed))
