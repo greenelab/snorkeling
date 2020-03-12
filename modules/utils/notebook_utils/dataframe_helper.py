@@ -87,6 +87,34 @@ def mark_sentence(s, args):
         x.insert(k, v)
     return x
 
+def tag_sentence(x, class_table):
+    """
+    This function tags the mentions of each candidate sentence.
+    x - dataframe with candidate sentences
+    class_table - the table for each candidate
+    """
+    candidates=(
+        session
+        .query(class_table)
+        .filter(class_table.id.in_(x.candidate_id.astype(int).tolist()))
+        .all()
+    )
+    tagged_sen=[
+         " ".join(
+             mark_sentence(
+                candidate_to_tokens(cand), 
+                [
+                        (cand[0].get_word_start(), cand[0].get_word_end(), 1),
+                        (cand[1].get_word_start(), cand[1].get_word_end(), 2)
+                ]
+            )
+         )
+        for cand in candidates
+    ]
+
+    return tagged_sen
+
+
 def make_sentence_df(candidates):
     """ 
     This function creats a dataframe for all candidates (sentences that contain at least two mentions)

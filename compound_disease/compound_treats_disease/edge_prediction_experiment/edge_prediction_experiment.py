@@ -12,6 +12,7 @@ get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
 get_ipython().run_line_magic('matplotlib', 'inline')
 
+import math
 import os
 import sys
 import pandas as pd
@@ -22,7 +23,7 @@ import seaborn as sns
 
 sys.path.append(os.path.abspath('../../../modules'))
 
-from utils.notebook_utils.dataframe_helper import mark_sentence
+from utils.notebook_utils.dataframe_helper import mark_sentence, tag_sentence
 
 
 # In[2]:
@@ -335,32 +336,6 @@ edges_added_df.to_csv("output/precision_ctd_edges_added.tsv", index=False, sep="
 
 # How many edges of hetionet can we recall using an equal error rate cutoff score?
 
-# In[22]:
-
-
-def tag_sentence(x):
-    candidates=(
-        session
-        .query(CompoundDisease)
-        .filter(CompoundDisease.id.in_(x.candidate_id.astype(int).tolist()))
-        .all()
-    )
-    tagged_sen=[
-         " ".join(
-             mark_sentence(
-                candidate_to_tokens(cand), 
-                [
-                        (cand[0].get_word_start(), cand[0].get_word_end(), 1),
-                        (cand[1].get_word_start(), cand[1].get_word_end(), 2)
-                ]
-            )
-         )
-        for cand in candidates
-    ]
-
-    return tagged_sen
-
-
 # In[23]:
 
 
@@ -397,7 +372,7 @@ gen_pred_df.head(2)
     .sort_values("pred", ascending=False)
     .head(10)
     .sort_values("candidate_id")
-    .assign(text=lambda x: tag_sentence(x))
+    .assign(text=lambda x: tag_sentence(x, CompoundDisease))
     .merge(total_candidates_df[["n_sentences", "candidate_id"]], on="candidate_id")
     .sort_values("pred", ascending=False)
     .drop_duplicates()
@@ -456,7 +431,6 @@ edges_df
 # In[26]:
 
 
-import math
 g = (
     p9.ggplot(edges_df, p9.aes(x="relation", y="edges", fill="in_hetionet"))
     + p9.geom_col(position="dodge")

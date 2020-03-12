@@ -12,6 +12,7 @@ get_ipython().run_line_magic('load_ext', 'autoreload')
 get_ipython().run_line_magic('autoreload', '2')
 get_ipython().run_line_magic('matplotlib', 'inline')
 
+import math
 import os
 import sys
 import pandas as pd
@@ -22,7 +23,7 @@ import seaborn as sns
 
 sys.path.append(os.path.abspath('../../../modules'))
 
-from utils.notebook_utils.dataframe_helper import mark_sentence
+from utils.notebook_utils.dataframe_helper import mark_sentence, tag_sentence
 
 
 # In[2]:
@@ -397,7 +398,7 @@ gen_pred_df.head(2)
     .query("gene1_name!=gene2_name")
     .head(10)
     .sort_values("candidate_id")
-    .assign(text=lambda x: tag_sentence(x))
+    .assign(text=lambda x: tag_sentence(x, GeneGene))
     .merge(total_candidates_df[["n_sentences", "candidate_id"]], on="candidate_id")
     .sort_values("pred", ascending=False)
     .assign(hetionet=lambda x: x.hetionet.apply(lambda x: "Existing" if x == 1 else "Novel"))
@@ -455,7 +456,6 @@ edges_df
 # In[26]:
 
 
-import math
 g = (
     p9.ggplot(edges_df, p9.aes(x="relation", y="edges", fill="in_hetionet"))
     + p9.geom_col(position="dodge")
