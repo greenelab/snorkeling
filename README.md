@@ -1,10 +1,10 @@
 # Snorkeling
 
-This repository stores data and code to scale up the extraction of biomedical relationships (i.e. Disease-Gene assocaitions, Compounds binding to Genes, Gene-Gene interactions etc.) from the Pubmed Abstracts. 
+This repository stores data and code to scale up the extraction of biomedical relationships (i.e. Disease-Gene associations, Compounds binding to Genes, Gene-Gene interactions etc.) from the Pubmed Abstracts. 
 
 ## Depreciation Note
 
-An updated version of this project can be found at: [greenelab/snorkeling-full-text](https://github.com/greenelab/snorkeling-full-text). New changes pertaiing to the repository can be found at the link provided previously.
+An updated version of this project can be found at: [greenelab/snorkeling-full-text](https://github.com/greenelab/snorkeling-full-text). New changes pertaining to the repository can be found at the link provided previously.
 
 ## Quick Synopsis
 This work uses a subset of [Hetionet v1](https://doi.org/cdfk) (bolded in the resource schema below), which is a heterogenous network that contains pharmacological and biological information in the form of nodes and edges. 
